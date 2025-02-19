@@ -9,7 +9,7 @@ from feedback_forensics.app.constants import (
     ALLOW_LOCAL_RESULTS,
     DEFAULT_DATASET_PATH,
 )
-from feedback_forensics.app.builtin_datasets import BUILTIN_DATASETS
+from feedback_forensics.app.datasets import BUILTIN_DATASETS
 from feedback_forensics.app.info_texts import (
     METHOD_INFO_TEXT,
     METHOD_INFO_HEADING,

@@ -1,9 +1,7 @@
 """Module with configurations for built-in datasets."""
 
 from dataclasses import dataclass, field
-import gradio as gr
 from loguru import logger
-import pathlib
 import re
 from feedback_forensics.app.constants import NONE_SELECTED_VALUE
 from feedback_forensics.app.data_loader import load_icai_data, DATA_DIR
@@ -83,38 +81,22 @@ PRISM_V2 = BuiltinDataset(
     description="",
 )
 
-
-LOCAL_DATASET = BuiltinDataset(
-    name="🏠 Local dataset",
-    path=DATA_DIR / "anthropic_harmless",
-    description="Local dataset.",
-)
-
 # List of all built-in datasets
-BUILTIN_DATASETS = [
+_BUILTIN_DATASETS = [
     ARENA_V2,
     ALPACA_EVAL_V2,
     PRISM_V2,
     ANTHROPIC_HELPFUL,
     ANTHROPIC_HARMLESS,
-    LOCAL_DATASET,
 ]
 
 BUILTIN_DATASETS_TO_URL_NAMES = {
-    dataset.name: dataset.url_name for dataset in BUILTIN_DATASETS
+    dataset.name: dataset.url_name for dataset in _BUILTIN_DATASETS
 }
 
 BUILTIN_DATASETS_TO_URL_NAMES_REVERSED = {
-    dataset.url_name: dataset.name for dataset in BUILTIN_DATASETS
+    dataset.url_name: dataset.name for dataset in _BUILTIN_DATASETS
 }
-
-
-# make sure entire dataset is an option for all built-in datasets
-for dataset in BUILTIN_DATASETS:
-    if dataset.options is not None:
-        dataset.options = dataset.options + [Config("Entire dataset")]
-    else:
-        dataset.options = [Config("Entire dataset")]
 
 
 # utility functions
@@ -138,3 +120,25 @@ def get_dataset_from_name(name: str) -> BuiltinDataset:
             return dataset
 
     raise ValueError(f"Dataset with name '{name}' not found.")
+
+
+def get_available_builtin_datasets() -> list[BuiltinDataset]:
+    """Get all built-in datasets."""
+    # validate that the relevant data is present for each dataset
+    available_datasets = []
+    for dataset in _BUILTIN_DATASETS:
+        if dataset.path is not None and dataset.path.exists():
+            available_datasets.append(dataset)
+    return available_datasets
+
+
+def create_local_dataset(path: str) -> BuiltinDataset:
+    """Create a local dataset."""
+    return BuiltinDataset(
+        name="🏠 Local dataset",
+        path=path,
+        description="Local dataset.",
+    )
+
+
+BUILTIN_DATASETS = get_available_builtin_datasets()

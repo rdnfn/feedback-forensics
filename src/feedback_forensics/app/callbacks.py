@@ -12,7 +12,7 @@ import feedback_forensics.app.plotting
 import feedback_forensics.app.plotting_v2
 from feedback_forensics.app.utils import get_csv_columns
 from feedback_forensics.app.constants import NONE_SELECTED_VALUE
-from feedback_forensics.app.builtin_datasets import (
+from feedback_forensics.app.datasets import (
     get_config_from_name,
     get_dataset_from_name,
     BuiltinDataset,
