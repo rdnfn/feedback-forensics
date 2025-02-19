@@ -1,0 +1,64 @@
+[project]
+name = "feedback-forensics"
+version = "0.1.0"
+authors = [
+  { name="rdnfn", email="hi@arduin.io" },
+  { name="timokau" },
+]
+description = "Feedback Forensics"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+  "langchain",
+  "python-dotenv",
+  "langchain-openai",
+  "langchain-anthropic",
+  "langchain-community",
+  "scikit-learn",
+  "anthropic",
+  "loguru",
+  "hydra-core",
+  "pandas",
+  "matplotlib",
+  "datasets", # To fetch huggingface datasets
+  "wandb",
+  "alpaca-eval",
+  "nbconvert",
+  "jupyter",
+  "ipywidgets", # IProgress in jupyter notebooks
+  "gradio",
+  "plotly",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest >=6.0",
+    "black ==24.10.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/feedback_forensics"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/feedback_forensics/assets" = "feedback_forensics/assets"
+
+[project.scripts]
+feedback-forensics = "feedback_forensics.app.main:run"
+
+[tool.pytest.ini_options]
+pythonpath = "."
+testpaths = ["src"]
+python_files = ["*_test.py"]
+
+[tool.black]
+line-length = 88
+target-version = ['py311']

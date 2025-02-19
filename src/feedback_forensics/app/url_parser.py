@@ -1,0 +1,78 @@
+import gradio as gr
+from loguru import logger
+import re
+
+from feedback_forensics.app.builtin_datasets import (
+    BUILTIN_DATASETS,
+    BUILTIN_DATASETS_TO_URL_NAMES,
+    BUILTIN_DATASETS_TO_URL_NAMES_REVERSED,
+)
+from feedback_forensics.app.constants import NONE_SELECTED_VALUE
+
+
+def get_config_from_query_params(request: gr.Request) -> dict:
+    params = dict(request.query_params)
+    config = {}
+    if "data" in params:
+        dataset_url_names = load_str_list(params["data"])
+        datasets = []
+        for dataset_url_name in dataset_url_names:
+            dataset_name = BUILTIN_DATASETS_TO_URL_NAMES_REVERSED.get(
+                dataset_url_name, None
+            )
+            if dataset_name is None:
+                logger.warning(f"Dataset {dataset_url_name} not found")
+                continue
+            datasets.append(dataset_name)
+        config["datasets"] = datasets
+    if "col" in params:
+        config["col"] = params["col"]
+    if "col_vals" in params:
+        config["col_vals"] = load_str_list(params["col_vals"])
+    return config
+
+
+def load_str_list(str_list: str) -> list[str]:
+    return str_list.split(",")
+
+
+def get_url_with_query_params(
+    datasets: list[str], col: str | None, col_vals: list[str], base_url: str
+) -> str:
+    datasets_url_names = [
+        BUILTIN_DATASETS_TO_URL_NAMES[dataset] for dataset in datasets
+    ]
+    url = f"{base_url}?data={','.join(datasets_url_names)}"
+    if col is not None and col != NONE_SELECTED_VALUE and col != "":
+        url += f"&col={col}"
+        if col_vals is not None and col_vals != [NONE_SELECTED_VALUE]:
+            url_ready_col_vals = [make_str_url_ready(val) for val in col_vals]
+            url += f"&col_vals={','.join(url_ready_col_vals)}"
+
+    return url
+
+
+def make_str_url_ready(s: str) -> str:
+    return re.sub(r"[^a-zA-Z0-9_]", "", s.replace(" ", "_")).lower().strip(" _-")
+
+
+def get_list_member_from_url_string(
+    url_string: str, list_members: list[str]
+) -> str | None:
+    urlified_list_members_dict = {
+        make_str_url_ready(text): text for text in list_members
+    }
+    return urlified_list_members_dict.get(url_string, None)
+
+
+def transfer_url_list_to_nonurl_list(
+    url_list: list[str], nonurl_list: list[str]
+) -> list[str]:
+    urlified_generic_list_dict = {
+        make_str_url_ready(text): text for text in nonurl_list
+    }
+    return [
+        urlified_generic_list_dict[url]
+        for url in url_list
+        if url in urlified_generic_list_dict
+    ]
