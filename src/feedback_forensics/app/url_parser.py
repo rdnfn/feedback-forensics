@@ -4,8 +4,8 @@ import re
 
 from feedback_forensics.app.datasets import (
     BUILTIN_DATASETS,
-    BUILTIN_DATASETS_TO_URL_NAMES,
-    BUILTIN_DATASETS_TO_URL_NAMES_REVERSED,
+    get_stringname_from_urlname,
+    get_urlname_from_stringname,
 )
 from feedback_forensics.app.constants import NONE_SELECTED_VALUE
 
@@ -17,8 +17,8 @@ def get_config_from_query_params(request: gr.Request) -> dict:
         dataset_url_names = load_str_list(params["data"])
         datasets = []
         for dataset_url_name in dataset_url_names:
-            dataset_name = BUILTIN_DATASETS_TO_URL_NAMES_REVERSED.get(
-                dataset_url_name, None
+            dataset_name = get_stringname_from_urlname(
+                dataset_url_name, BUILTIN_DATASETS
             )
             if dataset_name is None:
                 logger.warning(f"Dataset {dataset_url_name} not found")
@@ -40,7 +40,7 @@ def get_url_with_query_params(
     datasets: list[str], col: str | None, col_vals: list[str], base_url: str
 ) -> str:
     datasets_url_names = [
-        BUILTIN_DATASETS_TO_URL_NAMES[dataset] for dataset in datasets
+        get_urlname_from_stringname(dataset, BUILTIN_DATASETS) for dataset in datasets
     ]
     url = f"{base_url}?data={','.join(datasets_url_names)}"
     if col is not None and col != NONE_SELECTED_VALUE and col != "":

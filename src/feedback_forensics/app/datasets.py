@@ -90,14 +90,6 @@ _BUILTIN_DATASETS = [
     ANTHROPIC_HARMLESS,
 ]
 
-BUILTIN_DATASETS_TO_URL_NAMES = {
-    dataset.name: dataset.url_name for dataset in _BUILTIN_DATASETS
-}
-
-BUILTIN_DATASETS_TO_URL_NAMES_REVERSED = {
-    dataset.url_name: dataset.name for dataset in _BUILTIN_DATASETS
-}
-
 
 # utility functions
 def get_config_from_name(name: str, config_options: list) -> Config:
@@ -139,6 +131,24 @@ def create_local_dataset(path: str) -> BuiltinDataset:
         path=path,
         description="Local dataset.",
     )
+
+
+def get_urlname_from_stringname(stringname: str, datasets: list[BuiltinDataset]) -> str:
+    """Get the URL name from the string name."""
+    for dataset in datasets:
+        if dataset.name == stringname:
+            return dataset.url_name
+    logger.warning(f"Dataset with name '{stringname}' not found.")
+    return None
+
+
+def get_stringname_from_urlname(urlname: str, datasets: list[BuiltinDataset]) -> str:
+    """Get the string name from the URL name."""
+    for dataset in datasets:
+        if dataset.url_name == urlname:
+            return dataset.name
+    logger.warning(f"Dataset with URL name '{urlname}' not found.")
+    return None
 
 
 BUILTIN_DATASETS = get_available_builtin_datasets()
