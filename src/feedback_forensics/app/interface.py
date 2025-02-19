@@ -32,37 +32,28 @@ def add_title_row(title: str):
 
 def create_header():
     """Create the app header with logo and links."""
+    image_path = get_gradio_image_path("feedback_forensics_logo.png")
+    link_button_variant = "secondary"
+    link_button_size = "md"
+
     with gr.Row(variant="default"):
-        with gr.Column(scale=4, variant="default", min_width="300px"):
-            image_path = get_gradio_image_path("feedback_forensics_logo.png")
-            gr.HTML(f'<img src="{image_path}" alt="Logo" width="320">')
-        link_button_variant = "secondary"
-        link_button_size = "lg"
-        with gr.Column(scale=2):
-            with gr.Group():
-                gr.Markdown(
-                    f"**Research Preview** – ({VERSION}) ",
-                    container=True,
-                )
-                # gr.Button(
-                #     "📖 Paper",
-                #     link="https://arxiv.org/abs/2406.06560",
-                #     variant=link_button_variant,
-                #     size=link_button_size,
-                # )
-                gr.Button(
-                    "📦 GitHub",
-                    link="https://github.com/rdnfn/feedback-forensics",
-                    variant=link_button_variant,
-                    size=link_button_size,
-                )
-                # raise issue button
-                gr.Button(
-                    "🐛 Report bug",
-                    link="https://github.com/rdnfn/feedback-forensics/issues/new?template=Blank+issue",
-                    variant=link_button_variant,
-                    size=link_button_size,
-                )
+        with gr.Column(scale=4, min_width="300px"):
+            gr.HTML(
+                (
+                    f'<div style="font-size: 1.2em">'
+                    f'<img src="{image_path}" alt="Logo" width="330">'
+                    '<span style="opacity: 0.3">'
+                    "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+                    f"v{VERSION} (Research Preview)</span>"
+                    "&nbsp;&nbsp;&nbsp;"
+                    # "<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+                    '<a href="https://github.com/rdnfn/feedback-forensics" style="opacity: 0.9; color: white; text-decoration: none; background-color: #404040">'
+                    "📁 GitHub</a>&nbsp;&nbsp;&nbsp;"
+                    '<a href="https://github.com/rdnfn/feedback-forensics/issues/new?template=Blank+issue" style="opacity: 0.9; color: white; text-decoration: none; background-color: #404040">'
+                    "✍️ Report bug</a></div>"
+                ),
+                padding=False,
+            )
 
 
 def create_data_loader(inp: dict, state: dict):
