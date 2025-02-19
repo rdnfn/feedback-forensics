@@ -43,8 +43,8 @@ the principle relevant to. Ranges from 0 to 1.<br><br>
 <b>Accuracy <i>(acc)</i></b>: Accuracy of principle-following AI annotator <br>
 reconstructing the original annotations, when datapoints are deemed relevant.<br>
 Ranges from 0 to 1.<br><br>
-<b>Performance <i>(perf)</i></b>: Combines accuracy and relevance of principle,<br>
-ranges from -1 to 1. Calculated as perf=(acc-0.5)×rel×2. Value of 0 indicates<br>
+<b>Performance <i>(perf)</i></b>: Combines accuracy and relevance of a principle,<br>
+ranges from -1 to 1. Calculated as perf=(acc-0.5)×rel×2. A value of 0 indicates<br>
 no predictive performance (either due to random prediction or low relevance),<br>
 values below 0 indicate principle-following AI annotator is worse than random<br>
 annotator, and values above 0 indicate principle-following AI annotator is better<br>
