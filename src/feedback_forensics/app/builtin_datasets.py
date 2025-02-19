@@ -52,133 +52,41 @@ class Config:
 
 # Builtin datasets
 
-SYNTHETIC = BuiltinDataset(
-    name="🧪 Synthetic",
-    path=DATA_DIR / "synthetic_v1",
-    description="Synthetic dataset generated according to three different rules.",
-    options=None,
-)
-
-CHATBOT_ARENA = BuiltinDataset(
-    name="🏟️ Chatbot Arena",
-    path=DATA_DIR / "chatbot_arena_v1",
-    description="LMSYS Chatbot Arena data.",
-    options=[
-        Config(
-            name="GPT-4-1106-preview winning (against all other models)",
-            filter_col="winner_model",
-            filter_value="gpt-4-1106-preview",
-        ),
-        Config(
-            name="GPT-4-1106-preview winning against GPT-4-0314",
-            filter_col="winner_model",
-            filter_value="gpt-4-1106-preview",
-            filter_col_2="loser_model",
-            filter_value_2="gpt-4-0314",
-        ),
-        Config(
-            name="GPT-4-1106-preview losing to GPT-4-0314",
-            filter_col="loser_model",
-            filter_value="gpt-4-1106-preview",
-            filter_col_2="winner_model",
-            filter_value_2="gpt-4-0314",
-        ),
-    ],
-)
-
-PRISM_VIEW_OPTIONS = [
-    Config(
-        name="GPT-4-1106-preview winning (against all other models)",
-        filter_col="chosen_model",
-        filter_value="gpt-4-1106-preview",
-    ),
-    Config(
-        name="Location (by birth region): Americas",
-        filter_col="location_birth_region",
-        filter_value="Americas",
-        metrics=["perf", "relevance", "acc", "perf_diff", "perf_base"],
-    ),
-    Config(
-        name="Location (by birth region): Europe",
-        filter_col="location_birth_region",
-        filter_value="Europe",
-        metrics=["perf", "relevance", "acc", "perf_diff", "perf_base"],
-    ),
-    Config(
-        name="English proficiency: intermediate",
-        filter_col="english_proficiency",
-        filter_value="Intermediate",
-        metrics=["perf", "relevance", "acc", "perf_diff", "perf_base"],
-    ),
-    Config(
-        name="English proficiency: native speaker",
-        filter_col="english_proficiency",
-        filter_value="Native speaker",
-        metrics=["perf", "relevance", "acc", "perf_diff", "perf_base"],
-    ),
-]
-
-PRISM_DESCRIPTION = "PRISM dataset by Kirk et al. ([paper](https://arxiv.org/abs/2404.16019)) consisting of around 8,000 pairwise comparisons between 21 LLMs with a focus on value-laden and controversial topics."
-
-PRISM_1k = BuiltinDataset(
-    name="💎 PRISM (1k subset)",
-    path=DATA_DIR / "prism_1k_v1",
-    description=PRISM_DESCRIPTION
-    + " These results use a 1k subset of the dataset for faster processing.",
-    filterable_columns=["chosen_model", "location_birth_region", "english_proficiency"],
-    options=PRISM_VIEW_OPTIONS,
-)
-
-PRISM_8k = BuiltinDataset(
-    name="💎 PRISM (full)",
-    path=DATA_DIR / "prism_8k_v2",
-    description=PRISM_DESCRIPTION
-    + " These results use the full dataset (~8k datapoints).",
-    filterable_columns=["chosen_model", "location_birth_region", "english_proficiency"],
-    options=PRISM_VIEW_OPTIONS,
-)
-
-ALPACA_EVAL = BuiltinDataset(
-    name="🦙 AlpacaEval",
-    path=DATA_DIR / "alpacaeval_v1",
-    description="AlpacaEval cross-annotated dataset of 648 pairwise comparisons. Each comparison is rated by 4 human annotators. We use the majority vote as the ground truth, breaking ties randomly.",
-)
-
 ANTHROPIC_HELPFUL = BuiltinDataset(
     name="🚑 Anthropic helpful",
-    path=pathlib.Path("exp/2025-02-05_16-39-57_anthropic_helpful"),
+    path=DATA_DIR / "anthropic_helpful",
     description="",
 )
 
 
 ANTHROPIC_HARMLESS = BuiltinDataset(
     name="🕊️ Anthropic harmless",
-    path=pathlib.Path("exp/2025-02-05_12-55-08_anthropic_harmless"),
+    path=DATA_DIR / "anthropic_harmless",
     description="",
 )
 
 ARENA_V2 = BuiltinDataset(
     name="🏟️ Chatbot Arena",
-    path=pathlib.Path("exp/2025-02-05_19-04-30_arena"),
+    path=DATA_DIR / "arena",
     description="",
 )
 
 ALPACA_EVAL_V2 = BuiltinDataset(
     name="🦙 AlpacaEval",
-    path=pathlib.Path("exp/2025-02-05_18-56-54_alpacaeval_human"),
+    path=DATA_DIR / "alpacaeval_human",
     description="",
 )
 
 PRISM_V2 = BuiltinDataset(
     name="💎 PRISM",
-    path=pathlib.Path("exp/2025-02-05_20-20-41_prism"),
+    path=DATA_DIR / "prism",
     description="",
 )
 
 
 LOCAL_DATASET = BuiltinDataset(
     name="🏠 Local dataset",
-    path=pathlib.Path("exp/2025-02-05_12-55-08_anthropic_harmless"),
+    path=DATA_DIR / "anthropic_harmless",
     description="Local dataset.",
 )
 
