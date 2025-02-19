@@ -31,6 +31,12 @@ NAME_FONT_WEIGHT = "bold"
 
 INFO_ANNOTATION_DESCRIPTION = """
 <b>Metrics Information</b><br>
+We test what principles are implicitly encoded in the annotations<br>
+(e.g. "a response in list format is preferred"). How much a principle is<br>
+encoded in the annotations is measured by giving the principle to a<br>
+principle-following AI annotator and checking how much of the original<br>
+annotations it can reconstruct. Principles are typically generated using<br>
+<i>Inverse Constitutional AI</i> (ICAI).<br><br>
 For each principle, we calculate the following metrics:<br><br>
 <b>Relevance <i>(rel)</i></b>: Proportion of datapoints that AI annotators deemed <br>
 the principle relevant to. Ranges from 0 to 1.<br><br>
