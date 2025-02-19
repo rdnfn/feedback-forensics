@@ -38,10 +38,10 @@ def create_header():
             gr.HTML(f'<img src="{image_path}" alt="Logo" width="320">')
         link_button_variant = "secondary"
         link_button_size = "lg"
-        with gr.Column(scale=1):
+        with gr.Column(scale=2):
             with gr.Group():
                 gr.Markdown(
-                    f"**Research Preview** – ({VERSION})",
+                    f"**Research Preview** – ({VERSION}) ",
                     container=True,
                 )
                 # gr.Button(
@@ -52,14 +52,14 @@ def create_header():
                 # )
                 gr.Button(
                     "📦 GitHub",
-                    link="https://github.com/rdnfn/icai",
+                    link="https://github.com/rdnfn/feedback-forensics",
                     variant=link_button_variant,
                     size=link_button_size,
                 )
                 # raise issue button
                 gr.Button(
                     "🐛 Report bug",
-                    link="https://github.com/rdnfn/icai/issues/new?template=Blank+issue",
+                    link="https://github.com/rdnfn/feedback-forensics/issues/new?template=Blank+issue",
                     variant=link_button_variant,
                     size=link_button_size,
                 )
