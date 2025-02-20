@@ -46,12 +46,14 @@ CELL_FONT_SIZE = 12
 
 TABLE_HEADING_HEIGHT = 20
 TABLE_ROW_HEIGHT = 28
+TABLE_ALIGN = ["left", "right"]
+TABLE_HEADER_ALIGN = ["left", "right"]
 
 TABLE_HEADER_CONFIG = dict(
     fill_color=HEADER_BG_COLOR,
     font=dict(color=HEADER_FONT_COLOR, size=HEADER_FONT_SIZE),
     line_color=HEADER_BG_COLOR,
-    align="right",
+    align=TABLE_HEADER_ALIGN,
 )
 
 SPACING_BETWEEN_TABLES = 80
@@ -294,7 +296,11 @@ def get_table_trace(
         initial_values = get_values_as_strings(get_table_values(table_data))
         initial_cell_colors = get_cell_colors(table_data, color_scale, neutral_value)
 
+    num_cols = len(columns)
+    widths = [(1 / 2) * num_cols] + [1] * num_cols
+
     table = go.Table(
+        columnwidth=widths,
         header=dict(
             values=[index_col_heading] + columns,
             **TABLE_HEADER_CONFIG,
@@ -307,7 +313,7 @@ def get_table_trace(
                 color=CELL_FONT_COLOR,
                 size=CELL_FONT_SIZE,
             ),
-            align="right",
+            align=TABLE_ALIGN,
         ),
     )
 
