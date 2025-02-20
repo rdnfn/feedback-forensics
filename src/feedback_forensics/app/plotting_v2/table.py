@@ -243,7 +243,7 @@ def get_updatemenus_and_annotation(
             direction="down",
             pad={"r": 10, "t": 10},
             showactive=True,
-            x=0.01,
+            x=0.00,
             y=y,
             xanchor="left",
             yanchor="bottom",
@@ -254,11 +254,11 @@ def get_updatemenus_and_annotation(
 
     # Add info annotation
     info_annotation = dict(
-        x=0.30,  # Position slightly to the right of the menu
+        x=1,  # Position slightly to the right of the menu
         y=y,
         xref="paper",
         yref="paper",
-        xanchor="left",
+        xanchor="right",
         yanchor="bottom",
         text="ⓘ Metrics information",  # Info symbol
         showarrow=False,
@@ -548,7 +548,7 @@ def create_fig_with_tables(
     fig.update_layout(
         paper_bgcolor=PAPER_BG_COLOR,
         height=sum(table_heights),
-        margin=dict(l=20, r=20, t=30, b=20),
+        margin=dict(l=20, r=20, t=45, b=20),
     )
 
     return fig
