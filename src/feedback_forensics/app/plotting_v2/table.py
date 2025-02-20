@@ -545,6 +545,10 @@ def create_fig_with_tables(
     if all_annotations:
         fig.update_layout(annotations=all_annotations)
 
-    fig.update_layout(paper_bgcolor=PAPER_BG_COLOR, height=sum(table_heights))
+    fig.update_layout(
+        paper_bgcolor=PAPER_BG_COLOR,
+        height=sum(table_heights),
+        margin=dict(l=20, r=20, t=30, b=20),
+    )
 
     return fig
