@@ -75,7 +75,7 @@ def create_data_loader(inp: dict, state: dict):
             inp["active_datasets_dropdown"] = gr.Dropdown(
                 label="Active datasets",
                 choices=[dataset.name for dataset in BUILTIN_DATASETS],
-                value=[BUILTIN_DATASETS[0].name, BUILTIN_DATASETS[1].name],
+                value=[BUILTIN_DATASETS[-1].name],
                 interactive=True,
                 multiselect=True,
             )
