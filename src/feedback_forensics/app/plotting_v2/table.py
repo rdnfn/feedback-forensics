@@ -219,14 +219,14 @@ def get_updatemenus_and_annotation(
                                 color=HEADER_FONT_COLOR, size=HEADER_FONT_SIZE
                             ),
                             "line": dict(color=HEADER_BG_COLOR),
-                            "align": "right",
+                            "align": TABLE_HEADER_ALIGN,
                         },
                         "cells": {
                             "values": values,
                             "fill": dict(color=colors),
                             "line": dict(color=colors),
                             "font": dict(color=CELL_FONT_COLOR),
-                            "align": "right",
+                            "align": TABLE_ALIGN,
                         },
                     },
                     [table_index],
