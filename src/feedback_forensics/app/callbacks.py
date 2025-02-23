@@ -201,9 +201,15 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         results_dir = pathlib.Path(dataset_config.path) / "results"
         cache = data[state["cache"]]
         votes_df: pd.DataFrame = get_votes_df(results_dir, cache=cache)
-        avail_values = sorted(
-            [str(val) for val in votes_df[col_name].unique().tolist()]
-        )
+        votes_df = votes_df.groupby("comparison_id").first()
+        value_counts = votes_df[col_name].value_counts()
+        avail_values = [
+            (count, f"{val} ({count})", val) for val, count in value_counts.items()
+        ]
+        # sort by count descending
+        avail_values = sorted(avail_values, key=lambda x: x[0], reverse=True)
+        # remove count from avail_values
+        avail_values = [(val[1], val[2]) for val in avail_values]
         return avail_values
 
     def update_col_split_value_dropdown(data: dict):
@@ -215,7 +221,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             return {
                 inp["split_col_selected_vals_dropdown"]: gr.Dropdown(
                     choices=avail_values,
-                    value=avail_values,
+                    value=[val[1] for val in avail_values[: min(len(avail_values), 3)]],
                     multiselect=True,
                     interactive=True,
                     visible=True,
@@ -443,7 +449,8 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                     avail_values = _get_avail_col_values(split_col, data)
                     init_selected_vals = config["col_vals"]
                     selected_vals = transfer_url_list_to_nonurl_list(
-                        url_list=init_selected_vals, nonurl_list=avail_values
+                        url_list=init_selected_vals,
+                        nonurl_list=[val[1] for val in avail_values],
                     )
                     if len(selected_vals) != len(init_selected_vals):
                         gr.Warning(
