@@ -9,8 +9,6 @@ from feedback_forensics.app.data_loader import load_icai_data, DATA_DIR
 
 load_icai_data()
 
-DATA_DIR = DATA_DIR / "icai-data"
-
 
 @dataclass
 class BuiltinDataset:
