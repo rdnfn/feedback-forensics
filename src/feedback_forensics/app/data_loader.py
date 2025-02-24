@@ -1,15 +1,20 @@
 import subprocess
 import os
+import shutil
 import pathlib
 from loguru import logger
 
-from feedback_forensics.app.constants import GITHUB_TOKEN
+from feedback_forensics.app.constants import HF_TOKEN
 
 
-DATA_DIR = pathlib.Path("icai-tmp-data")
+CLONE_DIR = pathlib.Path("forensics-data")
+REPO_USERNAME = "rdnfn"
+REPO_NAME = "feedback-forensics-public-results"
+REPO_PROVIDER = "huggingface.co/datasets"
+DATA_DIR = CLONE_DIR / REPO_NAME
 
 
-def clone_repo(username, token, repo_name, clone_directory):
+def clone_repo(username, token, repo_name, clone_directory, provider="github.com"):
     """
     Clones a GitHub repository into a specified directory using subprocess.
 
@@ -28,14 +33,22 @@ def clone_repo(username, token, repo_name, clone_directory):
         )
         return None
 
-    pathlib.Path(clone_directory).mkdir(parents=True, exist_ok=True)
+    # check if git-lfs is installed
+    if not shutil.which("git-lfs"):
+        logger.warning(
+            (
+                "git-lfs is not installed. Skipping data loading from repo. "
+                "Check https://github.com/git-lfs/git-lfs for installation instructions."
+            )
+        )
+        return None
 
-    # Form the complete GitHub URL with credentials
+    pathlib.Path(clone_directory).mkdir(parents=True, exist_ok=True)
 
     # Form the complete GitHub URL with credentials
     if token:
         logger.info("Using token and https to clone data from repository.")
-        git_url = f"https://{username}:{token}@github.com/{username}/{repo_name}.git"
+        git_url = f"https://{username}:{token}@{provider}/{username}/{repo_name}.git"
         # Execute the git clone command
         subprocess.run(
             [f"git clone {git_url}"], shell=True, check=True, cwd=clone_directory
@@ -43,7 +56,7 @@ def clone_repo(username, token, repo_name, clone_directory):
     else:
         # try via ssh
         logger.info("Using SSH to clone data from repository.")
-        git_url = f"git@github.com:{username}/{repo_name}.git"
+        git_url = f"git@{provider}:{username}/{repo_name}.git"
         subprocess.run(
             [f"git clone {git_url}"], shell=True, check=True, cwd=clone_directory
         )
@@ -52,19 +65,25 @@ def clone_repo(username, token, repo_name, clone_directory):
 
 def load_icai_data():
     """
-    Load the data from the InverseCAI repository.
+    Load the public results from HuggingFace repository.
     """
     # Define the repository name
-    username = "rdnfn"
-    repo_name = "icai-data"
+    username = REPO_USERNAME
+    repo_name = REPO_NAME
 
     # Define the local directory where the repository should be cloned
     # get package directory
-    clone_directory = DATA_DIR
+    clone_directory = CLONE_DIR
 
     try:
         # Clone the repository
-        clone_repo(username, GITHUB_TOKEN, repo_name, clone_directory)
+        clone_repo(
+            username,
+            HF_TOKEN,
+            repo_name,
+            clone_directory,
+            provider=REPO_PROVIDER,
+        )
     except Exception as e:
         logger.warning(
             f"Failed to load standard data from repo (error: '{e}'). Skipping this step."
