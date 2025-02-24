@@ -12,6 +12,7 @@ DEFAULT_DATASET_PATH = "exp/outputs/prism_v2"
 # Constants from environment vars
 # get env var with github token
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+HF_TOKEN = os.getenv("HF_TOKEN")
 
 # App username and password
 # Will block app behind login if env vars are set
