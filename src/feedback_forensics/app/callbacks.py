@@ -204,7 +204,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         votes_df = votes_df.groupby("comparison_id").first()
         value_counts = votes_df[col_name].value_counts()
         avail_values = [
-            (count, f"{val} ({count})", val) for val, count in value_counts.items()
+            (count, f"{val} ({count})", str(val)) for val, count in value_counts.items()
         ]
         # sort by count descending
         avail_values = sorted(avail_values, key=lambda x: x[0], reverse=True)
