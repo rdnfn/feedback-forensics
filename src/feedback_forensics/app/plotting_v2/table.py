@@ -33,28 +33,42 @@ GREY_20 = "#3a3a3a"
 
 PAPER_BG_COLOR = "#0f0f11"
 
+FONT_FAMILY = "IBM Plex Sans"
+
+TABLE_TITLE_FONT_SIZE = 20
+TABLE_TITLE_FONT_COLOR = "#98989a"
+TABLE_TITLE_FONT_FAMILY = "IBM Plex Sans"
+
 
 HEADER_BG_COLOR = "#52525b"
 HEADER_FONT_COLOR = "white"
 HEADER_FONT_SIZE = 12
+HEADER_FONT_FAMILY = None  # "open-sans"
 
 EVEN_ROW_BG_COLOR = "#18181b"
 ODD_ROW_BG_COLOR = "#27272a"
 CELL_FONT_COLOR = "white"
 CELL_FONT_SIZE = 12
+CELL_FONT_FAMILY = None  # "open-sans"
 
-
-TABLE_HEADING_HEIGHT = 20
-TABLE_ROW_HEIGHT = 28
+TABLE_HEADING_HEIGHT = 30
+TABLE_ROW_HEIGHT = 22
 TABLE_ALIGN = ["left", "right"]
 TABLE_HEADER_ALIGN = ["left", "right"]
 
 TABLE_HEADER_CONFIG = dict(
     fill_color=HEADER_BG_COLOR,
-    font=dict(color=HEADER_FONT_COLOR, size=HEADER_FONT_SIZE),
+    font=dict(
+        color=HEADER_FONT_COLOR,
+        size=HEADER_FONT_SIZE,
+        family=HEADER_FONT_FAMILY,
+    ),
     line_color=HEADER_BG_COLOR,
     align=TABLE_HEADER_ALIGN,
+    height=TABLE_HEADING_HEIGHT,
 )
+
+ANNOTATION_FONT_FAMILY = None  # "open-sans"
 
 SPACING_BETWEEN_TABLES = 80
 
@@ -77,7 +91,7 @@ def get_table_height(table_data: pd.DataFrame):
     else:
         num_rows = len(table_data.index)
     table_height = TABLE_HEADING_HEIGHT + TABLE_ROW_HEIGHT * num_rows
-    return table_height + 40
+    return table_height * 1.3
 
 
 def get_alternating_cell_colors(num_cols, num_rows):
@@ -187,17 +201,41 @@ def get_values_as_strings(values: list[list[float | str]]) -> list[list[str]]:
 
 
 def get_updatemenus_and_annotation(
-    table_data: dict,
+    table_title: str,
+    table_data: pd.DataFrame | dict,
     table_index: int,
     relative_table_heights: list[float],
     spacing: float,
     index_col_heading: str,
-):
+) -> tuple[list[dict], dict]:
     """Get the updatemenus and info annotation for a table.
     Returns None for both if table_data is not a dict."""
 
+    # y position of updatemenus from the bottom
+    y_updatemenus = sum(relative_table_heights[table_index:]) + spacing * (
+        len(relative_table_heights[table_index:]) - 0.9
+    )
+    y_table_title = y_updatemenus
+
+    table_title_annotation = dict(
+        x=0.0,
+        y=y_table_title,
+        xref="paper",
+        yref="paper",
+        xanchor="left",
+        yanchor="bottom",
+        text=table_title,
+        showarrow=False,
+        font=dict(
+            color=TABLE_TITLE_FONT_COLOR,
+            size=TABLE_TITLE_FONT_SIZE,
+            family=TABLE_TITLE_FONT_FAMILY,
+        ),
+    )
+
+    # if not multiple views, return None for updatemenus and table title annotation
     if not isinstance(table_data, dict):
-        return None, None
+        return None, [table_title_annotation]
 
     buttons = []
     for metric_name in table_data.keys():
@@ -216,7 +254,9 @@ def get_updatemenus_and_annotation(
                             "values": header_values,
                             "fill": dict(color=HEADER_BG_COLOR),
                             "font": dict(
-                                color=HEADER_FONT_COLOR, size=HEADER_FONT_SIZE
+                                color=HEADER_FONT_COLOR,
+                                size=HEADER_FONT_SIZE,
+                                family=HEADER_FONT_FAMILY,
                             ),
                             "line": dict(color=HEADER_BG_COLOR),
                             "align": TABLE_HEADER_ALIGN,
@@ -225,7 +265,11 @@ def get_updatemenus_and_annotation(
                             "values": values,
                             "fill": dict(color=colors),
                             "line": dict(color=colors),
-                            "font": dict(color=CELL_FONT_COLOR),
+                            "font": dict(
+                                color=CELL_FONT_COLOR,
+                                size=CELL_FONT_SIZE,
+                                family=CELL_FONT_FAMILY,
+                            ),
                             "align": TABLE_ALIGN,
                         },
                     },
@@ -233,21 +277,18 @@ def get_updatemenus_and_annotation(
                 ],
             )
         )
-    # y position of updatemenus from the bottom
-    y = sum(relative_table_heights[table_index:]) + spacing * (
-        len(relative_table_heights[table_index:]) - 0.8
-    )
+
     updatemenus = [
         dict(
             buttons=buttons,
             direction="down",
             pad={"r": 10, "t": 10},
             showactive=True,
-            x=0.00,
-            y=y,
-            xanchor="left",
+            x=0.5,
+            y=y_updatemenus,
+            xanchor="center",
             yanchor="bottom",
-            font=dict(color=HEADER_BG_COLOR),
+            font=dict(color=HEADER_BG_COLOR, family=ANNOTATION_FONT_FAMILY),
             bordercolor=HEADER_BG_COLOR,
         )
     ]
@@ -255,26 +296,29 @@ def get_updatemenus_and_annotation(
     # Add info annotation
     info_annotation = dict(
         x=1,  # Position slightly to the right of the menu
-        y=y,
+        y=y_updatemenus,
         xref="paper",
         yref="paper",
         xanchor="right",
         yanchor="bottom",
         text="ⓘ Metrics information",  # Info symbol
         showarrow=False,
-        font=dict(size=14, color=HEADER_BG_COLOR),
+        font=dict(size=14, color=HEADER_BG_COLOR, family=ANNOTATION_FONT_FAMILY),
         hovertext=INFO_ANNOTATION_DESCRIPTION,
         hoverlabel=dict(
             bgcolor=PAPER_BG_COLOR,
-            font=dict(color=HEADER_FONT_COLOR, size=12),
+            font=dict(color=HEADER_FONT_COLOR, size=12, family=ANNOTATION_FONT_FAMILY),
             bordercolor=HEADER_BG_COLOR,
         ),
     )
 
-    return updatemenus, info_annotation
+    annotations = [table_title_annotation, info_annotation]
+
+    return updatemenus, annotations
 
 
 def get_table_trace(
+    table_title: str,
     table_data: pd.DataFrame | dict,
     color_scale: str | None,
     index_col_heading: str = "",
@@ -312,20 +356,23 @@ def get_table_trace(
             font=dict(
                 color=CELL_FONT_COLOR,
                 size=CELL_FONT_SIZE,
+                family=CELL_FONT_FAMILY,
             ),
             align=TABLE_ALIGN,
+            height=TABLE_ROW_HEIGHT,
         ),
     )
 
-    updatemenus, info_annotation = get_updatemenus_and_annotation(
-        table_data,
-        table_index,
-        relative_table_heights,
-        spacing,
+    updatemenus, annotations = get_updatemenus_and_annotation(
+        table_title=table_title,
+        table_data=table_data,
+        table_index=table_index,
+        relative_table_heights=relative_table_heights,
+        spacing=spacing,
         index_col_heading=index_col_heading,
     )
 
-    return table, updatemenus, info_annotation
+    return table, updatemenus, annotations
 
 
 def add_combined_metric_to_table_contents(
@@ -470,6 +517,7 @@ def get_table_contents_from_metrics(metrics: dict[str, dict]) -> dict:
 
 
 def create_fig_with_tables(
+    table_titles: list[str],
     table_dfs: list[pd.DataFrame | dict],
     color_scales: list[str] | None = None,
     index_col_headings: list[str] | None = None,
@@ -516,6 +564,7 @@ def create_fig_with_tables(
     # add table traces to the figure
     tables = [
         get_table_trace(
+            table_title,
             table_df,
             color_scale,
             index_col_heading,
@@ -524,7 +573,8 @@ def create_fig_with_tables(
             relative_table_heights,
             spacing,
         )
-        for table_df, color_scale, index_col_heading, neutral_value, table_index in zip(
+        for table_title, table_df, color_scale, index_col_heading, neutral_value, table_index in zip(
+            table_titles,
             table_dfs,
             color_scales,
             index_col_headings,
@@ -532,12 +582,12 @@ def create_fig_with_tables(
             range(len(table_dfs)),
         )
     ]
-    for i, (table, menu, annotation) in enumerate(tables):
+    for i, (table, menu, annotations) in enumerate(tables):
         fig.add_trace(table, row=i + 1, col=1)
         if menu is not None:
             all_menus.extend(menu)
-        if annotation is not None:
-            all_annotations.append(annotation)
+        if annotations is not None:
+            all_annotations.extend(annotations)
 
     # Add all menus and annotations to the figure
     if all_menus:
@@ -548,7 +598,7 @@ def create_fig_with_tables(
     fig.update_layout(
         paper_bgcolor=PAPER_BG_COLOR,
         height=sum(table_heights),
-        margin=dict(l=20, r=20, t=45, b=20),
+        margin=dict(l=20, r=20, t=75, b=20),
     )
 
     return fig
