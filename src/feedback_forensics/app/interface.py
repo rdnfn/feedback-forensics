@@ -39,20 +39,21 @@ def create_header():
     with gr.Row(variant="default"):
         with gr.Column(scale=4, min_width="300px"):
             link_style = "opacity: 0.9; color: white; text-decoration: none; background-color: #404040; padding: 4px"
+            text_style = "opacity: 0.4"
             gr.HTML(
                 (
                     f'<img src="{image_path}" alt="Logo" width="330">'
                     '<div style="margin-left: 20px; margin-top: 5px; font-size: 1.2em; line-height: 1.8;">'
-                    '<span style="opacity: 0.3">'
+                    f'<span style="{text_style}">'
                     # "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
                     f"v{VERSION} (Alpha Preview) | </span>"
                     # "&nbsp;&nbsp;&nbsp;"
                     # "<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
                     f'<a href="https://github.com/rdnfn/feedback-forensics" style="{link_style}">📁&nbsp;GitHub</a>'
                     # "&nbsp;&nbsp;&nbsp;"
-                    '<span style="opacity: 0.3"> | </span>'
+                    f'<span style="{text_style}"> | </span>'
                     f'<a href="https://github.com/rdnfn/feedback-forensics/issues/new?template=Blank+issue" style="{link_style}">✍️&nbsp;Report&nbsp;bug</a>'
-                    '<span style="opacity: 0.3">'
+                    f'<span style="{text_style}">'
                     " | "
                     f"Powered by the <a href='https://github.com/rdnfn/icai' style='opacity: 0.9; color: white;'>Inverse Constitutional AI</a> (ICAI) pipeline</span>"
                     "</div>"
