@@ -40,20 +40,25 @@ def create_header():
         with gr.Column(scale=4, min_width="300px"):
             link_style = "opacity: 0.9; color: white; text-decoration: none; background-color: #404040; padding: 4px"
             text_style = "opacity: 0.4"
+            image = f'<img src="{image_path}" alt="Logo" width="330">'
+            spacer = f'<span style="{text_style}"> | </span>'
+            text_powered_by = f'<span style="{text_style}">Powered by the <a href="https://github.com/rdnfn/icai" style="opacity: 0.9; color: white;">Inverse Constitutional AI</a> (ICAI) pipeline</span>'
+            text_version = (
+                f'<span style="{text_style}">v{VERSION} (Alpha Preview)</span>'
+            )
+            link_github = f'<a href="https://github.com/rdnfn/feedback-forensics" style="{link_style}">📁&nbsp;GitHub</a>'
+            link_report_bug = f'<a href="https://github.com/rdnfn/feedback-forensics/issues/new?template=Blank+issue" style="{link_style}">✍️&nbsp;Report&nbsp;bug</a>'
             gr.HTML(
-                (
-                    f'<img src="{image_path}" alt="Logo" width="330">'
-                    '<div style="margin-left: 20px; margin-top: 5px; font-size: 1.2em; line-height: 1.8;">'
-                    f'<span style="{text_style}">'
-                    f"v{VERSION} (Alpha Preview) | </span>"
-                    f'<a href="https://github.com/rdnfn/feedback-forensics" style="{link_style}">📁&nbsp;GitHub</a>'
-                    f'<span style="{text_style}"> | </span>'
-                    f'<a href="https://github.com/rdnfn/feedback-forensics/issues/new?template=Blank+issue" style="{link_style}">✍️&nbsp;Report&nbsp;bug</a>'
-                    f'<span style="{text_style}">'
-                    " | "
-                    f"Powered by the <a href='https://github.com/rdnfn/icai' style='opacity: 0.9; color: white;'>Inverse Constitutional AI</a> (ICAI) pipeline</span>"
-                    "</div>"
-                ),
+                image
+                + '<div style="margin-left: 20px; margin-top: 5px; padding-bottom: 10px; font-size: 1.2em; line-height: 1.8;">'
+                + text_version
+                + spacer
+                + link_github
+                + spacer
+                + link_report_bug
+                + spacer
+                + text_powered_by
+                + "</div>",
                 padding=False,
             )
 
