@@ -175,3 +175,6 @@ deleteme*
 exp/
 
 .DS_Store
+
+forensics-data/
+icai-tmp-data/
