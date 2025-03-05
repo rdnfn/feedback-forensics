@@ -45,12 +45,8 @@ def create_header():
                     f'<img src="{image_path}" alt="Logo" width="330">'
                     '<div style="margin-left: 20px; margin-top: 5px; font-size: 1.2em; line-height: 1.8;">'
                     f'<span style="{text_style}">'
-                    # "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
                     f"v{VERSION} (Alpha Preview) | </span>"
-                    # "&nbsp;&nbsp;&nbsp;"
-                    # "<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
                     f'<a href="https://github.com/rdnfn/feedback-forensics" style="{link_style}">📁&nbsp;GitHub</a>'
-                    # "&nbsp;&nbsp;&nbsp;"
                     f'<span style="{text_style}"> | </span>'
                     f'<a href="https://github.com/rdnfn/feedback-forensics/issues/new?template=Blank+issue" style="{link_style}">✍️&nbsp;Report&nbsp;bug</a>'
                     f'<span style="{text_style}">'
