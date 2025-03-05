@@ -2,8 +2,8 @@
 
 import plotly.graph_objects as go
 
-from feedback_forensics.app.constants import COLORS_DICT
-from feedback_forensics.app.plotting.utils import (
+from forensics.app.constants import COLORS_DICT
+from forensics.app.plotting.utils import (
     get_string_with_breaks,
     merge_into_columns,
     HOVER_TEMPLATE,

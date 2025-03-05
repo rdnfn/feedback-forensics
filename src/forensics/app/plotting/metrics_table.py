@@ -1,6 +1,6 @@
 import plotly.graph_objects as go
 
-from feedback_forensics.app.constants import FONT_COLOR, SPACE_PER_NUM_COL
+from forensics.app.constants import FONT_COLOR, SPACE_PER_NUM_COL
 
 
 def _generate_metrics_table_annotations(

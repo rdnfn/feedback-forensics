@@ -4,7 +4,7 @@ Tests for the metrics module.
 
 import pandas as pd
 import numpy as np
-from feedback_forensics.app.metrics import (
+from forensics.app.metrics import (
     get_agreement,
     get_acc,
     get_relevance,

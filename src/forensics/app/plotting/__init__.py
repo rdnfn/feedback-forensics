@@ -1,1 +1,1 @@
-from feedback_forensics.app.plotting.main import generate_plot
+from forensics.app.plotting.main import generate_plot

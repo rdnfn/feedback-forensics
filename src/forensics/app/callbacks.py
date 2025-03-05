@@ -7,19 +7,19 @@ import gradio as gr
 import pandas as pd
 from loguru import logger
 
-from feedback_forensics.app.loader import get_votes_df
-import feedback_forensics.app.plotting
-import feedback_forensics.app.plotting_v2
-from feedback_forensics.app.utils import get_csv_columns
-from feedback_forensics.app.constants import NONE_SELECTED_VALUE
-from feedback_forensics.app.datasets import (
+from forensics.app.loader import get_votes_df
+import forensics.app.plotting
+import forensics.app.plotting_v2
+from forensics.app.utils import get_csv_columns
+from forensics.app.constants import NONE_SELECTED_VALUE
+from forensics.app.datasets import (
     get_config_from_name,
     get_dataset_from_name,
     BuiltinDataset,
     Config,
 )
 
-from feedback_forensics.app.url_parser import (
+from forensics.app.url_parser import (
     get_config_from_query_params,
     get_url_with_query_params,
     get_list_member_from_url_string,
@@ -89,7 +89,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
             votes_dfs[dataset] = votes_df
 
-        # fig = feedback_forensics.app.plotting.generate_plot(
+        # fig = forensics.app.plotting.generate_plot(
         #    votes_df,
         #    unfiltered_df=unfiltered_df,
         #    show_examples=show_individual_prefs,
@@ -117,7 +117,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             else:
                 votes_dfs = split_votes_dfs(votes_dfs, split_col, selected_vals)
 
-        fig = feedback_forensics.app.plotting_v2.generate_plot(
+        fig = forensics.app.plotting_v2.generate_plot(
             votes_df_dict=votes_dfs,
         )
 
