@@ -5,7 +5,7 @@ import os
 # App/package version
 import importlib.metadata
 
-VERSION = importlib.metadata.version("feedback_forensics")
+VERSION = importlib.metadata.version("forensics")
 
 DEFAULT_DATASET_PATH = "exp/outputs/prism_v2"
 
