@@ -39,7 +39,7 @@ def create_header():
     with gr.Row(variant="default"):
         with gr.Column(scale=4, min_width="300px"):
             link_style = "opacity: 0.9; color: white; text-decoration: none; background-color: #404040; padding: 4px"
-            text_style = "opacity: 0.4"
+            text_style = "opacity: 0.5"
             image = f'<img src="{image_path}" alt="Logo" width="330">'
             spacer = f'<span style="{text_style}"> | </span>'
             text_powered_by = f'<span style="{text_style}">Powered by the <a href="https://github.com/rdnfn/icai" style="opacity: 0.9; color: white;">Inverse Constitutional AI</a> (ICAI) pipeline</span>'
@@ -48,16 +48,20 @@ def create_header():
             )
             link_github = f'<a href="https://github.com/rdnfn/feedback-forensics" style="{link_style}">📁&nbsp;GitHub</a>'
             link_report_bug = f'<a href="https://github.com/rdnfn/feedback-forensics/issues/new?template=Blank+issue" style="{link_style}">✍️&nbsp;Report&nbsp;bug</a>'
+            link_get_in_touch = f'<a href="mailto:forensics@arduin.io" style="{link_style}">✉️&nbsp;Get&nbsp;in&nbsp;touch</a>'
             gr.HTML(
                 image
                 + '<div style="margin-left: 20px; margin-top: 5px; padding-bottom: 10px; font-size: 1.2em; line-height: 1.8;">'
                 + text_version
                 + spacer
+                + text_powered_by
+                + '<div style="float: right;">'
                 + link_github
                 + spacer
                 + link_report_bug
                 + spacer
-                + text_powered_by
+                + link_get_in_touch
+                + "</div>"
                 + "</div>",
                 padding=False,
             )
