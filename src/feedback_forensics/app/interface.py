@@ -64,12 +64,10 @@ def create_header():
 
 def create_getting_started_section():
     button_size = "sm"
-    with gr.Accordion(
-        "👋 Getting started: pre-configured examples", open=True
-    ) as examples_accordion:
-        with gr.Row():
+    with gr.Accordion("👋 Getting started: pre-configured examples", open=True):
+        with gr.Row(equal_height=True):
             gr.Button(
-                "🤖 Example 1: How is GPT-4o different from other models in Chatbot Arena?",
+                "🤖 Example 1: How is GPT-4o different to other models?",
                 size=button_size,
                 link="?data=chatbot_arena&col=winner_model&col_vals=gpt4o20240513,claude35sonnet20240620,gemini15proapi0514,mistrallarge2407,deepseekv2api0628",
             )
@@ -100,7 +98,7 @@ def create_data_loader(inp: dict, state: dict):
 
     create_getting_started_section()
 
-    add_title_row("Data selection")
+    add_title_row("Configuration")
 
     with gr.Row(variant="panel", render=True):
         with gr.Column():
