@@ -62,6 +62,29 @@ def create_header():
             )
 
 
+def create_getting_started_section():
+    button_size = "sm"
+    with gr.Accordion(
+        "👋 Getting started: pre-configured examples", open=True
+    ) as examples_accordion:
+        with gr.Row():
+            gr.Button(
+                "🤖 Example 1: How is GPT-4o different from other models in Chatbot Arena?",
+                size=button_size,
+                link="?data=chatbot_arena&col=winner_model&col_vals=gpt4o20240513,claude35sonnet20240620,gemini15proapi0514,mistrallarge2407,deepseekv2api0628",
+            )
+            gr.Button(
+                "✍️ Example 2: How do user preferences vary across writing tasks?",
+                link="?data=chatbot_arena&col=narrower_category&col_vals=songwriting_prompts,resume_and_cover_letter_writing,professional_email_communication,creative_writing_prompts",
+                size=button_size,
+            )
+            gr.Button(
+                "📚 Example 3: How do user preferences vary by familiarity with LLMs?",
+                size=button_size,
+                link="?data=prism&col=lm_familiarity&col_vals=somewhat_familiar,very_familiar,not_familiar_at_all",
+            )
+
+
 def create_data_loader(inp: dict, state: dict):
     """Create the data loader section of the interface."""
     state["app_url"] = gr.State(value="")
@@ -75,37 +98,43 @@ def create_data_loader(inp: dict, state: dict):
         value={dataset.name: dataset for dataset in BUILTIN_DATASETS}
     )
 
+    create_getting_started_section()
+
     add_title_row("Data selection")
+
     with gr.Row(variant="panel", render=True):
-        with gr.Column(scale=2):
-            inp["active_datasets_dropdown"] = gr.Dropdown(
-                label="Active datasets",
-                choices=[dataset.name for dataset in BUILTIN_DATASETS],
-                value=[BUILTIN_DATASETS[-1].name],
-                interactive=True,
-                multiselect=True,
-            )
-            inp["load_btn"] = gr.Button("Load")
-        with gr.Column(scale=1):
-            inp["split_col_dropdown"] = gr.Dropdown(
-                label="Split by column",
-                choices=[NONE_SELECTED_VALUE],
-                value=NONE_SELECTED_VALUE,
-                interactive=False,
-                visible=False,
-            )
-            inp["split_col_selected_vals_dropdown"] = gr.Dropdown(
-                label="Column values to show",
-                choices=[],
-                value=None,
-                multiselect=True,
-                interactive=False,
-                visible=False,
-            )
-            inp["split_col_non_available_md"] = gr.Markdown(
-                value="<div style='opacity: 0.5'>ℹ️ Splitting dataset by the values of a column is only available when selecting a single dataset. Select a single dataset to use this feature.</div>",
-                visible=True,
-            )
+        with gr.Column():
+            with gr.Group():
+                inp["active_datasets_dropdown"] = gr.Dropdown(
+                    label="💽 Active datasets",
+                    choices=[dataset.name for dataset in BUILTIN_DATASETS],
+                    value=[BUILTIN_DATASETS[-1].name],
+                    interactive=True,
+                    multiselect=True,
+                )
+                inp["split_col_dropdown"] = gr.Dropdown(
+                    label="🗃️ Group dataset by column",
+                    info="Group the dataset by the values of a column. This will create a separate analysis for unique values of the column. Available columns vary. If none is selected, the entire original dataset will be analyzed. ",
+                    choices=[NONE_SELECTED_VALUE],
+                    value=NONE_SELECTED_VALUE,
+                    interactive=False,
+                    visible=False,
+                )
+                inp["split_col_selected_vals_dropdown"] = gr.Dropdown(
+                    label="🏷️ Column values to show",
+                    info="Select column values to include as separate groups in the analysis. If none is selected, all values will be shown as separate groups.",
+                    choices=[],
+                    value=None,
+                    multiselect=True,
+                    interactive=False,
+                    visible=False,
+                )
+                inp["split_col_non_available_md"] = gr.Markdown(
+                    value="<div style='opacity: 0.6'><i>Grouping dataset by the values of a column is only available when selecting a single dataset. Select a single dataset to use this feature.</i></div>",
+                    visible=True,
+                    container=True,
+                )
+                inp["load_btn"] = gr.Button("Run analysis", variant="primary")
 
     # TODO: remove old dataset selection panel (including from callbacks etc.)
     with gr.Row(variant="panel", render=False):
