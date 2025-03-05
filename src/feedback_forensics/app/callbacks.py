@@ -177,9 +177,17 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             if split_col not in avail_cols:
                 split_col = NONE_SELECTED_VALUE
 
+            tuple_avail_cols = [(col, col) for col in avail_cols]
+
             return {
                 inp["split_col_dropdown"]: gr.Dropdown(
-                    choices=[NONE_SELECTED_VALUE] + avail_cols,
+                    choices=[
+                        (
+                            "(No grouping applied, click to select column)",
+                            NONE_SELECTED_VALUE,
+                        )
+                    ]
+                    + tuple_avail_cols,
                     value=split_col,
                     interactive=True,
                     visible=True,
@@ -408,7 +416,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             }
         else:
             # parse out column and value params from url
-            if len(config["datasets"]) > 1:
+            if "datasets" in config and len(config["datasets"]) > 1:
                 gr.Warning(
                     f"URL problem: only one dataset is supported when splitting by column. Requested {len(config['datasets'])} datasets in URL ({config['datasets']}), and requested splitting by column {config['col']}.",
                     duration=15,
@@ -561,6 +569,7 @@ def attach_callbacks(
         inp["split_col_dropdown"],
         inp["split_col_selected_vals_dropdown"],
         inp["split_col_non_available_md"],
+        inp["load_btn"],
     ]
 
     load_data_outputs = [
@@ -581,6 +590,7 @@ def attach_callbacks(
         state["cache"],
         inp["datapath"],
         inp["dataset_info"],
+        inp["load_btn"],
     ] + list(inp["dataset_btns"].values())
 
     # reload data when load button is clicked or view config is changed
