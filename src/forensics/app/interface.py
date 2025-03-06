@@ -77,14 +77,14 @@ def create_getting_started_section():
                 link="?data=chatbot_arena&col=winner_model&col_vals=gpt4o20240513,claude35sonnet20240620,gemini15proapi0514,mistrallarge2407,deepseekv2api0628",
             )
             gr.Button(
-                "📝 Example 2: How do user preferences vary across writing tasks?",
-                link="?data=chatbot_arena&col=narrower_category&col_vals=songwriting_prompts,resume_and_cover_letter_writing,professional_email_communication,creative_writing_prompts",
+                "📚 Example 2: How do popular preference datasets differ?",
                 size=button_size,
+                link="?data=chatbot_arena,alpacaeval,prism,anthropic_helpful,anthropic_harmless",
             )
             gr.Button(
-                "📚 Example 3: How do user preferences vary by familiarity with LLMs?",
+                "📝 Example 3: How do user preferences vary across writing tasks?",
+                link="?data=chatbot_arena&col=narrower_category&col_vals=songwriting_prompts,resume_and_cover_letter_writing,professional_email_communication,creative_writing_prompts",
                 size=button_size,
-                link="?data=prism&col=lm_familiarity&col_vals=somewhat_familiar,very_familiar,not_familiar_at_all",
             )
 
 
@@ -117,7 +117,7 @@ def create_data_loader(inp: dict, state: dict):
                 )
                 inp["split_col_dropdown"] = gr.Dropdown(
                     label="🗃️ Group dataset by column",
-                    info="Group the dataset by the values of a column. This will create a separate analysis for unique values of the column. Available columns vary. If none is selected, the entire original dataset will be analyzed. ",
+                    info="Create separate results for data subsets grouped by this column's values. If no column is selected, entire original dataset will be analyzed. ",
                     choices=[NONE_SELECTED_VALUE],
                     value=NONE_SELECTED_VALUE,
                     interactive=False,
@@ -125,7 +125,7 @@ def create_data_loader(inp: dict, state: dict):
                 )
                 inp["split_col_selected_vals_dropdown"] = gr.Dropdown(
                     label="🏷️ Column values to show",
-                    info="Select column values to include as separate groups in the analysis. If none is selected, all values will be shown as separate groups.",
+                    info="For each selected value, separate results will be created. If no values selected, all values will be used.",
                     choices=[],
                     value=None,
                     multiselect=True,
@@ -137,7 +137,7 @@ def create_data_loader(inp: dict, state: dict):
                     visible=True,
                     container=True,
                 )
-                inp["load_btn"] = gr.Button("Run analysis", variant="primary")
+                inp["load_btn"] = gr.Button("Run analysis", variant="secondary")
 
     # TODO: remove old dataset selection panel (including from callbacks etc.)
     with gr.Row(variant="panel", render=False):
