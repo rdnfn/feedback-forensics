@@ -78,6 +78,16 @@ PRISM_V2 = BuiltinDataset(
     name="💎 PRISM",
     path=DATA_DIR / "prism",
     description="",
+    filterable_columns=[
+        "age",
+        "education",
+        "chosen_model",
+        "rejected_model",
+        "conversation_type",
+        "lm_familiarity",
+        "location_reside_region",
+        "english_proficiency",
+    ],
 )
 
 # List of all built-in datasets

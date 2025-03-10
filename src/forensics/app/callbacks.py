@@ -139,6 +139,10 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         avail_cols = get_csv_columns(
             dataset_config.path / "results" / "000_train_data.csv",
         )
+        if dataset_config.filterable_columns:
+            avail_cols = [
+                col for col in avail_cols if col in dataset_config.filterable_columns
+            ]
         return avail_cols
 
     def update_col_split_dropdowns(data: dict):
