@@ -1,22 +1,16 @@
 <p align="center">
   <a href="https://rdnfn-feedback-forensics.hf.space/">
-  <img src="src/feedback_forensics/assets/feedback_forensics_logo.png" alt="Feebdack Forensics Logo" width="330px">
-  </a>
+  <img src="src/feedback_forensics/assets/feedback_forensics_logo.png" alt="Feebdack Forensics Logo" width="330px"></a>
   <br>
   <a href="https://rdnfn-feedback-forensics.hf.space/">
-  <img src="docs/img/demo_v3.gif" alt="" width="650px">
-  </a>
+  <img src="docs/img/demo_v3.gif" alt="" width="650px"></a>
   <br>
   <a href="https://rdnfn-feedback-forensics.hf.space/">
-  <img src="docs/img/run_demo_button.png" alt="Run demo" width="170px">
-  </a>
+  <img src="docs/img/run_demo_button.png" alt="Run demo" width="170px"></a>
   <br>
   <a href="https://pypi.org/project/feedback-forensics/">
-  <img alt="PyPI" src="https://img.shields.io/pypi/v/feedback-forensics?logo=python&logoColor=f59e0d&labelColor=black&color=52525b">
-  </a>
-  <a href="https://github.com/rdnfn/feedback-forensics/blob/main/LICENSE">
-  <img alt="License" src="https://img.shields.io/pypi/l/feedback-forensics?labelColor=black&color=52525b">
-  </a>
+  <img alt="PyPI" src="https://img.shields.io/pypi/v/feedback-forensics?logo=python&logoColor=f59e0d&labelColor=black&color=52525b"></a>
+  <a href="https://github.com/rdnfn/feedback-forensics/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/pypi/l/feedback-forensics?labelColor=black&color=52525b"></a>
 </p>
 
 
