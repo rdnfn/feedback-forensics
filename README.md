@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://rdnfn-feedback-forensics.hf.space/">
-  <img src="src/forensics/assets/feedback_forensics_logo.png" alt="Feebdack Forensics Logo" width="330px">
+  <img src="src/feedback_forensics/assets/feedback_forensics_logo.png" alt="Feebdack Forensics Logo" width="330px">
   </a>
   <br>
   <a href="https://rdnfn-feedback-forensics.hf.space/">
