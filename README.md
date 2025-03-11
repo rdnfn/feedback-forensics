@@ -41,11 +41,13 @@ pip install forensics
 
 ### Getting started
 
-To start the app locally, run the following command in your terminal
+To start the app locally, run the following command in your terminal:
 
 ```sh
 feedback-forensics
 ```
+
+This will start the Gradio interface on port 7860.
 
 ### Investigating your own dataset
 
@@ -56,6 +58,27 @@ icai-exp data_path="data/processed/example/example.csv" s0_added_standard_princi
 ```
 
 The last two arguments (`annotator.skip` and `s0_skip_principle_generation`) reduce experiment cost by skipping testing a final constitutional annotator (not necessary for feedback forensics visualiation), and skipping the generation and testing of new (non-standard) principles. Replace `example.csv` with your own dataset, ensuring it complies with the ICAI standard data format (as described [here](https://github.com/rdnfn/icai?tab=readme-ov-file#run-experiment-with-your-own-data)).
+
+## Development
+
+If you want to contribute to Feedback Forensics, there are two options to set up the development environment:
+
+### Option 1: Standard development setup
+
+1. Clone this repository
+2. Install the package with development dependencies:
+   ```bash
+   pip install -e ".[dev]"
+   ```
+
+### Option 2: Development container
+
+For a consistent development environment, this repository includes a VS Code dev container configuration:
+
+1. Install the [Remote - Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+2. Open the repository in VS Code
+3. Click "Reopen in Container" when prompted
+
 
 ## License
 
