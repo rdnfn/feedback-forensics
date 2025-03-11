@@ -3,7 +3,7 @@ from loguru import logger
 import re
 
 from forensics.app.datasets import (
-    BUILTIN_DATASETS,
+    get_available_datasets,
     get_stringname_from_urlname,
     get_urlname_from_stringname,
 )
@@ -16,9 +16,10 @@ def get_config_from_query_params(request: gr.Request) -> dict:
     if "data" in params:
         dataset_url_names = load_str_list(params["data"])
         datasets = []
+        available_datasets = get_available_datasets()
         for dataset_url_name in dataset_url_names:
             dataset_name = get_stringname_from_urlname(
-                dataset_url_name, BUILTIN_DATASETS
+                dataset_url_name, available_datasets
             )
             if dataset_name is None:
                 logger.warning(f"Dataset {dataset_url_name} not found")
@@ -39,8 +40,9 @@ def load_str_list(str_list: str) -> list[str]:
 def get_url_with_query_params(
     datasets: list[str], col: str | None, col_vals: list[str], base_url: str
 ) -> str:
+    available_datasets = get_available_datasets()
     datasets_url_names = [
-        get_urlname_from_stringname(dataset, BUILTIN_DATASETS) for dataset in datasets
+        get_urlname_from_stringname(dataset, available_datasets) for dataset in datasets
     ]
     url = f"{base_url}?data={','.join(datasets_url_names)}"
     if col is not None and col != NONE_SELECTED_VALUE and col != "":

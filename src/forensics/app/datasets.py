@@ -7,8 +7,6 @@ import re
 from forensics.app.constants import NONE_SELECTED_VALUE
 from forensics.app.data_loader import load_icai_data, DATA_DIR
 
-load_icai_data()
-
 
 @dataclass
 class BuiltinDataset:
@@ -98,6 +96,7 @@ _BUILTIN_DATASETS = [
     ANTHROPIC_HELPFUL,
     ANTHROPIC_HARMLESS,
 ]
+_available_datasets = []
 
 
 # utility functions
@@ -115,7 +114,7 @@ def get_config_from_name(name: str, config_options: list) -> Config:
 
 def get_dataset_from_name(name: str) -> BuiltinDataset:
     """Get a dataset from its name."""
-    for dataset in BUILTIN_DATASETS:
+    for dataset in get_available_datasets():
         if dataset.name == name:
             logger.info(f"Loading dataset '{name}'", duration=5)
             return dataset
@@ -129,7 +128,13 @@ def get_available_builtin_datasets() -> list[BuiltinDataset]:
     available_datasets = []
     for dataset in _BUILTIN_DATASETS:
         if dataset.path is not None and dataset.path.exists():
+            logger.info(f"Found dataset: {dataset.name} at {dataset.path}")
             available_datasets.append(dataset)
+        else:
+            if dataset.path is not None:
+                logger.warning(
+                    f"Dataset path does not exist: {dataset.path} for {dataset.name}"
+                )
     return available_datasets
 
 
@@ -160,4 +165,62 @@ def get_stringname_from_urlname(urlname: str, datasets: list[BuiltinDataset]) ->
     return None
 
 
-BUILTIN_DATASETS = get_available_builtin_datasets()
+def load_datasets_from_hf():
+    """
+    Load datasets from HuggingFace.
+
+    This function attempts to clone the HuggingFace repository containing datasets.
+
+    Returns:
+        int: Number of datasets successfully loaded
+    """
+    global _available_datasets
+
+    # Try to load the datasets from HuggingFace
+    logger.info("Attempting to load datasets from HuggingFace...")
+    success = load_icai_data()
+
+    # Refresh the available datasets
+    _available_datasets = get_available_builtin_datasets()
+
+    loaded_count = len(_available_datasets)
+    if success and loaded_count > 0:
+        logger.info(f"Successfully loaded {loaded_count} datasets from HuggingFace.")
+    elif success and loaded_count == 0:
+        logger.error(
+            "No datasets found in HuggingFace repository despite successful clone. Check repository contents."
+        )
+    elif not success:
+        logger.error(
+            "Failed to load datasets from HuggingFace. Check your HF_TOKEN permissions."
+        )
+
+    return loaded_count
+
+
+def get_available_datasets():
+    """
+    Get the current list of all available datasets.
+
+    This function will always return the most up-to-date list of available datasets
+    that have been loaded, including both standard datasets from HuggingFace
+    and any locally added datasets.
+
+    Returns:
+        list[BuiltinDataset]: List of all available datasets
+    """
+    return _available_datasets
+
+
+def add_dataset(dataset):
+    """
+    Add a dataset to the list of available datasets.
+
+    Args:
+        dataset (BuiltinDataset): Dataset to add
+    """
+    global _available_datasets
+    _available_datasets.append(dataset)
+
+
+load_datasets_from_hf()

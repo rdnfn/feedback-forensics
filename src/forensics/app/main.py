@@ -17,12 +17,12 @@ def run():
     parser.add_argument("--datapath", "-d", type=str, help="Path to dataset")
     args = parser.parse_args()
     if args.datapath:
-        forensics.app.datasets.BUILTIN_DATASETS.append(
+        forensics.app.datasets.add_dataset(
             forensics.app.datasets.create_local_dataset(args.datapath)
         )
         logger.info(f"Added local dataset to available datasets ({args.datapath}).")
 
-    if len(forensics.app.datasets.BUILTIN_DATASETS) == 0:
+    if len(forensics.app.datasets.get_available_datasets()) == 0:
         logger.error(
             "No datasets available. No local or standard datasets could be loaded. Please either provide a path to a local dataset via --datapath (-d) flag or provide the correct HuggingFace token via the HF_TOKEN environment variable."
         )
