@@ -26,7 +26,7 @@
 
 | Example use-cases | Screenshots |
 |----------|-------------|
-| **🗂️Visualizing dataset differences**<br>*How does Chatbot Arena differ from Anthropic Helpful data?*<br><a href="https://rdnfn-feedback-forensics.hf.space?data=chatbot_arena,anthropic_helpful"><img src="docs/img/run_demo_button.png" alt="run demo" width="100px"></a>| <img src="docs/img/example01_v4.png" alt="example_screenshot_01" width="1000px"> |
+| **🗂️ Visualizing dataset differences**<br>*How does Chatbot Arena differ from Anthropic Helpful data?*<br><a href="https://rdnfn-feedback-forensics.hf.space?data=chatbot_arena,anthropic_helpful"><img src="docs/img/run_demo_button.png" alt="run demo" width="100px"></a>| <img src="docs/img/example01_v4.png" alt="example_screenshot_01" width="1000px"> |
 | **🧑‍🎨🧑‍💼 Finding preference differences between task domains**<br>*How do preferences differ across writing tasks?*<br><a href="https://rdnfn-feedback-forensics.hf.space?data=chatbot_arena&col=narrower_category&col_vals=songwriting_prompts,resume_and_cover_letter_writing,professional_email_communication,creative_writing_prompts"><img src="docs/img/run_demo_button.png" alt="run demo" width="100px"></a>  | <img src="docs/img/example02_v4.png" alt="example_screenshot_02" width="1000px"> |
 | **🤖 Discovering model strengths**<br>*How is GPT-4o different to other models?*<br><a href="https://rdnfn-feedback-forensics.hf.space?data=chatbot_arena&col=winner_model&col_vals=gpt4o20240513,claude35sonnet20240620,gemini15proapi0514,mistrallarge2407,deepseekv2api0628"><img src="docs/img/run_demo_button.png" alt="run demo" width="100px"></a>|<img src="docs/img/example03_v4.png" alt="example_screenshot_03" width="1000px">|
 
