@@ -1,9 +1,9 @@
 [project]
-name = "forensics"
-version = "0.1.1"
+name = "feedback-forensics"
+version = "0.1.2"
 authors = [
   { name="rdnfn", email="hi@arduin.io" },
-  { name="timokau" },
+  { name="timokau", email="timo.kaufmann@ifi.lmu.de"},
 ]
 description = "Feedback Forensics"
 readme = "README.md"
@@ -47,13 +47,13 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/forensics"]
+packages = ["src/feedback_forensics"]
 
 [tool.hatch.build.targets.wheel.force-include]
-"src/forensics/assets" = "forensics/assets"
+"src/feedback_forensics/assets" = "feedback_forensics/assets"
 
 [tool.bumpversion]
-current_version = "0.1.1"
+current_version = "0.1.2"
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
 serialize = ["{major}.{minor}.{patch}"]
 search = "{current_version}"
@@ -75,7 +75,7 @@ pre_commit_hooks = []
 post_commit_hooks = []
 
 [project.scripts]
-feedback-forensics = "forensics.app.main:run"
+feedback-forensics = "feedback_forensics.app.main:run"
 
 [tool.pytest.ini_options]
 pythonpath = "."

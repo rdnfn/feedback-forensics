@@ -6,7 +6,7 @@ import plotly.subplots
 import plotly.graph_objects as go
 import plotly.colors
 
-from forensics.app.plotting_v2.constants import INFO_ANNOTATION_DESCRIPTION
+from feedback_forensics.app.plotting_v2.constants import INFO_ANNOTATION_DESCRIPTION
 
 
 # table constants

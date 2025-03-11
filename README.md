@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://rdnfn-feedback-forensics.hf.space/">
-  <img src="src/forensics/assets/feedback_forensics_logo.png" alt="Feebdack Forensics Logo" width="330px">
+  <img src="src/feedback_forensics/assets/feedback_forensics_logo.png" alt="Feebdack Forensics Logo" width="330px">
   </a>
   <br>
   <a href="https://rdnfn-feedback-forensics.hf.space/">
@@ -36,7 +36,7 @@
 ### Installation
 
 ```sh
-pip install forensics
+pip install feedback-forensics
 ```
 
 ### Getting started
@@ -61,9 +61,11 @@ The last two arguments (`annotator.skip` and `s0_skip_principle_generation`) red
 
 ## Development
 
+### Setup
+
 If you want to contribute to Feedback Forensics, there are two options to set up the development environment:
 
-### Option 1: Standard development setup
+#### Option 1: Standard development setup
 
 1. Clone this repository
 2. Install the package with development dependencies:
@@ -71,13 +73,23 @@ If you want to contribute to Feedback Forensics, there are two options to set up
    pip install -e ".[dev]"
    ```
 
-### Option 2: Development container
+#### Option 2: Development container
 
 For a consistent development environment, this repository includes a VS Code dev container configuration:
 
 1. Install the [Remote - Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
 2. Open the repository in VS Code
 3. Click "Reopen in Container" when prompted
+
+
+### Creating a new release
+
+Ensure that the current branch is up-to-date with main, and then bump the version (using `patch`, `minor`, or `major`):
+```
+bump-my-version bump patch
+```
+
+Then on the GitHub website create a new release named after the new version (e.g. "v0.1.2"). As part of this release in the GitHub interface, create a new tag with the updated version. This release will trigger a GitHub action to build and upload the PyPI package.
 
 
 ## License
