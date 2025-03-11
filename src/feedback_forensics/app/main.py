@@ -4,7 +4,7 @@ import gradio as gr
 from loguru import logger
 
 import feedback_forensics.app.interface as interface
-from feedback_forensics.app.constants import USERNAME, PASSWORD
+from feedback_forensics.app.constants import USERNAME, PASSWORD, HF_TOKEN
 import feedback_forensics.app.datasets
 
 # make gradio work offline
@@ -16,17 +16,32 @@ def run():
     parser = argparse.ArgumentParser()
     parser.add_argument("--datapath", "-d", type=str, help="Path to dataset")
     args = parser.parse_args()
+
+    # Try to load local dataset if provided
     if args.datapath:
-        feedback_forensics.app.datasets.BUILTIN_DATASETS.append(
-            feedback_forensics.app.datasets.create_local_dataset(args.datapath)
+        local_dataset = feedback_forensics.app.datasets.create_local_dataset(
+            args.datapath
         )
+        feedback_forensics.app.datasets.add_dataset(local_dataset)
         logger.info(f"Added local dataset to available datasets ({args.datapath}).")
 
-    if len(feedback_forensics.app.datasets.BUILTIN_DATASETS) == 0:
+    if HF_TOKEN:
+        logger.info("HF_TOKEN found. Attempting to load HuggingFace datasets...")
+        loaded_count = feedback_forensics.app.datasets.load_datasets_from_hf()
+
+    # Get the current available datasets
+    available_datasets = feedback_forensics.app.datasets.get_available_datasets()
+
+    if len(available_datasets) == 0:
         logger.error(
             "No datasets available. No local or standard datasets could be loaded. Please either provide a path to a local dataset via --datapath (-d) flag or provide the correct HuggingFace token via the HF_TOKEN environment variable."
         )
         return
+
+    # Log available datasets before interface generation
+    logger.info(
+        f"Available datasets for interface: {[ds.name for ds in available_datasets]}"
+    )
 
     # setup the gradio app
     demo = interface.generate()

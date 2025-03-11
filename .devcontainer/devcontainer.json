@@ -1,0 +1,12 @@
+{
+	"name": "Feedback Forensics",
+	"image": "mcr.microsoft.com/devcontainers/python:1-3.10-bullseye",
+	"forwardPorts": [7860],
+	"features": {
+		// Required to fetch datasets from huggingface
+		"ghcr.io/devcontainers/features/git-lfs:1": {
+			"autoPull": "false"
+		}
+	},
+	"postCreateCommand": "pip install -e .[dev]"
+}
