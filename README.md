@@ -41,11 +41,13 @@ pip install forensics
 
 ### Getting started
 
-To start the app locally, run the following command in your terminal
+To start the app locally, run the following command in your terminal:
 
 ```sh
 feedback-forensics
 ```
+
+This will start the Gradio interface on port 7860.
 
 ### Investigating your own dataset
 
