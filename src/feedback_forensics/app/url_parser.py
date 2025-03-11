@@ -2,12 +2,12 @@ import gradio as gr
 from loguru import logger
 import re
 
-from forensics.app.datasets import (
+from feedback_forensics.app.datasets import (
     BUILTIN_DATASETS,
     get_stringname_from_urlname,
     get_urlname_from_stringname,
 )
-from forensics.app.constants import NONE_SELECTED_VALUE
+from feedback_forensics.app.constants import NONE_SELECTED_VALUE
 
 
 def get_config_from_query_params(request: gr.Request) -> dict:

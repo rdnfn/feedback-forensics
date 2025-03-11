@@ -3,9 +3,9 @@ import gradio.themes.utils.fonts
 import gradio as gr
 from loguru import logger
 
-import forensics.app.interface as interface
-from forensics.app.constants import USERNAME, PASSWORD
-import forensics.app.datasets
+import feedback_forensics.app.interface as interface
+from feedback_forensics.app.constants import USERNAME, PASSWORD
+import feedback_forensics.app.datasets
 
 # make gradio work offline
 gradio.themes.utils.fonts.GoogleFont.stylesheet = lambda self: None
@@ -17,12 +17,12 @@ def run():
     parser.add_argument("--datapath", "-d", type=str, help="Path to dataset")
     args = parser.parse_args()
     if args.datapath:
-        forensics.app.datasets.BUILTIN_DATASETS.append(
-            forensics.app.datasets.create_local_dataset(args.datapath)
+        feedback_forensics.app.datasets.BUILTIN_DATASETS.append(
+            feedback_forensics.app.datasets.create_local_dataset(args.datapath)
         )
         logger.info(f"Added local dataset to available datasets ({args.datapath}).")
 
-    if len(forensics.app.datasets.BUILTIN_DATASETS) == 0:
+    if len(feedback_forensics.app.datasets.BUILTIN_DATASETS) == 0:
         logger.error(
             "No datasets available. No local or standard datasets could be loaded. Please either provide a path to a local dataset via --datapath (-d) flag or provide the correct HuggingFace token via the HF_TOKEN environment variable."
         )

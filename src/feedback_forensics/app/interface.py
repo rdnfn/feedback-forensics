@@ -2,22 +2,22 @@ import gradio as gr
 import pandas as pd
 import json
 
-from forensics.app.callbacks import generate_callbacks, attach_callbacks
-from forensics.app.constants import (
+from feedback_forensics.app.callbacks import generate_callbacks, attach_callbacks
+from feedback_forensics.app.constants import (
     NONE_SELECTED_VALUE,
     VERSION,
     ALLOW_LOCAL_RESULTS,
     DEFAULT_DATASET_PATH,
 )
-from forensics.app.datasets import BUILTIN_DATASETS
-from forensics.app.info_texts import (
+from feedback_forensics.app.datasets import BUILTIN_DATASETS
+from feedback_forensics.app.info_texts import (
     METHOD_INFO_TEXT,
     METHOD_INFO_HEADING,
     TLDR_TEXT,
 )
-from forensics.app.metrics import METRIC_COL_OPTIONS
-from forensics.app.styling import CUSTOM_CSS, THEME
-from forensics.app.utils import get_gradio_image_path
+from feedback_forensics.app.metrics import METRIC_COL_OPTIONS
+from feedback_forensics.app.styling import CUSTOM_CSS, THEME
+from feedback_forensics.app.utils import get_gradio_image_path
 
 
 def add_title_row(title: str):

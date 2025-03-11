@@ -5,8 +5,8 @@ import plotly.graph_objects as go
 import pandas as pd
 from loguru import logger
 
-import forensics.app.metrics
-from forensics.app.constants import (
+import feedback_forensics.app.metrics
+from feedback_forensics.app.constants import (
     NONE_SELECTED_VALUE,
     PRINCIPLE_SHORT_LENGTH,
     END_RECONSTRUCTION_PLOT_X,
@@ -21,9 +21,9 @@ from forensics.app.constants import (
     SPACE_PER_NUM_COL,
     get_fig_proportions_y,
 )
-from forensics.app.plotting.single import _plot_examples, _plot_aggregated
-from forensics.app.plotting.multiple import _plot_multiple_values
-from forensics.app.plotting.metrics_table import (
+from feedback_forensics.app.plotting.single import _plot_examples, _plot_aggregated
+from feedback_forensics.app.plotting.multiple import _plot_multiple_values
+from feedback_forensics.app.plotting.metrics_table import (
     _generate_metrics_table_annotations,
 )
 
@@ -88,14 +88,14 @@ def _generate_hbar_chart(
         ]
 
     logger.debug("Computing metrics...")
-    full_metrics: dict = forensics.app.metrics.compute_metrics(unfiltered_df)
-    metrics: dict = forensics.app.metrics.compute_metrics(
+    full_metrics: dict = feedback_forensics.app.metrics.compute_metrics(unfiltered_df)
+    metrics: dict = feedback_forensics.app.metrics.compute_metrics(
         votes_df, baseline_metrics=full_metrics
     )
     principles = metrics["principles"]
     logger.debug("Metrics computed.")
 
-    overall_metrics = forensics.app.metrics.get_overall_metrics(votes_df)
+    overall_metrics = feedback_forensics.app.metrics.get_overall_metrics(votes_df)
 
     proportions_y: dict = get_fig_proportions_y(len(principles), len(overall_metrics))
 
@@ -210,7 +210,7 @@ def _generate_hbar_chart(
             value,
             label,
             hovertext,
-        ) in forensics.app.metrics.get_metric_cols_by_principle(
+        ) in feedback_forensics.app.metrics.get_metric_cols_by_principle(
             principle,
             metrics,
             shown_metric_names,
@@ -285,7 +285,7 @@ def _generate_hbar_chart(
 
     # add sorting menu
     update_method = "relayout"  # "update"  # or "relayout"
-    options = forensics.app.metrics.get_ordering_options(
+    options = feedback_forensics.app.metrics.get_ordering_options(
         metrics, shown_metric_names, initial=default_ordering_metric
     )
     fig.update_layout(

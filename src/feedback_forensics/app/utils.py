@@ -8,13 +8,13 @@ import pandas as pd
 
 def get_image_path(image_name: str) -> Path:
     """Get the path to an image in the assets directory."""
-    with resources.path("forensics.assets", image_name) as path:
+    with resources.path("feedback_forensics.assets", image_name) as path:
         return path
 
 
 def get_gradio_image_path(image_name: str) -> str:
     """Get the path to an image in the assets directory, via gradio files api."""
-    with resources.path("forensics.assets", image_name) as path:
+    with resources.path("feedback_forensics.assets", image_name) as path:
         img = gr.Image(
             get_image_path(image_name),
             visible=False,

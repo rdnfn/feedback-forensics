@@ -4,8 +4,8 @@ from dataclasses import dataclass, field
 from loguru import logger
 import pathlib
 import re
-from forensics.app.constants import NONE_SELECTED_VALUE
-from forensics.app.data_loader import load_icai_data, DATA_DIR
+from feedback_forensics.app.constants import NONE_SELECTED_VALUE
+from feedback_forensics.app.data_loader import load_icai_data, DATA_DIR
 
 load_icai_data()
 

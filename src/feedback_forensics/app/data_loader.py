@@ -4,7 +4,7 @@ import shutil
 import pathlib
 from loguru import logger
 
-from forensics.app.constants import HF_TOKEN
+from feedback_forensics.app.constants import HF_TOKEN
 
 
 CLONE_DIR = pathlib.Path("forensics-data")
