@@ -288,7 +288,7 @@ def get_updatemenus_and_annotation(
             y=y_updatemenus,
             xanchor="center",
             yanchor="bottom",
-            font=dict(color=HEADER_BG_COLOR, family=ANNOTATION_FONT_FAMILY),
+            font=dict(color=TABLE_TITLE_FONT_COLOR, family=ANNOTATION_FONT_FAMILY),
             bordercolor=HEADER_BG_COLOR,
         )
     ]
