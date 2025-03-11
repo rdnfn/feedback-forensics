@@ -36,7 +36,7 @@
 ### Installation
 
 ```sh
-pip install forensics
+pip install feedback-forensics
 ```
 
 ### Getting started
