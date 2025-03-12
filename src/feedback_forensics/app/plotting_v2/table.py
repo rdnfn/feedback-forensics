@@ -443,9 +443,15 @@ def add_combined_metric_to_table_contents(
 def get_table_contents_from_metrics(metrics: dict[str, dict]) -> dict:
     """Compute the contents of the table based on metrics dict.
 
-    Returns values to define plotly table, including values and colors.
-    To be used as alternative table versions, to be controlled with
-    by user via updatemenus.
+    Args:
+        metrics: A dictionary where keys are dataset names and values are
+                metric dictionaries containing metrics for that dataset.
+                Structure: {dataset_name: {metrics: {metric_name: {by_principle: ...}}}}
+
+    Returns:
+        A dictionary of table views, where each view contains data, values, and colors
+        for different sorting and metric combinations. These views are used as
+        alternative table versions controlled by updatemenus.
     """
 
     principles_metrics_dfs = {}
@@ -458,10 +464,11 @@ def get_table_contents_from_metrics(metrics: dict[str, dict]) -> dict:
     ]:
         # get metrics data
         if not metric_name == "perf (acc|rel)":
+            # Create DataFrame with principles as rows and datasets as columns
             data = pd.DataFrame(
                 {
-                    name: metrics_dict["metrics"][metric_name]["by_principle"]
-                    for name, metrics_dict in metrics.items()
+                    dataset_name: metrics_dict["metrics"][metric_name]["by_principle"]
+                    for dataset_name, metrics_dict in metrics.items()
                 }
             )
 
