@@ -11,7 +11,7 @@ from feedback_forensics.app.loader import get_votes_df
 import feedback_forensics.app.plotting
 import feedback_forensics.app.plotting_v2
 from feedback_forensics.app.utils import get_csv_columns
-from feedback_forensics.app.constants import NONE_SELECTED_VALUE
+from feedback_forensics.app.constants import NONE_SELECTED_VALUE, APP_BASE_URL
 from feedback_forensics.app.datasets import (
     get_config_from_name,
     get_dataset_from_name,
@@ -397,7 +397,12 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
     def load_from_query_params(data: dict, request: gr.Request):
         """Load data from query params."""
         config = get_config_from_query_params(request)
-        app_url = request.headers["origin"]
+        logger.info(f"Request client host: {request.client}")
+        logger.info(f"Request client host: {request.client.host}")
+        if APP_BASE_URL is not None:
+            app_url = APP_BASE_URL
+        else:
+            app_url = request.headers["origin"]
         return_dict = {
             state["app_url"]: app_url,
         }
