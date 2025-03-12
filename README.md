@@ -44,17 +44,25 @@ To start the app locally, run the following command in your terminal:
 feedback-forensics
 ```
 
-This will start the Gradio interface on port 7860.
+This will start the Gradio interface on localhost port 7860 (e.g. http://localhost:7860).
 
 ### Investigating your own dataset
 
-First run an [ICAI](https://github.com/rdnfn/icai) experiment on your dataset. For example, you can evaluate the same implicit objectives as in the online interface results using ICAI standard principles. First install ICAI as described [here](https://github.com/rdnfn/icai?tab=readme-ov-file#installation), including setting up relevant API secrets. Then, run:
+To investigate your own dataset, you need to run your own Inverse Constitutional AI (ICAI) experiment. Install the [ICAI package](https://pypi.org/project/inverse-cai/) as described [here](https://github.com/rdnfn/icai?tab=readme-ov-file#installation), including setting up relevant API secrets. For comparability, we initially recommend using *ICAI standard principles* rather than generating new ones. These standard principles are used to created the online interface results (shown as the *implicit objectives*). With the package installed, run:
 
-```
+```shell
 icai-exp data_path="data/processed/example/example.csv" s0_added_standard_principles_to_test="[v2]" annotator.skip=true s0_skip_principle_generation=true
 ```
 
-The last two arguments (`annotator.skip` and `s0_skip_principle_generation`) reduce experiment cost by skipping testing a final constitutional annotator (not necessary for feedback forensics visualiation), and skipping the generation and testing of new (non-standard) principles. Replace `example.csv` with your own dataset, ensuring it complies with the ICAI standard data format (as described [here](https://github.com/rdnfn/icai?tab=readme-ov-file#run-experiment-with-your-own-data)).
+Replace `example.csv` with your own dataset, ensuring it complies with the ICAI standard data format (as described [here](https://github.com/rdnfn/icai?tab=readme-ov-file#run-experiment-with-your-own-data), i.e. containing columns `text_a`, `text_b`, and `preferred_text`). The last two arguments (`annotator.skip` and `s0_skip_principle_generation`) reduce experiment cost by skipping parts not necessary for feedback forensics visualisation. Set `s0_skip_principle_generation=false` to additionally generate new principles beyond the standard set.
+
+Once the experiment is completed, run the following command (also shown at end of ICAI experiment terminal output):
+
+```shell
+feedback-forensics -d /path/to/icai_results/
+```
+
+This command will again open up the feedback forensics app on localhost port 7860, now including the local results on your own dataset.
 
 ## Development
 
