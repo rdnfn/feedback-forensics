@@ -417,9 +417,7 @@ def add_combined_metric_to_table_contents(
             ),
             axis=1,
         )
-    if sort_by != "max diff":
-        combined_data.sort_values(by=sort_by, ascending=False)
-    else:
+    if sort_by == "max diff":
         subset_perf_cols = [
             col
             for col in combined_data.columns
@@ -429,8 +427,6 @@ def add_combined_metric_to_table_contents(
             combined_data[subset_perf_cols].max(axis=1)
             - combined_data[subset_perf_cols].min(axis=1)
         )
-        combined_data.sort_values(by="max diff", ascending=False)
-        # combined_data = combined_data.drop(columns=["max diff"])
 
     # limit cols to original dataset cols
     combined_data = combined_data[original_dataset_cols]
@@ -447,9 +443,15 @@ def add_combined_metric_to_table_contents(
 def get_table_contents_from_metrics(metrics: dict[str, dict]) -> dict:
     """Compute the contents of the table based on metrics dict.
 
-    Returns values to define plotly table, including values and colors.
-    To be used as alternative table versions, to be controlled with
-    by user via updatemenus.
+    Args:
+        metrics: A dictionary where keys are dataset names and values are
+                metric dictionaries containing metrics for that dataset.
+                Structure: {dataset_name: {metrics: {metric_name: {by_principle: ...}}}}
+
+    Returns:
+        A dictionary of table views, where each view contains data, values, and colors
+        for different sorting and metric combinations. These views are used as
+        alternative table versions controlled by updatemenus.
     """
 
     principles_metrics_dfs = {}
@@ -462,16 +464,18 @@ def get_table_contents_from_metrics(metrics: dict[str, dict]) -> dict:
     ]:
         # get metrics data
         if not metric_name == "perf (acc|rel)":
+            # Create DataFrame with principles as rows and datasets as columns
             data = pd.DataFrame(
                 {
-                    name: metrics_dict["metrics"][metric_name]["by_principle"]
-                    for name, metrics_dict in metrics.items()
+                    dataset_name: metrics_dict["metrics"][metric_name]["by_principle"]
+                    for dataset_name, metrics_dict in metrics.items()
                 }
             )
 
         dataset_names = list(metrics.keys())
         if len(metrics) > 1:
-            dataset_names.append("max diff")
+            # Insert virtual max diff column first to make it the default view.
+            dataset_names.insert(0, "max diff")
 
         for dataset_name in dataset_names:
             data = data.copy()
