@@ -417,9 +417,7 @@ def add_combined_metric_to_table_contents(
             ),
             axis=1,
         )
-    if sort_by != "max diff":
-        combined_data.sort_values(by=sort_by, ascending=False)
-    else:
+    if sort_by == "max diff":
         subset_perf_cols = [
             col
             for col in combined_data.columns
@@ -429,8 +427,6 @@ def add_combined_metric_to_table_contents(
             combined_data[subset_perf_cols].max(axis=1)
             - combined_data[subset_perf_cols].min(axis=1)
         )
-        combined_data.sort_values(by="max diff", ascending=False)
-        # combined_data = combined_data.drop(columns=["max diff"])
 
     # limit cols to original dataset cols
     combined_data = combined_data[original_dataset_cols]
