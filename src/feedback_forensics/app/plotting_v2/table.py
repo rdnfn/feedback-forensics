@@ -467,7 +467,8 @@ def get_table_contents_from_metrics(metrics: dict[str, dict]) -> dict:
 
         dataset_names = list(metrics.keys())
         if len(metrics) > 1:
-            dataset_names.append("max diff")
+            # Insert virtual max diff column first to make it the default view.
+            dataset_names.insert(0, "max diff")
 
         for dataset_name in dataset_names:
             data = data.copy()
