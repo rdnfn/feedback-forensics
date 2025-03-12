@@ -12,11 +12,11 @@ def generate_plot(
     # compute metrics for each dataset
     overall_metrics = {}
     metrics = {}
-    for name, votes_df in votes_df_dict.items():
-        overall_metrics[name] = feedback_forensics.app.metrics.get_overall_metrics(
+    for dataset_name, votes_df in votes_df_dict.items():
+        overall_metrics[dataset_name] = feedback_forensics.app.metrics.get_overall_metrics(
             votes_df
         )
-        metrics[name] = feedback_forensics.app.metrics.compute_metrics(votes_df)
+        metrics[dataset_name] = feedback_forensics.app.metrics.compute_metrics(votes_df)
 
     overall_metrics_df = pd.DataFrame(overall_metrics)
 
