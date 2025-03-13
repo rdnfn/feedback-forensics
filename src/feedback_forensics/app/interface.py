@@ -2,22 +2,22 @@ import gradio as gr
 import pandas as pd
 import json
 
-from forensics.app.callbacks import generate_callbacks, attach_callbacks
-from forensics.app.constants import (
+from feedback_forensics.app.callbacks import generate_callbacks, attach_callbacks
+from feedback_forensics.app.constants import (
     NONE_SELECTED_VALUE,
     VERSION,
     ALLOW_LOCAL_RESULTS,
     DEFAULT_DATASET_PATH,
 )
-from forensics.app.datasets import BUILTIN_DATASETS
-from forensics.app.info_texts import (
+from feedback_forensics.app.datasets import get_available_datasets
+from feedback_forensics.app.info_texts import (
     METHOD_INFO_TEXT,
     METHOD_INFO_HEADING,
     TLDR_TEXT,
 )
-from forensics.app.metrics import METRIC_COL_OPTIONS
-from forensics.app.styling import CUSTOM_CSS, THEME
-from forensics.app.utils import get_gradio_image_path
+from feedback_forensics.app.metrics import METRIC_COL_OPTIONS
+from feedback_forensics.app.styling import CUSTOM_CSS, THEME
+from feedback_forensics.app.utils import get_gradio_image_path
 
 
 def add_title_row(title: str):
@@ -90,6 +90,9 @@ def create_getting_started_section():
 
 def create_data_loader(inp: dict, state: dict):
     """Create the data loader section of the interface."""
+    # Get the current list of available datasets
+    available_datasets = get_available_datasets()
+
     state["app_url"] = gr.State(value="")
     state["datapath"] = gr.State(value="")
     state["df"] = gr.State(value=pd.DataFrame())
@@ -98,7 +101,7 @@ def create_data_loader(inp: dict, state: dict):
     state["active_dataset"] = gr.State(value="")
     state["cache"] = gr.State(value={})
     state["avail_datasets"] = gr.State(
-        value={dataset.name: dataset for dataset in BUILTIN_DATASETS}
+        value={dataset.name: dataset for dataset in available_datasets}
     )
 
     create_getting_started_section()
@@ -108,10 +111,14 @@ def create_data_loader(inp: dict, state: dict):
     with gr.Row(variant="panel", render=True):
         with gr.Column():
             with gr.Group():
+                # Get dataset names and set default value safely
+                dataset_names = [dataset.name for dataset in available_datasets]
+                default_dataset = [dataset_names[-1]] if dataset_names else []
+
                 inp["active_datasets_dropdown"] = gr.Dropdown(
                     label="💽 Active datasets",
-                    choices=[dataset.name for dataset in BUILTIN_DATASETS],
-                    value=[BUILTIN_DATASETS[-1].name],
+                    choices=dataset_names,
+                    value=default_dataset,
                     interactive=True,
                     multiselect=True,
                 )
@@ -144,7 +151,7 @@ def create_data_loader(inp: dict, state: dict):
         with gr.Column(scale=3):
             with gr.Accordion("Select dataset to analyze"):
                 inp["dataset_btns"] = {}
-                for dataset in BUILTIN_DATASETS:
+                for dataset in available_datasets:
                     inp["dataset_btns"][dataset.name] = gr.Button(
                         dataset.name, variant="secondary"
                     )

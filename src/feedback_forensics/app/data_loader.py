@@ -4,7 +4,7 @@ import shutil
 import pathlib
 from loguru import logger
 
-from forensics.app.constants import HF_TOKEN
+from feedback_forensics.app.constants import HF_TOKEN
 
 
 CLONE_DIR = pathlib.Path("forensics-data")
@@ -75,8 +75,17 @@ def load_icai_data():
     # get package directory
     clone_directory = CLONE_DIR
 
+    if not HF_TOKEN:
+        logger.warning(
+            "HF_TOKEN environment variable not set. Cannot load datasets from HuggingFace."
+        )
+        return False
+
     try:
         # Clone the repository
+        logger.info(
+            f"Attempting to clone repository {username}/{repo_name} from {REPO_PROVIDER}..."
+        )
         clone_repo(
             username,
             HF_TOKEN,
@@ -84,7 +93,10 @@ def load_icai_data():
             clone_directory,
             provider=REPO_PROVIDER,
         )
+        return True
     except Exception as e:
-        logger.warning(
-            f"Failed to load standard data from repo (error: '{e}'). Skipping this step."
+        logger.error(
+            f"Failed to load standard data from repo (error: '{e}'). "
+            "Please verify your HF_TOKEN has permissions to access the repository."
         )
+        return False

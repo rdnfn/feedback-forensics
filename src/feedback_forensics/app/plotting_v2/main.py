@@ -1,8 +1,8 @@
 import pandas as pd
 
-import forensics.app.metrics
-from forensics.app.plotting_v2.table import create_fig_with_tables
-from forensics.app.plotting_v2.table import get_table_contents_from_metrics
+import feedback_forensics.app.metrics
+from feedback_forensics.app.plotting_v2.table import create_fig_with_tables
+from feedback_forensics.app.plotting_v2.table import get_table_contents_from_metrics
 
 
 def generate_plot(
@@ -12,9 +12,11 @@ def generate_plot(
     # compute metrics for each dataset
     overall_metrics = {}
     metrics = {}
-    for name, votes_df in votes_df_dict.items():
-        overall_metrics[name] = forensics.app.metrics.get_overall_metrics(votes_df)
-        metrics[name] = forensics.app.metrics.compute_metrics(votes_df)
+    for dataset_name, votes_df in votes_df_dict.items():
+        overall_metrics[dataset_name] = feedback_forensics.app.metrics.get_overall_metrics(
+            votes_df
+        )
+        metrics[dataset_name] = feedback_forensics.app.metrics.compute_metrics(votes_df)
 
     overall_metrics_df = pd.DataFrame(overall_metrics)
 
