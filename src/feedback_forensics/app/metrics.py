@@ -53,7 +53,7 @@ def get_relevance(value_counts: pd.Series) -> float:
     ) / value_counts.sum()
 
 
-def get_perf(value_counts: pd.Series) -> float:
+def get_principle_strength(value_counts: pd.Series) -> float:
     """
     Relevance-weighted Cohen's Kappa: combines Cohen's Kappa with relevance.
 
@@ -90,7 +90,7 @@ def compute_metrics(votes_df: pd.DataFrame, baseline_metrics: dict = None) -> di
         "agreement": get_agreement,
         "acc": get_acc,
         "relevance": get_relevance,
-        "perf": get_perf,
+        "strength": get_principle_strength,
         "cohens_kappa": get_cohens_kappa,
         "num_votes": get_num_votes,
         "agreed": get_agreed,
@@ -182,25 +182,25 @@ METRIC_COL_OPTIONS = {
         "short": "Rel.",
         "descr": "Relevance: proportion of all votes that are not 'not applicable'",
     },
-    "perf": {
-        "name": "Performance",
-        "short": "Perf.",
-        "descr": "Performance: relevance * Cohen's Kappa, or relevance * 2 * (accuracy - 0.5)",
+    "principle_strength": {
+        "name": "Principle strength (Relevance-weighted Cohen's Kappa)",
+        "short": "strength",
+        "descr": "Principle strength: relevance * Cohen's Kappa, or relevance * 2 * (accuracy - 0.5)",
     },
     "cohens_kappa": {
         "name": "Cohen's Kappa",
         "short": "Kappa",
         "descr": "Cohen's Kappa: measures agreement beyond chance, 2 * (accuracy - 0.5).",
     },
-    "perf_base": {
-        "name": "Performance on full dataset",
+    "principle_strength_base": {
+        "name": "Principle strength on full dataset",
         "short": "(all)",
-        "descr": "Performance on all datapoints (not just selected subset)",
+        "descr": "Principle strength on all datapoints (not just selected subset)",
     },
-    "perf_diff": {
-        "name": "Performance difference (full vs subset)",
+    "principle_strength_diff": {
+        "name": "Principle strength difference (full vs subset)",
         "short": "(diff)",
-        "descr": "Absolute performance difference to votes on entire dataset",
+        "descr": "Absolute principle strength difference to votes on entire dataset",
     },
 }
 
@@ -244,18 +244,21 @@ def get_ordering_options(
             "Relevance ↓",
             metrics["metrics"]["relevance"]["principle_order"],
         ],
-        "perf": ["Performance ↓", metrics["metrics"]["perf"]["principle_order"]],
+        "principle_strength": [
+            "Principle strength ↓",
+            metrics["metrics"]["principle_strength"]["principle_order"],
+        ],
         "cohens_kappa": [
             "Cohen's Kappa ↓",
             metrics["metrics"]["cohens_kappa"]["principle_order"],
         ],
-        "perf_base": [
-            "Performance on full dataset ↓",
-            metrics["metrics"]["perf_base"]["principle_order"],
+        "principle_strength_base": [
+            "Principle strength on full dataset ↓",
+            metrics["metrics"]["principle_strength_base"]["principle_order"],
         ],
-        "perf_diff": [
-            "Performance difference ↓",
-            metrics["metrics"]["perf_diff"]["principle_order"],
+        "principle_strength_diff": [
+            "Principle strength difference ↓",
+            metrics["metrics"]["principle_strength_diff"]["principle_order"],
         ],
     }
 

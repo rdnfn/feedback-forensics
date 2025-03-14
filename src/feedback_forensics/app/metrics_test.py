@@ -8,7 +8,7 @@ from feedback_forensics.app.metrics import (
     get_agreement,
     get_acc,
     get_relevance,
-    get_perf,
+    get_principle_strength,
     get_cohens_kappa,
     get_num_votes,
     get_agreed,
@@ -71,21 +71,21 @@ def test_get_relevance():
     assert get_relevance(value_counts) == 0.0
 
 
-def test_get_perf():
-    """Test performance calculation for different vote distributions."""
+def test_get_principle_strength():
+    """Test principle strength calculation for different vote distributions."""
     # Test with perfect performance
     value_counts = pd.Series({"Agree": 4, "Disagree": 0, "Not applicable": 1})
     expected = (1.0 - 0.5) * (4 / 5) * 2  # (acc - 0.5) * relevance * 2
-    assert get_perf(value_counts) == expected
+    assert get_principle_strength(value_counts) == expected
 
     # Test with worst performance
     value_counts = pd.Series({"Agree": 0, "Disagree": 4, "Not applicable": 1})
     expected = (0.0 - 0.5) * (4 / 5) * 2
-    assert get_perf(value_counts) == expected
+    assert get_principle_strength(value_counts) == expected
 
     # Test with neutral performance
     value_counts = pd.Series({"Agree": 2, "Disagree": 2, "Not applicable": 1})
-    assert get_perf(value_counts) == 0.0
+    assert get_principle_strength(value_counts) == 0.0
 
 
 def test_get_cohens_kappa():
@@ -145,7 +145,7 @@ def test_compute_metrics():
     # Check metrics for p1
     p1_metrics = {
         metric: metrics["metrics"][metric]["by_principle"]["p1"]
-        for metric in ["agreement", "acc", "relevance", "perf"]
+        for metric in ["agreement", "acc", "relevance", "principle_strength"]
     }
     assert p1_metrics["agreement"] == 0.5  # 1 agree out of 2 total
     assert p1_metrics["acc"] == 1.0  # 1 agree out of 1 relevant vote
@@ -156,8 +156,8 @@ def test_compute_metrics():
     metrics_with_baseline = compute_metrics(votes_df, baseline_metrics=baseline_metrics)
 
     # Check that diff and base metrics exist
-    assert "perf_diff" in metrics_with_baseline["metrics"]
-    assert "perf_base" in metrics_with_baseline["metrics"]
+    assert "principle_strength_diff" in metrics_with_baseline["metrics"]
+    assert "principle_strength_base" in metrics_with_baseline["metrics"]
 
 
 def test_compute_metrics_empty_data():

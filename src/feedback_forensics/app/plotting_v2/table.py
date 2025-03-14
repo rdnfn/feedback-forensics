@@ -11,8 +11,8 @@ from feedback_forensics.app.plotting_v2.constants import INFO_ANNOTATION_DESCRIP
 
 # table constants
 AVAIL_METRICS = {
-    "perf": {
-        "name": "Performance",
+    "strength": {
+        "name": "Principle strength (Relevance-weighted Cohen's Kappa)",
         "color_scale": "berlin",
         "neutral_value": 0.0,
     },
@@ -463,12 +463,12 @@ def get_table_contents_from_metrics(metrics: dict[str, dict]) -> dict:
 
     for metric_name, metric_info in list(AVAIL_METRICS.items()) + [
         (
-            "perf (acc|rel)",
+            "strength (acc|rel)",
             None,
         )
     ]:
         # get metrics data
-        if not metric_name == "perf (acc|rel)":
+        if not metric_name == "strength (acc|rel)":
             # Create DataFrame with principles as rows and datasets as columns
             data = pd.DataFrame(
                 {
@@ -487,15 +487,17 @@ def get_table_contents_from_metrics(metrics: dict[str, dict]) -> dict:
 
             view_name = f"{metric_name}  ({dataset_name} ↓)"
 
-            if metric_name == "perf (acc|rel)":
+            if metric_name == "strength (acc|rel)":
                 principles_metrics_dfs[view_name] = (
                     add_combined_metric_to_table_contents(
-                        principles_metrics_dfs[f"perf  ({dataset_name} ↓)"]["data"],
+                        principles_metrics_dfs[f"strength  ({dataset_name} ↓)"]["data"],
                         principles_metrics_dfs[f"acc  ({dataset_name} ↓)"]["data"],
                         principles_metrics_dfs[f"relevance  ({dataset_name} ↓)"][
                             "data"
                         ],
-                        principles_metrics_dfs[f"perf  ({dataset_name} ↓)"]["colors"],
+                        principles_metrics_dfs[f"strength  ({dataset_name} ↓)"][
+                            "colors"
+                        ],
                         sort_by=dataset_name,
                     )
                 )
