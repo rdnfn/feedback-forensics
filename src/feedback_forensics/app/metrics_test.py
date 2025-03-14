@@ -8,7 +8,8 @@ from feedback_forensics.app.metrics import (
     get_agreement,
     get_acc,
     get_relevance,
-    get_perf,
+    get_principle_strength,
+    get_cohens_kappa,
     get_num_votes,
     get_agreed,
     get_disagreed,
@@ -48,7 +49,9 @@ def test_get_acc():
 
     # Test with no relevant votes
     value_counts = pd.Series({"Not applicable": 5})
-    assert get_acc(value_counts) == 0.0
+    assert (
+        get_acc(value_counts) == 0.5
+    )  # When no relevant votes, returns 0.5 (chance level)
 
 
 def test_get_relevance():
@@ -68,21 +71,44 @@ def test_get_relevance():
     assert get_relevance(value_counts) == 0.0
 
 
-def test_get_perf():
-    """Test performance calculation for different vote distributions."""
+def test_get_principle_strength():
+    """Test principle strength calculation for different vote distributions."""
     # Test with perfect performance
     value_counts = pd.Series({"Agree": 4, "Disagree": 0, "Not applicable": 1})
     expected = (1.0 - 0.5) * (4 / 5) * 2  # (acc - 0.5) * relevance * 2
-    assert get_perf(value_counts) == expected
+    assert get_principle_strength(value_counts) == expected
 
     # Test with worst performance
     value_counts = pd.Series({"Agree": 0, "Disagree": 4, "Not applicable": 1})
     expected = (0.0 - 0.5) * (4 / 5) * 2
-    assert get_perf(value_counts) == expected
+    assert get_principle_strength(value_counts) == expected
 
     # Test with neutral performance
     value_counts = pd.Series({"Agree": 2, "Disagree": 2, "Not applicable": 1})
-    assert get_perf(value_counts) == 0.0
+    assert get_principle_strength(value_counts) == 0.0
+
+
+def test_get_cohens_kappa():
+    """Test Cohen's kappa calculation for different vote distributions."""
+    # Test with perfect agreement
+    value_counts = pd.Series({"Agree": 5, "Disagree": 0, "Not applicable": 0})
+    assert get_cohens_kappa(value_counts) == 1.0  # 2 * (1.0 - 0.5)
+
+    # Test with perfect disagreement
+    value_counts = pd.Series({"Agree": 0, "Disagree": 5, "Not applicable": 0})
+    assert get_cohens_kappa(value_counts) == -1.0  # 2 * (0.0 - 0.5)
+
+    # Test with random performance (equal agree/disagree)
+    value_counts = pd.Series({"Agree": 3, "Disagree": 3, "Not applicable": 2})
+    assert get_cohens_kappa(value_counts) == 0.0  # 2 * (0.5 - 0.5)
+
+    # Test with 75% agreement
+    value_counts = pd.Series({"Agree": 3, "Disagree": 1, "Not applicable": 0})
+    assert get_cohens_kappa(value_counts) == 0.5  # 2 * (0.75 - 0.5)
+
+    # Test with no relevant votes
+    value_counts = pd.Series({"Not applicable": 5})
+    assert get_cohens_kappa(value_counts) == 0.0  # Returns 0 for no relevant votes
 
 
 def test_vote_count_functions():
@@ -119,7 +145,7 @@ def test_compute_metrics():
     # Check metrics for p1
     p1_metrics = {
         metric: metrics["metrics"][metric]["by_principle"]["p1"]
-        for metric in ["agreement", "acc", "relevance", "perf"]
+        for metric in ["agreement", "acc", "relevance", "principle_strength"]
     }
     assert p1_metrics["agreement"] == 0.5  # 1 agree out of 2 total
     assert p1_metrics["acc"] == 1.0  # 1 agree out of 1 relevant vote
@@ -130,8 +156,8 @@ def test_compute_metrics():
     metrics_with_baseline = compute_metrics(votes_df, baseline_metrics=baseline_metrics)
 
     # Check that diff and base metrics exist
-    assert "perf_diff" in metrics_with_baseline["metrics"]
-    assert "perf_base" in metrics_with_baseline["metrics"]
+    assert "principle_strength_diff" in metrics_with_baseline["metrics"]
+    assert "principle_strength_base" in metrics_with_baseline["metrics"]
 
 
 def test_compute_metrics_empty_data():

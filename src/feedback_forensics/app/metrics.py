@@ -12,16 +12,39 @@ def get_acc(value_counts: pd.Series) -> float:
     Accuracy: proportion of non-irrelevant votes ('agree' or 'disagree')
     that agree with original preferences.
 
-    If there are no non-irrelevant votes, return 0.
+    If there are no non-irrelevant votes, return 0.5.
     """
     num_agreed = value_counts.get("Agree", 0)
     num_disagreed = value_counts.get("Disagree", 0)
 
     denominator = num_agreed + num_disagreed
     if denominator == 0:
-        return 0
+        return 0.5
     else:
         return num_agreed / denominator
+
+
+def get_cohens_kappa(value_counts: pd.Series) -> float:
+    """
+    Cohen's kappa: measures agreement beyond chance.
+
+    Since the ICAI principle annotator randomizes the order of the alternatives
+    (see the function `get_preference_vote_for_single_text` in ICAI), it has no
+    position bias and the probability of chance agreement is 50% (even if the
+    dataset has position bias). Therefore, the calculation simplifies to
+
+    Cohen's kappa = (accuracy - 0.5) / 0.5 = 2 * (accuracy - 0.5)
+
+    This ranges from -1 (perfect disagreement) through 0 (random agreement)
+    to 1 (perfect agreement).
+
+    Returns 0 if there are no relevant votes.
+    """
+    num_agreed = value_counts.get("Agree", 0)
+    num_disagreed = value_counts.get("Disagree", 0)
+
+    accuracy = get_acc(value_counts)
+    return 2 * (accuracy - 0.5)
 
 
 def get_relevance(value_counts: pd.Series) -> float:
@@ -30,10 +53,16 @@ def get_relevance(value_counts: pd.Series) -> float:
     ) / value_counts.sum()
 
 
-def get_perf(value_counts: pd.Series) -> float:
-    acc = get_acc(value_counts)
+def get_principle_strength(value_counts: pd.Series) -> float:
+    """
+    Relevance-weighted Cohen's kappa: combines Cohen's kappa with relevance.
+
+    This is computed as: (Cohen's kappa) * relevance
+    which simplifies to: 2 * (accuracy - 0.5) * relevance
+    """
+    cohens_kappa = get_cohens_kappa(value_counts)
     relevance = get_relevance(value_counts)
-    return (acc - 0.5) * relevance * 2
+    return cohens_kappa * relevance
 
 
 def get_num_votes(value_counts: pd.Series) -> int:
@@ -61,7 +90,8 @@ def compute_metrics(votes_df: pd.DataFrame, baseline_metrics: dict = None) -> di
         "agreement": get_agreement,
         "acc": get_acc,
         "relevance": get_relevance,
-        "perf": get_perf,
+        "strength": get_principle_strength,
+        "cohens_kappa": get_cohens_kappa,
         "num_votes": get_num_votes,
         "agreed": get_agreed,
         "disagreed": get_disagreed,
@@ -152,20 +182,25 @@ METRIC_COL_OPTIONS = {
         "short": "Rel.",
         "descr": "Relevance: proportion of all votes that are not 'not applicable'",
     },
-    "perf": {
-        "name": "Performance",
-        "short": "Perf.",
-        "descr": "Performance: relevance * (accuracy - 0.5) * 2",
+    "principle_strength": {
+        "name": "Principle strength (Relevance-weighted Cohen's kappa)",
+        "short": "strength",
+        "descr": "Principle strength: relevance * Cohen's kappa, or relevance * 2 * (accuracy - 0.5)",
     },
-    "perf_base": {
-        "name": "Performance on full dataset",
+    "cohens_kappa": {
+        "name": "Cohen's kappa",
+        "short": "kappa",
+        "descr": "Cohen's kappa: measures agreement beyond chance, 2 * (accuracy - 0.5).",
+    },
+    "principle_strength_base": {
+        "name": "Principle strength on full dataset",
         "short": "(all)",
-        "descr": "Performance on all datapoints (not just selected subset)",
+        "descr": "Principle strength on all datapoints (not just selected subset)",
     },
-    "perf_diff": {
-        "name": "Performance difference (full vs subset)",
+    "principle_strength_diff": {
+        "name": "Principle strength difference (full vs subset)",
         "short": "(diff)",
-        "descr": "Absolute performance difference to votes on entire dataset",
+        "descr": "Absolute principle strength difference to votes on entire dataset",
     },
 }
 
@@ -209,14 +244,21 @@ def get_ordering_options(
             "Relevance ↓",
             metrics["metrics"]["relevance"]["principle_order"],
         ],
-        "perf": ["Performance ↓", metrics["metrics"]["perf"]["principle_order"]],
-        "perf_base": [
-            "Performance on full dataset ↓",
-            metrics["metrics"]["perf_base"]["principle_order"],
+        "principle_strength": [
+            "Principle strength ↓",
+            metrics["metrics"]["principle_strength"]["principle_order"],
         ],
-        "perf_diff": [
-            "Performance difference ↓",
-            metrics["metrics"]["perf_diff"]["principle_order"],
+        "cohens_kappa": [
+            "Cohen's kappa ↓",
+            metrics["metrics"]["cohens_kappa"]["principle_order"],
+        ],
+        "principle_strength_base": [
+            "Principle strength on full dataset ↓",
+            metrics["metrics"]["principle_strength_base"]["principle_order"],
+        ],
+        "principle_strength_diff": [
+            "Principle strength difference ↓",
+            metrics["metrics"]["principle_strength_diff"]["principle_order"],
         ],
     }
 
