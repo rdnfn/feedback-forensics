@@ -24,6 +24,29 @@ def get_acc(value_counts: pd.Series) -> float:
         return num_agreed / denominator
 
 
+def get_cohens_kappa(value_counts: pd.Series) -> float:
+    """
+    Cohen's Kappa: measures agreement beyond chance.
+
+    Since the ICAI principle annotator randomizes the order of the alternatives
+    (see the function `get_preference_vote_for_single_text` in ICAI), it has no
+    position bias and the probability of chance agreement is 50% (even if the
+    dataset has position bias. Therefore, the calculation simplifies to
+
+    Cohen's Kappa = (accuracy - 0.5) / 0.5 = 2 * (accuracy - 0.5)
+
+    This ranges from -1 (perfect disagreement) through 0 (random agreement)
+    to 1 (perfect agreement).
+
+    Returns 0 if there are no relevant votes.
+    """
+    num_agreed = value_counts.get("Agree", 0)
+    num_disagreed = value_counts.get("Disagree", 0)
+
+    accuracy = get_acc(value_counts)
+    return 2 * (accuracy - 0.5)
+
+
 def get_relevance(value_counts: pd.Series) -> float:
     return (
         value_counts.get("Agree", 0) + value_counts.get("Disagree", 0)
@@ -62,6 +85,7 @@ def compute_metrics(votes_df: pd.DataFrame, baseline_metrics: dict = None) -> di
         "acc": get_acc,
         "relevance": get_relevance,
         "perf": get_perf,
+        "cohens_kappa": get_cohens_kappa,
         "num_votes": get_num_votes,
         "agreed": get_agreed,
         "disagreed": get_disagreed,
@@ -157,6 +181,11 @@ METRIC_COL_OPTIONS = {
         "short": "Perf.",
         "descr": "Performance: relevance * (accuracy - 0.5) * 2",
     },
+    "cohens_kappa": {
+        "name": "Cohen's Kappa",
+        "short": "Kappa",
+        "descr": "Cohen's Kappa: measures agreement beyond chance, 2 * (accuracy - 0.5).",
+    },
     "perf_base": {
         "name": "Performance on full dataset",
         "short": "(all)",
@@ -210,6 +239,10 @@ def get_ordering_options(
             metrics["metrics"]["relevance"]["principle_order"],
         ],
         "perf": ["Performance ↓", metrics["metrics"]["perf"]["principle_order"]],
+        "cohens_kappa": [
+            "Cohen's Kappa ↓",
+            metrics["metrics"]["cohens_kappa"]["principle_order"],
+        ],
         "perf_base": [
             "Performance on full dataset ↓",
             metrics["metrics"]["perf_base"]["principle_order"],

@@ -48,5 +48,10 @@ ranges from -1 to 1. Calculated as perf=(acc-0.5)×rel×2. A value of 0 indicate
 no predictive performance (either due to random prediction or low relevance),<br>
 values below 0 indicate principle-following AI annotator is worse than random<br>
 annotator, and values above 0 indicate principle-following AI annotator is better<br>
-than random annotator.
+than random annotator.<br><br>
+<b>Cohen's Kappa <i>(kappa)</i></b>: Measures agreement beyond chance between the<br>
+principle-following AI annotator and original preferences. Calculated as<br>
+kappa=2×(acc-0.5), using 0.5 as the expected agreement by chance for a binary choice.<br>
+Ranges from -1 (perfect disagreement) through 0 (random agreement) to 1 (perfect<br>
+agreement). Unlike Performance, it doesn't take relevance into account.
 """

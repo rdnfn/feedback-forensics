@@ -26,6 +26,11 @@ AVAIL_METRICS = {
         "color_scale": "berlin",
         "neutral_value": 0.0,
     },
+    "cohens_kappa": {
+        "name": "Cohen's Kappa",
+        "color_scale": "berlin",
+        "neutral_value": 0.0,
+    },
 }
 
 GREY_10 = "#5f5f5f"

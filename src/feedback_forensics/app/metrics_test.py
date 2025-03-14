@@ -9,6 +9,7 @@ from feedback_forensics.app.metrics import (
     get_acc,
     get_relevance,
     get_perf,
+    get_cohens_kappa,
     get_num_votes,
     get_agreed,
     get_disagreed,
@@ -85,6 +86,29 @@ def test_get_perf():
     # Test with neutral performance
     value_counts = pd.Series({"Agree": 2, "Disagree": 2, "Not applicable": 1})
     assert get_perf(value_counts) == 0.0
+
+
+def test_get_cohens_kappa():
+    """Test Cohen's Kappa calculation for different vote distributions."""
+    # Test with perfect agreement
+    value_counts = pd.Series({"Agree": 5, "Disagree": 0, "Not applicable": 0})
+    assert get_cohens_kappa(value_counts) == 1.0  # 2 * (1.0 - 0.5)
+
+    # Test with perfect disagreement
+    value_counts = pd.Series({"Agree": 0, "Disagree": 5, "Not applicable": 0})
+    assert get_cohens_kappa(value_counts) == -1.0  # 2 * (0.0 - 0.5)
+
+    # Test with random performance (equal agree/disagree)
+    value_counts = pd.Series({"Agree": 3, "Disagree": 3, "Not applicable": 2})
+    assert get_cohens_kappa(value_counts) == 0.0  # 2 * (0.5 - 0.5)
+
+    # Test with 75% agreement
+    value_counts = pd.Series({"Agree": 3, "Disagree": 1, "Not applicable": 0})
+    assert get_cohens_kappa(value_counts) == 0.5  # 2 * (0.75 - 0.5)
+
+    # Test with no relevant votes
+    value_counts = pd.Series({"Not applicable": 5})
+    assert get_cohens_kappa(value_counts) == 0.0  # Returns 0 for no relevant votes
 
 
 def test_vote_count_functions():
