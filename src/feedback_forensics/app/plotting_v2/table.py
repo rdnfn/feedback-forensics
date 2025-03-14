@@ -12,7 +12,7 @@ from feedback_forensics.app.plotting_v2.constants import INFO_ANNOTATION_DESCRIP
 # table constants
 AVAIL_METRICS = {
     "strength": {
-        "name": "Principle strength (Relevance-weighted Cohen's Kappa)",
+        "name": "Principle strength (relevance-weighted Cohen's kappa)",
         "color_scale": "berlin",
         "neutral_value": 0.0,
     },
@@ -27,7 +27,7 @@ AVAIL_METRICS = {
         "neutral_value": 0.0,
     },
     "cohens_kappa": {
-        "name": "Cohen's Kappa",
+        "name": "Cohen's kappa",
         "color_scale": "berlin",
         "neutral_value": 0.0,
     },

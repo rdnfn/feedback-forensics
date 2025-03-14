@@ -43,13 +43,13 @@ the principle relevant to. Ranges from 0 to 1.<br><br>
 <b>Accuracy <i>(acc)</i></b>: Accuracy of principle-following AI annotator <br>
 reconstructing the original annotations, when datapoints are deemed relevant.<br>
 Ranges from 0 to 1.<br><br>
-<b>Cohen's Kappa <i>(kappa)</i></b>: Measures agreement beyond chance between the<br>
+<b>Cohen's kappa <i>(kappa)</i></b>: Measures agreement beyond chance between the<br>
 principle-following AI annotator and original preferences. Calculated as<br>
 kappa=2×(acc-0.5), using 0.5 as the expected agreement by chance for a binary choice.<br>
 Ranges from -1 (perfect disagreement) through 0 (random agreement) to 1 (perfect<br>
 agreement). Unlike principle strength, it doesn't take relevance into account.<br><br>
-<b>Principle strength <i>(strength)</i></b>: Combines Cohen's Kappa and relevance,<br>
-ranges from -1 to 1. Calculated as strength = Cohen's Kappa × relevance, which equals<br>
+<b>Principle strength <i>(strength)</i></b>: Combines Cohen's kappa and relevance,<br>
+ranges from -1 to 1. Calculated as strength = Cohen's kappa × relevance, which equals<br>
 2×(acc-0.5)×relevance. A value of 0 indicates no predictive performance (either due<br>
 to random prediction or low relevance), values below 0 indicate principle-following<br>
 AI annotator is worse than random annotator, and values above 0 indicate<br>

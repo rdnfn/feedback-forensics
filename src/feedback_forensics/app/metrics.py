@@ -26,14 +26,14 @@ def get_acc(value_counts: pd.Series) -> float:
 
 def get_cohens_kappa(value_counts: pd.Series) -> float:
     """
-    Cohen's Kappa: measures agreement beyond chance.
+    Cohen's kappa: measures agreement beyond chance.
 
     Since the ICAI principle annotator randomizes the order of the alternatives
     (see the function `get_preference_vote_for_single_text` in ICAI), it has no
     position bias and the probability of chance agreement is 50% (even if the
-    dataset has position bias. Therefore, the calculation simplifies to
+    dataset has position bias). Therefore, the calculation simplifies to
 
-    Cohen's Kappa = (accuracy - 0.5) / 0.5 = 2 * (accuracy - 0.5)
+    Cohen's kappa = (accuracy - 0.5) / 0.5 = 2 * (accuracy - 0.5)
 
     This ranges from -1 (perfect disagreement) through 0 (random agreement)
     to 1 (perfect agreement).
@@ -55,9 +55,9 @@ def get_relevance(value_counts: pd.Series) -> float:
 
 def get_principle_strength(value_counts: pd.Series) -> float:
     """
-    Relevance-weighted Cohen's Kappa: combines Cohen's Kappa with relevance.
+    Relevance-weighted Cohen's kappa: combines Cohen's kappa with relevance.
 
-    This is computed as: (Cohen's Kappa) * relevance
+    This is computed as: (Cohen's kappa) * relevance
     which simplifies to: 2 * (accuracy - 0.5) * relevance
     """
     cohens_kappa = get_cohens_kappa(value_counts)
@@ -183,14 +183,14 @@ METRIC_COL_OPTIONS = {
         "descr": "Relevance: proportion of all votes that are not 'not applicable'",
     },
     "principle_strength": {
-        "name": "Principle strength (Relevance-weighted Cohen's Kappa)",
+        "name": "Principle strength (Relevance-weighted Cohen's kappa)",
         "short": "strength",
-        "descr": "Principle strength: relevance * Cohen's Kappa, or relevance * 2 * (accuracy - 0.5)",
+        "descr": "Principle strength: relevance * Cohen's kappa, or relevance * 2 * (accuracy - 0.5)",
     },
     "cohens_kappa": {
-        "name": "Cohen's Kappa",
-        "short": "Kappa",
-        "descr": "Cohen's Kappa: measures agreement beyond chance, 2 * (accuracy - 0.5).",
+        "name": "Cohen's kappa",
+        "short": "kappa",
+        "descr": "Cohen's kappa: measures agreement beyond chance, 2 * (accuracy - 0.5).",
     },
     "principle_strength_base": {
         "name": "Principle strength on full dataset",
@@ -249,7 +249,7 @@ def get_ordering_options(
             metrics["metrics"]["principle_strength"]["principle_order"],
         ],
         "cohens_kappa": [
-            "Cohen's Kappa ↓",
+            "Cohen's kappa ↓",
             metrics["metrics"]["cohens_kappa"]["principle_order"],
         ],
         "principle_strength_base": [

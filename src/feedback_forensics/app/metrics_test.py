@@ -89,7 +89,7 @@ def test_get_principle_strength():
 
 
 def test_get_cohens_kappa():
-    """Test Cohen's Kappa calculation for different vote distributions."""
+    """Test Cohen's kappa calculation for different vote distributions."""
     # Test with perfect agreement
     value_counts = pd.Series({"Agree": 5, "Disagree": 0, "Not applicable": 0})
     assert get_cohens_kappa(value_counts) == 1.0  # 2 * (1.0 - 0.5)
