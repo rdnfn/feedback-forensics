@@ -54,9 +54,15 @@ def get_relevance(value_counts: pd.Series) -> float:
 
 
 def get_perf(value_counts: pd.Series) -> float:
-    acc = get_acc(value_counts)
+    """
+    Relevance-weighted Cohen's Kappa: combines Cohen's Kappa with relevance.
+
+    This is computed as: (Cohen's Kappa) * relevance
+    which simplifies to: 2 * (accuracy - 0.5) * relevance
+    """
+    cohens_kappa = get_cohens_kappa(value_counts)
     relevance = get_relevance(value_counts)
-    return (acc - 0.5) * relevance * 2
+    return cohens_kappa * relevance
 
 
 def get_num_votes(value_counts: pd.Series) -> int:
@@ -179,7 +185,7 @@ METRIC_COL_OPTIONS = {
     "perf": {
         "name": "Performance",
         "short": "Perf.",
-        "descr": "Performance: relevance * (accuracy - 0.5) * 2",
+        "descr": "Performance: relevance * Cohen's Kappa, or relevance * 2 * (accuracy - 0.5)",
     },
     "cohens_kappa": {
         "name": "Cohen's Kappa",
