@@ -12,14 +12,14 @@ def get_acc(value_counts: pd.Series) -> float:
     Accuracy: proportion of non-irrelevant votes ('agree' or 'disagree')
     that agree with original preferences.
 
-    If there are no non-irrelevant votes, return 0.
+    If there are no non-irrelevant votes, return 0.5.
     """
     num_agreed = value_counts.get("Agree", 0)
     num_disagreed = value_counts.get("Disagree", 0)
 
     denominator = num_agreed + num_disagreed
     if denominator == 0:
-        return 0
+        return 0.5
     else:
         return num_agreed / denominator
 

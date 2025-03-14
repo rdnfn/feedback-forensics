@@ -48,7 +48,9 @@ def test_get_acc():
 
     # Test with no relevant votes
     value_counts = pd.Series({"Not applicable": 5})
-    assert get_acc(value_counts) == 0.0
+    assert (
+        get_acc(value_counts) == 0.5
+    )  # When no relevant votes, returns 0.5 (chance level)
 
 
 def test_get_relevance():
