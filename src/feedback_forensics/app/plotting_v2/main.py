@@ -13,8 +13,8 @@ def generate_plot(
     overall_metrics = {}
     metrics = {}
     for dataset_name, votes_df in votes_df_dict.items():
-        overall_metrics[dataset_name] = feedback_forensics.app.metrics.get_overall_metrics(
-            votes_df
+        overall_metrics[dataset_name] = (
+            feedback_forensics.app.metrics.get_overall_metrics(votes_df)
         )
         metrics[dataset_name] = feedback_forensics.app.metrics.compute_metrics(votes_df)
 
