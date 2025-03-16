@@ -71,19 +71,20 @@ def create_getting_started_section():
     button_size = "sm"
     with gr.Accordion("👋 Getting started: pre-configured examples", open=True):
         with gr.Row(equal_height=True):
+            tutorial_domain = "https://app.feedbackforensics.com"  # make this "" to use local instance
             gr.Button(
                 "🤖 Example 1: How is GPT-4o different to other models?",
                 size=button_size,
-                link="?data=chatbot_arena&col=winner_model&col_vals=gpt4o20240513,claude35sonnet20240620,gemini15proapi0514,mistrallarge2407,deepseekv2api0628",
+                link=f"{tutorial_domain}?data=chatbot_arena&col=winner_model&col_vals=gpt4o20240513,claude35sonnet20240620,gemini15proapi0514,mistrallarge2407,deepseekv2api0628",
             )
             gr.Button(
                 "📚 Example 2: How do popular preference datasets differ?",
                 size=button_size,
-                link="?data=chatbot_arena,alpacaeval,prism,anthropic_helpful,anthropic_harmless",
+                link=f"{tutorial_domain}?data=chatbot_arena,alpacaeval,prism,anthropic_helpful,anthropic_harmless",
             )
             gr.Button(
                 "📝 Example 3: How do user preferences vary across writing tasks?",
-                link="?data=chatbot_arena&col=narrower_category&col_vals=songwriting_prompts,resume_and_cover_letter_writing,professional_email_communication,creative_writing_prompts",
+                link=f"{tutorial_domain}?data=chatbot_arena&col=narrower_category&col_vals=songwriting_prompts,resume_and_cover_letter_writing,professional_email_communication,creative_writing_prompts",
                 size=button_size,
             )
 
