@@ -1,6 +1,7 @@
 """Constants for the app."""
 
 import os
+import json
 
 # App/package version
 import importlib.metadata
@@ -14,6 +15,7 @@ DEFAULT_DATASET_PATH = "exp/outputs/prism_v2"
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 HF_TOKEN = os.getenv("HF_TOKEN")
 APP_BASE_URL = os.getenv("FF_APP_BASE_URL")
+DEFAULT_DATASET_NAMES = json.loads(os.getenv("FF_DEFAULT_DATASET_NAMES", "[]"))
 
 # App username and password
 # Will block app behind login if env vars are set

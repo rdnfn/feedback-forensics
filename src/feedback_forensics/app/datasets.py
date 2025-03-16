@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from loguru import logger
 import pathlib
 import re
-from feedback_forensics.app.constants import NONE_SELECTED_VALUE
+from feedback_forensics.app.constants import NONE_SELECTED_VALUE, DEFAULT_DATASET_NAMES
 from feedback_forensics.app.data_loader import load_icai_data, DATA_DIR
 
 
@@ -210,6 +210,20 @@ def get_available_datasets():
         list[BuiltinDataset]: List of all available datasets
     """
     return _available_datasets
+
+
+def get_available_datasets_names():
+    """Get the names of all available datasets."""
+    return [dataset.name for dataset in _available_datasets]
+
+
+def get_default_dataset_names():
+    """Get the names of the default datasets."""
+    dataset_names = get_available_datasets_names()
+    if len(DEFAULT_DATASET_NAMES) > 0:
+        return DEFAULT_DATASET_NAMES
+    else:
+        return [dataset_names[-1]] if dataset_names else []
 
 
 def add_dataset(dataset):
