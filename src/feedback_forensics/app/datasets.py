@@ -181,7 +181,7 @@ def load_datasets_from_hf():
     success = load_icai_data()
 
     # Refresh the available datasets
-    _available_datasets = get_available_builtin_datasets()
+    _available_datasets += get_available_builtin_datasets()
 
     loaded_count = len(_available_datasets)
     if success and loaded_count > 0:
