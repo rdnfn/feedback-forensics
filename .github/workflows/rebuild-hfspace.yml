@@ -1,10 +1,10 @@
 name: Rebuild HF Space
 
 on:
-  # pushes to dev branch
-  pull_request:
+  # pushes to staging branch
+  push:
     branches:
-      - dev
+      - staging
   release:
     types: [published]
   # allow manual triggering
