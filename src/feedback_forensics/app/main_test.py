@@ -14,7 +14,7 @@ def test_gradio_app_runs():
             "-m",
             "feedback_forensics.app.main",
             "--datapath",
-            "/Users/arduin/main/repos/github/icai/exp/outputs/2025-03-15_15-14-11",
+            "data/output/example",
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

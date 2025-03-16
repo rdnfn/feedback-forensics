@@ -54,7 +54,7 @@ This will start the Gradio interface on localhost port 7860 (e.g. http://localho
 To investigate your own dataset, you need to run your own Inverse Constitutional AI (ICAI) experiment. Install the [ICAI package](https://pypi.org/project/inverse-cai/) as described [here](https://github.com/rdnfn/icai?tab=readme-ov-file#installation), including setting up relevant API secrets. For comparability, we initially recommend using *ICAI standard principles* rather than generating new ones. These standard principles are used to created the online interface results (shown as the *implicit objectives*). With the package installed, run:
 
 ```shell
-icai-exp data_path="data/processed/example/example.csv" s0_added_standard_principles_to_test="[v2]" annotator.skip=true s0_skip_principle_generation=true
+icai-exp data_path="data/input/example.csv" s0_added_standard_principles_to_test="[v2]" annotator.skip=true s0_skip_principle_generation=true
 ```
 
 Replace `example.csv` with your own dataset, ensuring it complies with the ICAI standard data format (as described [here](https://github.com/rdnfn/icai?tab=readme-ov-file#run-experiment-with-your-own-data), i.e. containing columns `text_a`, `text_b`, and `preferred_text`). The last two arguments (`annotator.skip` and `s0_skip_principle_generation`) reduce experiment cost by skipping parts not necessary for feedback forensics visualisation. Set `s0_skip_principle_generation=false` to additionally generate new principles beyond the standard set.
@@ -92,6 +92,14 @@ For a consistent development environment, this repository includes a VS Code dev
 1. Install the [Remote - Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
 2. Open the repository in VS Code
 3. Click "Reopen in Container" when prompted
+
+### Running test cases
+
+To run the tests for the package, run:
+
+```bash
+pytest ./src
+```
 
 
 ### Creating a new release
