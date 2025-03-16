@@ -397,8 +397,6 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
     def load_from_query_params(data: dict, request: gr.Request):
         """Load data from query params."""
         config = get_config_from_query_params(request)
-        logger.info(f"Request client host: {request.client}")
-        logger.info(f"Request client host: {request.client.host}")
         if APP_BASE_URL is not None:
             app_url = APP_BASE_URL
         else:
