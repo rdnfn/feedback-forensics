@@ -9,7 +9,11 @@ from feedback_forensics.app.constants import (
     ALLOW_LOCAL_RESULTS,
     DEFAULT_DATASET_PATH,
 )
-from feedback_forensics.app.datasets import get_available_datasets
+from feedback_forensics.app.datasets import (
+    get_available_datasets,
+    get_default_dataset_names,
+    get_available_datasets_names,
+)
 from feedback_forensics.app.info_texts import (
     METHOD_INFO_TEXT,
     METHOD_INFO_HEADING,
@@ -113,13 +117,13 @@ def create_data_loader(inp: dict, state: dict):
         with gr.Column():
             with gr.Group():
                 # Get dataset names and set default value safely
-                dataset_names = [dataset.name for dataset in available_datasets]
-                default_dataset = [dataset_names[-1]] if dataset_names else []
+                dataset_names = get_available_datasets_names()
+                default_datasets = get_default_dataset_names()
 
                 inp["active_datasets_dropdown"] = gr.Dropdown(
                     label="💽 Active datasets",
                     choices=dataset_names,
-                    value=default_dataset,
+                    value=default_datasets,
                     interactive=True,
                     multiselect=True,
                 )
