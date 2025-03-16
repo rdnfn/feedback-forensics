@@ -46,6 +46,9 @@ feedback-forensics
 
 This will start the Gradio interface on localhost port 7860 (e.g. http://localhost:7860).
 
+> [!NOTE]
+> The online results are currently not available when running locally.
+
 ### Investigating your own dataset
 
 To investigate your own dataset, you need to run your own Inverse Constitutional AI (ICAI) experiment. Install the [ICAI package](https://pypi.org/project/inverse-cai/) as described [here](https://github.com/rdnfn/icai?tab=readme-ov-file#installation), including setting up relevant API secrets. For comparability, we initially recommend using *ICAI standard principles* rather than generating new ones. These standard principles are used to created the online interface results (shown as the *implicit objectives*). With the package installed, run:
@@ -63,6 +66,10 @@ feedback-forensics -d /path/to/icai_results/
 ```
 
 This command will again open up the feedback forensics app on localhost port 7860, now including the local results on your own dataset.
+
+## Limitations
+
+Feedback Forensics relies on AI annotators (LLM-as-a-Judge) to detect implicit objectives in feedback data. Though such annotators have been shown correlate with human judgements on many [tasks](https://github.com/tatsu-lab/alpaca_eval/tree/main/src/alpaca_eval/evaluators_configs), they also have well-known limitations: they are often susceptible to small input changes and can exhibit [various](https://arxiv.org/abs/2405.01724) [biases](https://arxiv.org/abs/2306.05685) (as do [human annotators](https://arxiv.org/abs/2309.16349)). As such, *Feedback Forensics results should be taken as an indication for further investigation rather than a definitive final judgement of the data*. In general, results based on more samples are less susceptible to noise introduced by AI annotators – and thus may be considered more reliable.
 
 ## Development
 
