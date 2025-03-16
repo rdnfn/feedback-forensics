@@ -2,6 +2,7 @@ from feedback_forensics.app.main import run
 import time
 import subprocess
 import pytest
+import signal
 
 
 def test_gradio_app_runs():
@@ -32,7 +33,9 @@ def test_gradio_app_runs():
         stdout, stderr = gradio_process.communicate()
 
         # Check if there were any errors
-        if returncode != 0:
+        # Note: Exit code -15 means the process was terminated by SIGTERM (our terminate() call)
+        # which is expected behavior, not an error
+        if returncode != 0 and returncode != -signal.SIGTERM:
             error_msg = f"Gradio process exited with error code: {returncode}"
             if stderr:
                 error_msg += f"\nError output: {stderr}"
