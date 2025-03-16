@@ -12,6 +12,7 @@ from feedback_forensics.app.constants import NONE_SELECTED_VALUE
 
 def get_config_from_query_params(request: gr.Request) -> dict:
     params = dict(request.query_params)
+    error_code = None
     config = {}
     if "data" in params:
         dataset_url_names = load_str_list(params["data"])
@@ -23,7 +24,11 @@ def get_config_from_query_params(request: gr.Request) -> dict:
             )
             if dataset_name is None:
                 logger.warning(f"Dataset {dataset_url_name} not found")
-                continue
+                gr.Warning(
+                    f"URL Problem: Dataset requested in URL ({dataset_url_name}) not found. Please check the URL and try again.",
+                    duration=15,
+                )
+                return None
             datasets.append(dataset_name)
         config["datasets"] = datasets
     if "col" in params:
