@@ -7,8 +7,13 @@ on:
     types: [published]
 
 jobs:
+  pytest:
+    name: Pytest
+    uses: ./.github/workflows/pytest.yml
+
   build:
     name: Build distribution 📦
+    needs: pytest
     runs-on: ubuntu-latest
 
     steps:
