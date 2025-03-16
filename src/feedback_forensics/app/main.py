@@ -29,7 +29,7 @@ def run():
         logger.info("HF_TOKEN found. Attempting to load HuggingFace datasets...")
         loaded_count = feedback_forensics.app.datasets.load_datasets_from_hf()
     else:
-        logger.info("Note: only local datasets are available.")
+        logger.info("Note: only local datasets will be loaded.")
 
     # Get the current available datasets
     available_datasets = feedback_forensics.app.datasets.get_available_datasets()
