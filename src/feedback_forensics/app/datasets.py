@@ -221,6 +221,3 @@ def add_dataset(dataset):
     """
     global _available_datasets
     _available_datasets.append(dataset)
-
-
-load_datasets_from_hf()
