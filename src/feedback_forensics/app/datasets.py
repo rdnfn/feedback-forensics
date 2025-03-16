@@ -103,6 +103,7 @@ _BUILTIN_DATASETS = [
     PRISM_V2,
     ANTHROPIC_HELPFUL,
     ANTHROPIC_HARMLESS,
+    OLMO2_0325,
 ]
 _available_datasets = []
 
