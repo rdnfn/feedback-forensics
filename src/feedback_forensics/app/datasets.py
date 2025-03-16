@@ -138,12 +138,12 @@ def get_available_builtin_datasets() -> list[BuiltinDataset]:
     return available_datasets
 
 
-def create_local_dataset(path: str) -> BuiltinDataset:
+def create_local_dataset(path: str, name: str = "🏠 Local dataset") -> BuiltinDataset:
     """Create a local dataset."""
     return BuiltinDataset(
-        name="🏠 Local dataset",
+        name=name,
         path=pathlib.Path(path),
-        description="Local dataset.",
+        description=f"Local dataset from path {path}.",
     )
 
 
