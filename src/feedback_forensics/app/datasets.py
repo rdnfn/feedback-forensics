@@ -17,6 +17,7 @@ class BuiltinDataset:
     description: str | None = None
     options: list | None = None
     filterable_columns: list[str] | None = None
+    source: str | None = None
 
     @property
     def url_name(self) -> str:
@@ -86,6 +87,13 @@ PRISM_V2 = BuiltinDataset(
         "location_reside_region",
         "english_proficiency",
     ],
+)
+
+OLMO2_0325 = BuiltinDataset(
+    name="🏋️ OLMo-2 0325 pref-mix",
+    path=DATA_DIR / "olmo2-0325-32b",
+    description="10k subsampled randomly from original 378k pairs. Used for fine-tuning OLMo 2 model by AllenAI.",
+    source="https://huggingface.co/datasets/allenai/olmo-2-0325-32b-preference-mix",
 )
 
 # List of all built-in datasets
