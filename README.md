@@ -101,6 +101,10 @@ To run the tests for the package, run:
 pytest ./src
 ```
 
+### Creating a PR
+
+First create a PR to the `staging` branch, from there the work will then be merged with the main branch. A merge (and push) in the `staging` branch will allow you to view the staged online version of Feedback Forensics app at https://rdnfn-ff-dev.hf.space.
+
 
 ### Creating a new release
 
