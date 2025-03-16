@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from loguru import logger
 import pathlib
 import re
-from feedback_forensics.app.constants import NONE_SELECTED_VALUE
+from feedback_forensics.app.constants import NONE_SELECTED_VALUE, DEFAULT_DATASET_NAMES
 from feedback_forensics.app.data_loader import load_icai_data, DATA_DIR
 
 
@@ -138,12 +138,12 @@ def get_available_builtin_datasets() -> list[BuiltinDataset]:
     return available_datasets
 
 
-def create_local_dataset(path: str) -> BuiltinDataset:
+def create_local_dataset(path: str, name: str = "🏠 Local dataset") -> BuiltinDataset:
     """Create a local dataset."""
     return BuiltinDataset(
-        name="🏠 Local dataset",
+        name=name,
         path=pathlib.Path(path),
-        description="Local dataset.",
+        description=f"Local dataset from path {path}.",
     )
 
 
@@ -212,6 +212,20 @@ def get_available_datasets():
     return _available_datasets
 
 
+def get_available_datasets_names():
+    """Get the names of all available datasets."""
+    return [dataset.name for dataset in _available_datasets]
+
+
+def get_default_dataset_names():
+    """Get the names of the default datasets."""
+    dataset_names = get_available_datasets_names()
+    if len(DEFAULT_DATASET_NAMES) > 0:
+        return DEFAULT_DATASET_NAMES
+    else:
+        return [dataset_names[-1]] if dataset_names else []
+
+
 def add_dataset(dataset):
     """
     Add a dataset to the list of available datasets.
@@ -221,6 +235,3 @@ def add_dataset(dataset):
     """
     global _available_datasets
     _available_datasets.append(dataset)
-
-
-load_datasets_from_hf()

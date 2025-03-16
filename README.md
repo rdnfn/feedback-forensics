@@ -46,12 +46,15 @@ feedback-forensics
 
 This will start the Gradio interface on localhost port 7860 (e.g. http://localhost:7860).
 
+> [!NOTE]
+> The online results are currently not available when running locally.
+
 ### Investigating your own dataset
 
 To investigate your own dataset, you need to run your own Inverse Constitutional AI (ICAI) experiment. Install the [ICAI package](https://pypi.org/project/inverse-cai/) as described [here](https://github.com/rdnfn/icai?tab=readme-ov-file#installation), including setting up relevant API secrets. For comparability, we initially recommend using *ICAI standard principles* rather than generating new ones. These standard principles are used to created the online interface results (shown as the *implicit objectives*). With the package installed, run:
 
 ```shell
-icai-exp data_path="data/processed/example/example.csv" s0_added_standard_principles_to_test="[v2]" annotator.skip=true s0_skip_principle_generation=true
+icai-exp data_path="data/input/example.csv" s0_added_standard_principles_to_test="[v2]" annotator.skip=true s0_skip_principle_generation=true
 ```
 
 Replace `example.csv` with your own dataset, ensuring it complies with the ICAI standard data format (as described [here](https://github.com/rdnfn/icai?tab=readme-ov-file#run-experiment-with-your-own-data), i.e. containing columns `text_a`, `text_b`, and `preferred_text`). The last two arguments (`annotator.skip` and `s0_skip_principle_generation`) reduce experiment cost by skipping parts not necessary for feedback forensics visualisation. Set `s0_skip_principle_generation=false` to additionally generate new principles beyond the standard set.
@@ -63,6 +66,10 @@ feedback-forensics -d /path/to/icai_results/
 ```
 
 This command will again open up the feedback forensics app on localhost port 7860, now including the local results on your own dataset.
+
+## Limitations
+
+Feedback Forensics relies on AI annotators (LLM-as-a-Judge) to detect implicit objectives in feedback data. Though such annotators have been shown correlate with human judgements on many [tasks](https://github.com/tatsu-lab/alpaca_eval/tree/main/src/alpaca_eval/evaluators_configs), they also have well-known limitations: they are often susceptible to small input changes and can exhibit [various](https://arxiv.org/abs/2405.01724) [biases](https://arxiv.org/abs/2306.05685) (as do [human annotators](https://arxiv.org/abs/2309.16349)). As such, *Feedback Forensics results should be taken as an indication for further investigation rather than a definitive final judgement of the data*. In general, results based on more samples are less susceptible to noise introduced by AI annotators – and thus may be considered more reliable.
 
 ## Development
 
@@ -85,6 +92,18 @@ For a consistent development environment, this repository includes a VS Code dev
 1. Install the [Remote - Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
 2. Open the repository in VS Code
 3. Click "Reopen in Container" when prompted
+
+### Running test cases
+
+To run the tests for the package, run:
+
+```bash
+pytest ./src
+```
+
+### Creating a PR
+
+First create a PR to the `staging` branch, from there the work will then be merged with the main branch. A merge (and push) in the `staging` branch will allow you to view the staged online version of Feedback Forensics app at https://rdnfn-ff-dev.hf.space.
 
 
 ### Creating a new release

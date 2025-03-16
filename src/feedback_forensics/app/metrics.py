@@ -1,4 +1,4 @@
-"""Compute metrics """
+"""Compute metrics"""
 
 import pandas as pd
 
@@ -182,7 +182,7 @@ METRIC_COL_OPTIONS = {
         "short": "Rel.",
         "descr": "Relevance: proportion of all votes that are not 'not applicable'",
     },
-    "principle_strength": {
+    "strength": {
         "name": "Principle strength (Relevance-weighted Cohen's kappa)",
         "short": "strength",
         "descr": "Principle strength: relevance * Cohen's kappa, or relevance * 2 * (accuracy - 0.5)",
@@ -192,12 +192,12 @@ METRIC_COL_OPTIONS = {
         "short": "kappa",
         "descr": "Cohen's kappa: measures agreement beyond chance, 2 * (accuracy - 0.5).",
     },
-    "principle_strength_base": {
+    "strength_base": {
         "name": "Principle strength on full dataset",
         "short": "(all)",
         "descr": "Principle strength on all datapoints (not just selected subset)",
     },
-    "principle_strength_diff": {
+    "strength_diff": {
         "name": "Principle strength difference (full vs subset)",
         "short": "(diff)",
         "descr": "Absolute principle strength difference to votes on entire dataset",
