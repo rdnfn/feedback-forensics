@@ -79,6 +79,12 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         cache = data[state["cache"]]
         split_col = data[inp["split_col_dropdown"]]
         selected_vals = data[inp["split_col_selected_vals_dropdown"]]
+
+        if len(datasets) == 0:
+            gr.Warning(
+                "No datasets selected. Please select at least one dataset to run analysis on.",
+            )
+            return {out["plot"]: gr.Plot()}
         gr.Info(f"Loading data for {datasets}...", duration=3)
 
         votes_dfs = {}
