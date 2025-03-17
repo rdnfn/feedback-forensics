@@ -15,9 +15,8 @@ from feedback_forensics.app.datasets import (
     get_available_datasets_names,
 )
 from feedback_forensics.app.info_texts import (
-    METHOD_INFO_TEXT,
-    METHOD_INFO_HEADING,
-    TLDR_TEXT,
+    get_datasets_description,
+    METRICS_DESCRIPTION,
 )
 from feedback_forensics.app.metrics import METRIC_COL_OPTIONS
 from feedback_forensics.app.styling import CUSTOM_CSS, THEME
@@ -127,6 +126,12 @@ def create_data_loader(inp: dict, state: dict):
                     interactive=True,
                     multiselect=True,
                 )
+                with gr.Accordion("ℹ️ Dataset details", open=False):
+                    datasets = get_available_datasets()
+                    inp["dataset_info_v2"] = gr.Markdown(
+                        get_datasets_description(datasets),
+                        container=True,
+                    )
                 inp["split_col_dropdown"] = gr.Dropdown(
                     label="🗃️ Group dataset by column",
                     info="Create separate results for data subsets grouped by this column's values. If no column is selected, entire original dataset will be analyzed. ",
@@ -284,19 +289,22 @@ def create_data_loader(inp: dict, state: dict):
 
 
 def create_principle_view(out: dict):
-    with gr.Row():
-        with gr.Column(scale=2, variant="panel"):
-            with gr.Group():
-                out["share_link"] = gr.Textbox(
-                    label="🔗 Share link",
-                    value="",
-                    show_copy_button=True,
-                    scale=1,
-                    interactive=True,
-                    # container=False,
-                    show_label=True,
+    with gr.Row(variant="panel"):
+        with gr.Group():
+            out["share_link"] = gr.Textbox(
+                label="🔗 Share link",
+                value="",
+                show_copy_button=True,
+                scale=1,
+                interactive=True,
+                show_label=True,
+            )
+            with gr.Accordion("ℹ️ Metrics explanation", open=False):
+                out["metrics_info"] = gr.Markdown(
+                    METRICS_DESCRIPTION,
+                    container=True,
                 )
-                out["plot"] = gr.Plot()
+            out["plot"] = gr.Plot()
 
 
 def force_dark_theme(block):
