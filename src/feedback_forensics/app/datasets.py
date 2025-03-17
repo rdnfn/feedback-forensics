@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from loguru import logger
 import pathlib
 import re
-from feedback_forensics.app.constants import NONE_SELECTED_VALUE
+from feedback_forensics.app.constants import NONE_SELECTED_VALUE, DEFAULT_DATASET_NAMES
 from feedback_forensics.app.data_loader import load_icai_data, DATA_DIR
 
 
@@ -17,6 +17,7 @@ class BuiltinDataset:
     description: str | None = None
     options: list | None = None
     filterable_columns: list[str] | None = None
+    source: str | None = None
 
     @property
     def url_name(self) -> str:
@@ -50,32 +51,37 @@ class Config:
 ANTHROPIC_HELPFUL = BuiltinDataset(
     name="🚑 Anthropic helpful",
     path=DATA_DIR / "anthropic_helpful",
-    description="",
+    description="5k subsample of human preference pairs favouring helpful responses from RLHF dataset by Anthropic.",
+    source="https://github.com/anthropics/hh-rlhf",
 )
 
 
 ANTHROPIC_HARMLESS = BuiltinDataset(
     name="🕊️ Anthropic harmless",
     path=DATA_DIR / "anthropic_harmless",
-    description="",
+    description="5k subsample of human preference pairs favouring harmless responses from RLHF dataset by Anthropic.",
+    source="https://github.com/anthropics/hh-rlhf",
 )
 
 ARENA_V2 = BuiltinDataset(
     name="🏟️ Chatbot Arena",
     path=DATA_DIR / "arena",
-    description="",
+    description="10k subsample of Chatbot Arena dataset (100k) released alongside Arena Explorer work, crowdsourced human annotations from between June and August 2024 in English.",
+    source="https://huggingface.co/datasets/lmarena-ai/arena-human-preference-100k",
 )
 
 ALPACA_EVAL_V2 = BuiltinDataset(
     name="🦙 AlpacaEval",
     path=DATA_DIR / "alpacaeval_human",
-    description="",
+    description="648 cross-annotated human preference pairs used to validate AlpacaEval annotators.",
+    source="https://huggingface.co/datasets/tatsu-lab/alpaca_eval/",
 )
 
 PRISM_V2 = BuiltinDataset(
     name="💎 PRISM",
     path=DATA_DIR / "prism",
-    description="",
+    description="~8k human preference pairs from PRISM dataset, focused on controversial topics with extensive annotator information. Originally four-way annotations, subsampled using 1-of-3 rejected responses to get pairwise preferences.",
+    source="https://huggingface.co/datasets/HannahRoseKirk/prism-alignment",
     filterable_columns=[
         "age",
         "education",
@@ -88,6 +94,13 @@ PRISM_V2 = BuiltinDataset(
     ],
 )
 
+OLMO2_0325 = BuiltinDataset(
+    name="🏋️ OLMo-2 0325 pref-mix",
+    path=DATA_DIR / "olmo2-0325-32b",
+    description="10k preference pairs subsampled randomly from original 378k pairs used for fine-tuning OLMo 2 model by Ai2. Synthetically generated via multiple different pipelines.",
+    source="https://huggingface.co/datasets/allenai/olmo-2-0325-32b-preference-mix",
+)
+
 # List of all built-in datasets
 _BUILTIN_DATASETS = [
     ARENA_V2,
@@ -95,6 +108,7 @@ _BUILTIN_DATASETS = [
     PRISM_V2,
     ANTHROPIC_HELPFUL,
     ANTHROPIC_HARMLESS,
+    OLMO2_0325,
 ]
 _available_datasets = []
 
@@ -138,12 +152,13 @@ def get_available_builtin_datasets() -> list[BuiltinDataset]:
     return available_datasets
 
 
-def create_local_dataset(path: str) -> BuiltinDataset:
+def create_local_dataset(path: str, name: str = "🏠 Local dataset") -> BuiltinDataset:
     """Create a local dataset."""
     return BuiltinDataset(
-        name="🏠 Local dataset",
+        name=name,
         path=pathlib.Path(path),
-        description="Local dataset.",
+        description=f"Local dataset from path {path}.",
+        source=f"{path}",
     )
 
 
@@ -181,7 +196,7 @@ def load_datasets_from_hf():
     success = load_icai_data()
 
     # Refresh the available datasets
-    _available_datasets = get_available_builtin_datasets()
+    _available_datasets += get_available_builtin_datasets()
 
     loaded_count = len(_available_datasets)
     if success and loaded_count > 0:
@@ -212,6 +227,20 @@ def get_available_datasets():
     return _available_datasets
 
 
+def get_available_datasets_names():
+    """Get the names of all available datasets."""
+    return [dataset.name for dataset in _available_datasets]
+
+
+def get_default_dataset_names():
+    """Get the names of the default datasets."""
+    dataset_names = get_available_datasets_names()
+    if len(DEFAULT_DATASET_NAMES) > 0:
+        return DEFAULT_DATASET_NAMES
+    else:
+        return [dataset_names[-1]] if dataset_names else []
+
+
 def add_dataset(dataset):
     """
     Add a dataset to the list of available datasets.
@@ -221,6 +250,3 @@ def add_dataset(dataset):
     """
     global _available_datasets
     _available_datasets.append(dataset)
-
-
-load_datasets_from_hf()

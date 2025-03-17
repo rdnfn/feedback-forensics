@@ -17,6 +17,8 @@ from feedback_forensics.app.datasets import (
     get_dataset_from_name,
     BuiltinDataset,
     Config,
+    get_available_datasets_names,
+    get_default_dataset_names,
 )
 
 from feedback_forensics.app.url_parser import (
@@ -77,6 +79,12 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         cache = data[state["cache"]]
         split_col = data[inp["split_col_dropdown"]]
         selected_vals = data[inp["split_col_selected_vals_dropdown"]]
+
+        if len(datasets) == 0:
+            gr.Warning(
+                "No datasets selected. Please select at least one dataset to run analysis on.",
+            )
+            return {out["plot"]: gr.Plot()}
         gr.Info(f"Loading data for {datasets}...", duration=3)
 
         votes_dfs = {}
@@ -397,8 +405,16 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
     def load_from_query_params(data: dict, request: gr.Request):
         """Load data from query params."""
         config = get_config_from_query_params(request)
-        logger.info(f"Request client host: {request.client}")
-        logger.info(f"Request client host: {request.client.host}")
+
+        # check if config is None (did not parse correctly)
+        if config is None:
+            return {
+                inp["active_datasets_dropdown"]: gr.Dropdown(
+                    choices=get_available_datasets_names(),
+                    value=get_default_dataset_names(),
+                )
+            }
+
         if APP_BASE_URL is not None:
             app_url = APP_BASE_URL
         else:

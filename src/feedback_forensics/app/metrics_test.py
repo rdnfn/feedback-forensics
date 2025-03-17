@@ -145,7 +145,7 @@ def test_compute_metrics():
     # Check metrics for p1
     p1_metrics = {
         metric: metrics["metrics"][metric]["by_principle"]["p1"]
-        for metric in ["agreement", "acc", "relevance", "principle_strength"]
+        for metric in ["agreement", "acc", "relevance", "strength"]
     }
     assert p1_metrics["agreement"] == 0.5  # 1 agree out of 2 total
     assert p1_metrics["acc"] == 1.0  # 1 agree out of 1 relevant vote
@@ -156,8 +156,8 @@ def test_compute_metrics():
     metrics_with_baseline = compute_metrics(votes_df, baseline_metrics=baseline_metrics)
 
     # Check that diff and base metrics exist
-    assert "principle_strength_diff" in metrics_with_baseline["metrics"]
-    assert "principle_strength_base" in metrics_with_baseline["metrics"]
+    assert "strength_diff" in metrics_with_baseline["metrics"]
+    assert "strength_base" in metrics_with_baseline["metrics"]
 
 
 def test_compute_metrics_empty_data():

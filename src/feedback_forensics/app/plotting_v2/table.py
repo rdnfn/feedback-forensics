@@ -6,8 +6,6 @@ import plotly.subplots
 import plotly.graph_objects as go
 import plotly.colors
 
-from feedback_forensics.app.plotting_v2.constants import INFO_ANNOTATION_DESCRIPTION
-
 
 # table constants
 AVAIL_METRICS = {
@@ -289,35 +287,16 @@ def get_updatemenus_and_annotation(
             direction="down",
             pad={"r": 10, "t": 10},
             showactive=True,
-            x=0.5,
+            x=1,
             y=y_updatemenus,
-            xanchor="center",
+            xanchor="right",
             yanchor="bottom",
             font=dict(color=TABLE_TITLE_FONT_COLOR, family=ANNOTATION_FONT_FAMILY),
             bordercolor=HEADER_BG_COLOR,
         )
     ]
 
-    # Add info annotation
-    info_annotation = dict(
-        x=1,  # Position slightly to the right of the menu
-        y=y_updatemenus,
-        xref="paper",
-        yref="paper",
-        xanchor="right",
-        yanchor="bottom",
-        text="ⓘ Metrics information",  # Info symbol
-        showarrow=False,
-        font=dict(size=14, color=HEADER_BG_COLOR, family=ANNOTATION_FONT_FAMILY),
-        hovertext=INFO_ANNOTATION_DESCRIPTION,
-        hoverlabel=dict(
-            bgcolor=PAPER_BG_COLOR,
-            font=dict(color=HEADER_FONT_COLOR, size=12, family=ANNOTATION_FONT_FAMILY),
-            bordercolor=HEADER_BG_COLOR,
-        ),
-    )
-
-    annotations = [table_title_annotation, info_annotation]
+    annotations = [table_title_annotation]
 
     return updatemenus, annotations
 

@@ -1,0 +1,46 @@
+name: Rebuild HF Space
+
+on:
+  # pushes to staging branch
+  push:
+    branches:
+      - staging
+  release:
+    types: [published]
+  # allow manual triggering
+  workflow_dispatch:
+
+jobs:
+  rebuild-hfspace:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Install the package in development mode
+          pip install -e ".[dev]"
+
+      - name: Determine space to rebuild
+        id: set-space
+        run: |
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            echo "SPACE_ID=rdnfn/feedback-forensics" >> $GITHUB_OUTPUT
+          else
+            echo "SPACE_ID=rdnfn/ff-dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Trigger rebuild of Hugging Face Space
+        env:
+          HF_REBUILD_TOKEN: ${{ secrets.HF_REBUILD_TOKEN }}
+        run: |
+          # Use our CLI tool to trigger the rebuild
+          ff-hfspace-rebuild ${{ steps.set-space.outputs.SPACE_ID }}

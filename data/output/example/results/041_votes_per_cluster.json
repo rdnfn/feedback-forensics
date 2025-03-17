@@ -1,0 +1,242 @@
+{
+    "0": {
+        "for": 0,
+        "against": 1,
+        "abstain": 0,
+        "invalid": 0
+    },
+    "1": {
+        "for": 1,
+        "against": 0,
+        "abstain": 0,
+        "invalid": 0
+    },
+    "2": {
+        "for": 1,
+        "against": 0,
+        "abstain": 0,
+        "invalid": 0
+    },
+    "3": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "4": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "5": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "6": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "7": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "8": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "9": {
+        "for": 0,
+        "against": 1,
+        "abstain": 0,
+        "invalid": 0
+    },
+    "10": {
+        "for": 0,
+        "against": 1,
+        "abstain": 0,
+        "invalid": 0
+    },
+    "11": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "12": {
+        "for": 1,
+        "against": 0,
+        "abstain": 0,
+        "invalid": 0
+    },
+    "13": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "14": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "15": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "16": {
+        "for": 0,
+        "against": 1,
+        "abstain": 0,
+        "invalid": 0
+    },
+    "17": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "18": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "19": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "20": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "21": {
+        "for": 1,
+        "against": 0,
+        "abstain": 0,
+        "invalid": 0
+    },
+    "22": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "23": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "24": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "25": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "26": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "27": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "28": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "29": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "30": {
+        "for": 1,
+        "against": 0,
+        "abstain": 0,
+        "invalid": 0
+    },
+    "31": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "32": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "33": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "34": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "35": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "36": {
+        "for": 0,
+        "against": 1,
+        "abstain": 0,
+        "invalid": 0
+    },
+    "37": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "38": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    },
+    "39": {
+        "for": 0,
+        "against": 0,
+        "abstain": 1,
+        "invalid": 0
+    }
+}

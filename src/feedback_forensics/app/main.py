@@ -28,13 +28,15 @@ def run():
     if HF_TOKEN:
         logger.info("HF_TOKEN found. Attempting to load HuggingFace datasets...")
         loaded_count = feedback_forensics.app.datasets.load_datasets_from_hf()
+    else:
+        logger.info("Note: only local datasets will be loaded.")
 
     # Get the current available datasets
     available_datasets = feedback_forensics.app.datasets.get_available_datasets()
 
     if len(available_datasets) == 0:
         logger.error(
-            "No datasets available. No local or standard datasets could be loaded. Please either provide a path to a local dataset via --datapath (-d) flag or provide the correct HuggingFace token via the HF_TOKEN environment variable."
+            "No datasets available. No local or standard datasets could be loaded. Please provide a path to a local dataset via --datapath (-d) flag (or alternatively enable loading online mode datasets via HF_TOKEN if you have permissions)."
         )
         return
 

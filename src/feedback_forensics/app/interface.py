@@ -9,11 +9,14 @@ from feedback_forensics.app.constants import (
     ALLOW_LOCAL_RESULTS,
     DEFAULT_DATASET_PATH,
 )
-from feedback_forensics.app.datasets import get_available_datasets
+from feedback_forensics.app.datasets import (
+    get_available_datasets,
+    get_default_dataset_names,
+    get_available_datasets_names,
+)
 from feedback_forensics.app.info_texts import (
-    METHOD_INFO_TEXT,
-    METHOD_INFO_HEADING,
-    TLDR_TEXT,
+    get_datasets_description,
+    METRICS_DESCRIPTION,
 )
 from feedback_forensics.app.metrics import METRIC_COL_OPTIONS
 from feedback_forensics.app.styling import CUSTOM_CSS, THEME
@@ -71,19 +74,20 @@ def create_getting_started_section():
     button_size = "sm"
     with gr.Accordion("👋 Getting started: pre-configured examples", open=True):
         with gr.Row(equal_height=True):
+            tutorial_domain = "https://app.feedbackforensics.com"  # make this "" to use local instance
             gr.Button(
                 "🤖 Example 1: How is GPT-4o different to other models?",
                 size=button_size,
-                link="?data=chatbot_arena&col=winner_model&col_vals=gpt4o20240513,claude35sonnet20240620,gemini15proapi0514,mistrallarge2407,deepseekv2api0628",
+                link=f"{tutorial_domain}?data=chatbot_arena&col=winner_model&col_vals=gpt4o20240513,claude35sonnet20240620,gemini15proapi0514,mistrallarge2407,deepseekv2api0628",
             )
             gr.Button(
                 "📚 Example 2: How do popular preference datasets differ?",
                 size=button_size,
-                link="?data=chatbot_arena,alpacaeval,prism,anthropic_helpful,anthropic_harmless",
+                link=f"{tutorial_domain}?data=chatbot_arena,alpacaeval,prism,anthropic_helpful,anthropic_harmless",
             )
             gr.Button(
                 "📝 Example 3: How do user preferences vary across writing tasks?",
-                link="?data=chatbot_arena&col=narrower_category&col_vals=songwriting_prompts,resume_and_cover_letter_writing,professional_email_communication,creative_writing_prompts",
+                link=f"{tutorial_domain}?data=chatbot_arena&col=narrower_category&col_vals=songwriting_prompts,resume_and_cover_letter_writing,professional_email_communication,creative_writing_prompts",
                 size=button_size,
             )
 
@@ -112,16 +116,22 @@ def create_data_loader(inp: dict, state: dict):
         with gr.Column():
             with gr.Group():
                 # Get dataset names and set default value safely
-                dataset_names = [dataset.name for dataset in available_datasets]
-                default_dataset = [dataset_names[-1]] if dataset_names else []
+                dataset_names = get_available_datasets_names()
+                default_datasets = get_default_dataset_names()
 
                 inp["active_datasets_dropdown"] = gr.Dropdown(
                     label="💽 Active datasets",
                     choices=dataset_names,
-                    value=default_dataset,
+                    value=default_datasets,
                     interactive=True,
                     multiselect=True,
                 )
+                with gr.Accordion("ℹ️ Dataset details", open=False):
+                    datasets = get_available_datasets()
+                    inp["dataset_info_v2"] = gr.Markdown(
+                        get_datasets_description(datasets),
+                        container=True,
+                    )
                 inp["split_col_dropdown"] = gr.Dropdown(
                     label="🗃️ Group dataset by column",
                     info="Create separate results for data subsets grouped by this column's values. If no column is selected, entire original dataset will be analyzed. ",
@@ -279,19 +289,22 @@ def create_data_loader(inp: dict, state: dict):
 
 
 def create_principle_view(out: dict):
-    with gr.Row():
-        with gr.Column(scale=2, variant="panel"):
-            with gr.Group():
-                out["share_link"] = gr.Textbox(
-                    label="🔗 Share link",
-                    value="",
-                    show_copy_button=True,
-                    scale=1,
-                    interactive=True,
-                    # container=False,
-                    show_label=True,
+    with gr.Row(variant="panel"):
+        with gr.Group():
+            out["share_link"] = gr.Textbox(
+                label="🔗 Share link",
+                value="",
+                show_copy_button=True,
+                scale=1,
+                interactive=True,
+                show_label=True,
+            )
+            with gr.Accordion("ℹ️ Metrics explanation", open=False):
+                out["metrics_info"] = gr.Markdown(
+                    METRICS_DESCRIPTION,
+                    container=True,
                 )
-                out["plot"] = gr.Plot()
+            out["plot"] = gr.Plot()
 
 
 def force_dark_theme(block):
