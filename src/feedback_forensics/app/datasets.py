@@ -51,32 +51,37 @@ class Config:
 ANTHROPIC_HELPFUL = BuiltinDataset(
     name="🚑 Anthropic helpful",
     path=DATA_DIR / "anthropic_helpful",
-    description="",
+    description="5k subsample of human preference pairs favouring helpful responses from RLHF dataset by Anthropic.",
+    source="https://github.com/anthropics/hh-rlhf",
 )
 
 
 ANTHROPIC_HARMLESS = BuiltinDataset(
     name="🕊️ Anthropic harmless",
     path=DATA_DIR / "anthropic_harmless",
-    description="",
+    description="5k subsample of human preference pairs favouring harmless responses from RLHF dataset by Anthropic.",
+    source="https://github.com/anthropics/hh-rlhf",
 )
 
 ARENA_V2 = BuiltinDataset(
     name="🏟️ Chatbot Arena",
     path=DATA_DIR / "arena",
-    description="",
+    description="10k subsample of Chatbot Arena dataset (100k) released alongside Arena Explorer work, crowdsourced human annotations from between June and August 2024 in English.",
+    source="https://huggingface.co/datasets/lmarena-ai/arena-human-preference-100k",
 )
 
 ALPACA_EVAL_V2 = BuiltinDataset(
     name="🦙 AlpacaEval",
     path=DATA_DIR / "alpacaeval_human",
-    description="",
+    description="648 cross-annotated human preference pairs used to validate AlpacaEval annotators.",
+    source="https://huggingface.co/datasets/tatsu-lab/alpaca_eval/",
 )
 
 PRISM_V2 = BuiltinDataset(
     name="💎 PRISM",
     path=DATA_DIR / "prism",
-    description="",
+    description="~8k human preference pairs from PRISM dataset, focused on controversial topics with extensive annotator information. Originally four-way annotations, subsampled using 1-of-3 rejected responses to get pairwise preferences.",
+    source="https://huggingface.co/datasets/HannahRoseKirk/prism-alignment",
     filterable_columns=[
         "age",
         "education",
@@ -92,7 +97,7 @@ PRISM_V2 = BuiltinDataset(
 OLMO2_0325 = BuiltinDataset(
     name="🏋️ OLMo-2 0325 pref-mix",
     path=DATA_DIR / "olmo2-0325-32b",
-    description="10k subsampled randomly from original 378k pairs. Used for fine-tuning OLMo 2 model by AllenAI.",
+    description="10k preference pairs subsampled randomly from original 378k pairs used for fine-tuning OLMo 2 model by Ai2. Synthetically generated via multiple different pipelines.",
     source="https://huggingface.co/datasets/allenai/olmo-2-0325-32b-preference-mix",
 )
 
