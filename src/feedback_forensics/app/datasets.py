@@ -158,6 +158,7 @@ def create_local_dataset(path: str, name: str = "🏠 Local dataset") -> Builtin
         name=name,
         path=pathlib.Path(path),
         description=f"Local dataset from path {path}.",
+        source=f"{path}",
     )
 
 
