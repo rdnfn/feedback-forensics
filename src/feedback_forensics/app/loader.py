@@ -79,40 +79,19 @@ def create_votes_df(results_dir: pathlib.Path) -> list[dict]:
     # add vote data column
     full_df["votes_dicts"] = full_df["votes"].apply(ast.literal_eval)
 
-    def get_voting_data_columns(row):
-        # votes are saved as dict with principle_id as key
-        # and True, False, or None as value
-        vote_dict = row["votes_dicts"]
-        vote_principle_ids = list(vote_dict.keys())
-        vote_principles = [principles_by_id[str(id)] for id in vote_principle_ids]
-        vote_values = list(vote_dict.values())
+    # Instead of exploding into rows, create columns for each principle
+    for principle_id, principle_text in principles_by_id.items():
+        column_name = f"annotation_principle_{principle_id}"
 
-        return vote_principle_ids, vote_principles, vote_values
-
-    (
-        full_df["principle_id"],
-        full_df["principle"],
-        full_df["vote"],
-    ) = zip(*full_df.apply(get_voting_data_columns, axis=1))
-
-    # explode into multiple rows
-    # such that each row contains one principle and vote
-    # (rather than one principle and a dict of multiple votes)
-    full_df = full_df.explode(["principle_id", "principle", "vote"])
-
-    # sanity check: make sure our length is correct
-    if len(full_df) != len(comparison_df) * len(principles_by_id):
-        votes_per_comparison = full_df.value_counts("comparison_id")
-        max_votes = full_df.groupby("principle_id").size().max()
-        min_votes = full_df.groupby("principle_id").size().min()
-        logger.info(
-            f"Note: not all principles have same number of votes (max: {max_votes} min: {min_votes}). This observation is not necessarily a problem, just indicating that ~{1 - min_votes/max_votes:.3f}% of votes may have been faulty."
+        # Extract vote for this principle and convert to string
+        full_df[column_name] = full_df["votes_dicts"].apply(
+            lambda x: convert_vote_to_string(x.get(principle_id, None))
         )
-
-    # convert votes from True/False/None to strings
-    full_df["vote"] = full_df["vote"].apply(convert_vote_to_string)
 
     # add a weight column
     full_df["weight"] = 1
+
+    # Clean up temporary columns if no longer needed
+    full_df = full_df.drop(columns=["votes_dicts"])
 
     return full_df
