@@ -129,20 +129,19 @@ def compute_metrics(votes_dict: dict) -> dict:
         principle = annotator_metadata[annotator_col]["principle_text"]
 
         # check if annotator_col agrees with ref_annotator_col per row
-        def get_row_agreement(row, annotator_col: str, ref_annotator_col: str):
-            if row[annotator_col] in ["text_a", "text_b"]:
-                if row[annotator_col] == row[ref_annotator_col]:
-                    return "Agree"
-                else:
-                    return "Disagree"
-            else:
-                return "Not applicable"
+        # Vectorized implementation instead of apply for better performance
+        # Create masks for different conditions
+        valid_votes_mask = votes_df[annotator_col].isin(["text_a", "text_b"])
+        agree_mask = (
+            votes_df[annotator_col] == votes_df[ref_annotator_col]
+        ) & valid_votes_mask
+        disagree_mask = valid_votes_mask & ~agree_mask
 
-        agreement: pd.Series = votes_df.apply(
-            get_row_agreement,
-            axis=1,
-            args=(annotator_col, ref_annotator_col),
-        )
+        # Initialize with "Not applicable" values
+        agreement = pd.Series("Not applicable", index=votes_df.index)
+        # Set values based on masks
+        agreement[agree_mask] = "Agree"
+        agreement[disagree_mask] = "Disagree"
 
         value_counts = agreement.value_counts(sort=False, dropna=False)
         value_counts = value_counts.fillna(0)
