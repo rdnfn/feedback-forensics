@@ -6,17 +6,22 @@ from feedback_forensics.app.plotting_v2.table import get_table_contents_from_met
 
 
 def generate_plot(
-    votes_df_dict: dict[str, pd.DataFrame],
+    votes_dicts: dict[str, dict],
 ):
 
     # compute metrics for each dataset
     overall_metrics = {}
     metrics = {}
-    for dataset_name, votes_df in votes_df_dict.items():
+    for dataset_name, votes_dict in votes_dicts.items():
         overall_metrics[dataset_name] = (
-            feedback_forensics.app.metrics.get_overall_metrics(votes_df)
+            feedback_forensics.app.metrics.get_overall_metrics(
+                votes_dict["df"],
+                ref_annotator_col=votes_dict["reference_annotator_col"],
+            )
         )
-        metrics[dataset_name] = feedback_forensics.app.metrics.compute_metrics(votes_df)
+        metrics[dataset_name] = feedback_forensics.app.metrics.compute_metrics(
+            votes_dict
+        )
 
     overall_metrics_df = pd.DataFrame(overall_metrics)
 

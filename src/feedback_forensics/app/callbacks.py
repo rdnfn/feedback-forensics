@@ -7,7 +7,7 @@ import gradio as gr
 import pandas as pd
 from loguru import logger
 
-from feedback_forensics.app.loader import get_votes_df
+from feedback_forensics.app.loader import get_votes_dict
 import feedback_forensics.app.plotting
 import feedback_forensics.app.plotting_v2
 from feedback_forensics.app.utils import get_csv_columns
@@ -29,26 +29,26 @@ from feedback_forensics.app.url_parser import (
 )
 
 
-def split_votes_dfs(
-    votes_dfs: dict[str, pd.DataFrame],
+def split_votes_dicts(
+    votes_dicts: dict[str, dict],
     split_col: str,
     selected_vals: list[str] | None = None,
 ) -> dict[str, pd.DataFrame]:
-    """Split votes_dfs by split_col.
+    """Split votes data by split_col.
 
     First assert that only one votes_df in vote_dfs, and split that votes_df into multiple, based on the unique values of split_col.
 
     Args:
-        votes_dfs: Dictionary mapping dataset names to DataFrames
+        votes_dicts: Dictionary mapping dataset names to dicts with keys "df" and "annotator_metadata"
         split_col: Column to split on
         selected_vals: Optional list of values to filter split_col by. If None, use all values.
 
     Returns:
         Dictionary mapping split values to filtered DataFrames
     """
-    assert len(votes_dfs) == 1, "Only one votes_df is supported for now"
-    votes_df = list(votes_dfs.values())[0]
-    split_dfs = {}
+    assert len(votes_dicts) == 1, "Only one votes_df is supported for now"
+    votes_dict = list(votes_dicts.values())[0]
+    votes_df = votes_dict["df"]
     votes_df[split_col] = votes_df[split_col].astype(str)
 
     if selected_vals:
@@ -56,10 +56,16 @@ def split_votes_dfs(
         votes_df = votes_df[votes_df[split_col].isin(selected_vals)]
 
     grouped_df = votes_df.groupby(split_col)
-    for name, group in grouped_df:
-        split_dfs[name] = group
 
-    return split_dfs
+    split_dicts = {}
+    for name, group in grouped_df:
+        split_dicts[name] = {
+            "df": group,
+            "annotator_metadata": votes_dict["annotator_metadata"],
+            "reference_annotator_col": votes_dict["reference_annotator_col"],
+        }
+
+    return split_dicts
 
 
 def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
@@ -87,31 +93,20 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             return {out["plot"]: gr.Plot()}
         gr.Info(f"Loading data for {datasets}...", duration=3)
 
-        votes_dfs = {}
+        votes_dicts = {}
         for dataset in datasets:
             dataset_config = data[state["avail_datasets"]][dataset]
             path = dataset_config.path
             # check results dir inside the path
             results_dir = pathlib.Path(path) / "results"
-            votes_df: pd.DataFrame = get_votes_df(results_dir, cache=cache)
+            votes_dict = get_votes_dict(results_dir, cache=cache)
 
-            votes_dfs[dataset] = votes_df
-
-        # fig = feedback_forensics.app.plotting.generate_plot(
-        #    votes_df,
-        #    unfiltered_df=unfiltered_df,
-        #    show_examples=show_individual_prefs,
-        #    sort_examples_by_agreement=(
-        #        True if pref_order == "By reconstruction success" else False
-        #    ),
-        #    shown_metric_names=metrics,
-        #    plot_col_name=plot_col_name,
-        # )
+            votes_dicts[dataset] = votes_dict
 
         # parsing of potential url params
         if split_col != NONE_SELECTED_VALUE and split_col is not None:
 
-            if len(votes_dfs) > 1:
+            if len(votes_dicts) > 1:
                 raise gr.Error(
                     "Only one votes_df is supported for now when splitting by column"
                 )
@@ -121,12 +116,12 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 or set(selected_vals)
                 == set(inp["split_col_selected_vals_dropdown"].choices)
             ):
-                votes_dfs = split_votes_dfs(votes_dfs, split_col)
+                votes_dicts = split_votes_dicts(votes_dicts, split_col)
             else:
-                votes_dfs = split_votes_dfs(votes_dfs, split_col, selected_vals)
+                votes_dicts = split_votes_dicts(votes_dicts, split_col, selected_vals)
 
         fig = feedback_forensics.app.plotting_v2.generate_plot(
-            votes_df_dict=votes_dfs,
+            votes_dicts=votes_dicts,
         )
 
         plot = gr.Plot(fig)
@@ -220,8 +215,8 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         dataset_config = data[state["avail_datasets"]][dataset]
         results_dir = pathlib.Path(dataset_config.path) / "results"
         cache = data[state["cache"]]
-        votes_df: pd.DataFrame = get_votes_df(results_dir, cache=cache)
-        votes_df = votes_df.groupby("comparison_id").first()
+        votes_dict = get_votes_dict(results_dir, cache=cache)
+        votes_df = votes_dict["df"]
         value_counts = votes_df[col_name].value_counts()
         avail_values = [
             (count, f"{val} ({count})", str(val)) for val, count in value_counts.items()

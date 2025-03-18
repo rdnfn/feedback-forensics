@@ -2,6 +2,8 @@
 
 import pandas as pd
 
+from loguru import logger
+
 
 def get_agreement(value_counts: pd.Series) -> float:
     return value_counts.get("Agree", 0) / value_counts.sum()
@@ -81,12 +83,12 @@ def get_not_applicable(value_counts: pd.Series) -> int:
     return value_counts.get("Not applicable", 0)
 
 
-def compute_metrics(votes_df: pd.DataFrame, baseline_metrics: dict = None) -> dict:
+def compute_metrics(votes_dict: dict) -> dict:
 
     # votes_df is a pd.DataFrame with one row
     # per vote, and columns "comparison_id", "principle", "vote"
 
-    metric_fn = {
+    metric_fns = {
         "agreement": get_agreement,
         "acc": get_acc,
         "relevance": get_relevance,
@@ -98,23 +100,22 @@ def compute_metrics(votes_df: pd.DataFrame, baseline_metrics: dict = None) -> di
         "not_applicable": get_not_applicable,
     }
 
-    principles = votes_df["principle"].unique()
-    num_pairs = len(votes_df["comparison_id"].unique())
+    votes_df: pd.DataFrame = votes_dict["df"]
+    annotator_metadata = votes_dict["annotator_metadata"]
+    ref_annotator_col = votes_dict["reference_annotator_col"]
+
+    annotator_cols = list(annotator_metadata.keys())
+    principles = [annotator_metadata[col]["principle_text"] for col in annotator_cols]
+    num_pairs = len(votes_df)
 
     metrics = {}
 
-    # slightly faster to make data types categorical
-    votes_df = votes_df.assign(
-        principle=votes_df["principle"].astype("category"),
-        vote=votes_df["vote"].astype("category"),
-    )
-
     # more efficient than doing operation for each principle group separately
-    value_counts_all = (
-        votes_df.groupby(["principle", "vote"], observed=False)
-        .size()
-        .unstack(fill_value=0)
-    )
+    # value_counts_all = (
+    #    votes_df.groupby(["principle", "vote"], observed=False)
+    #    .size()
+    #    .unstack(fill_value=0)
+    # )
 
     # this is equivalent to:
     # grouped = votes_df.groupby("principle", observed=False)
@@ -123,38 +124,41 @@ def compute_metrics(votes_df: pd.DataFrame, baseline_metrics: dict = None) -> di
     #         sort=False, dropna=False
     #     )
 
-    for principle in principles:
-        value_counts: pd.Series = value_counts_all.loc[principle]
+    for annotator_col in annotator_cols:
+
+        principle = annotator_metadata[annotator_col]["principle_text"]
+
+        # check if annotator_col agrees with ref_annotator_col per row
+        def get_row_agreement(row, annotator_col: str, ref_annotator_col: str):
+            if row[annotator_col] in ["text_a", "text_b"]:
+                if row[annotator_col] == row[ref_annotator_col]:
+                    return "Agree"
+                else:
+                    return "Disagree"
+            else:
+                return "Not applicable"
+
+        agreement: pd.Series = votes_df.apply(
+            get_row_agreement,
+            axis=1,
+            args=(annotator_col, ref_annotator_col),
+        )
+
+        value_counts = agreement.value_counts(sort=False, dropna=False)
         value_counts = value_counts.fillna(0)
 
-        for metric in metric_fn.keys():
-            if metric not in metrics:
-                metrics[metric] = {}
-            if "by_principle" not in metrics[metric]:
-                metrics[metric]["by_principle"] = {}
-            metrics[metric]["by_principle"][principle] = metric_fn[metric](value_counts)
+        for metric_name, metric_fn in metric_fns.items():
+            if metric_name not in metrics:
+                metrics[metric_name] = {}
+            if "by_principle" not in metrics[metric_name]:
+                metrics[metric_name]["by_principle"] = {}
+            metrics[metric_name]["by_principle"][principle] = metric_fn(value_counts)
 
-        if baseline_metrics is not None:
-            for metric in metric_fn.keys():
-                if metric + "_diff" not in metrics:
-                    metrics[metric + "_diff"] = {"by_principle": {}}
-                if metric + "_base" not in metrics:
-                    metrics[metric + "_base"] = {"by_principle": {}}
-
-                metrics[metric + "_diff"]["by_principle"][principle] = (
-                    metrics[metric]["by_principle"][principle]
-                    - baseline_metrics["metrics"][metric]["by_principle"][principle]
-                )
-
-                metrics[metric + "_base"]["by_principle"][principle] = baseline_metrics[
-                    "metrics"
-                ][metric]["by_principle"][principle]
-
-    for metric in metrics.keys():
-        metrics[metric]["principle_order"] = sorted(
+    for metric_name, metric_dict in metrics.items():
+        metric_dict["principle_order"] = sorted(
             principles,
             key=lambda x: (
-                metrics[metric]["by_principle"][x],
+                metric_dict["by_principle"][x],
                 metrics["relevance"]["by_principle"][x],
             ),
         )
@@ -276,7 +280,7 @@ def get_ordering_options(
     return ordering
 
 
-def get_overall_metrics(votes_df: pd.DataFrame) -> dict:
+def get_overall_metrics(votes_df: pd.DataFrame, ref_annotator_col: str) -> dict:
     """Compute overall metrics
 
     Includes
@@ -285,6 +289,14 @@ def get_overall_metrics(votes_df: pd.DataFrame) -> dict:
       - percentage of votes that are text_b,
       - average length winning text
       - average length losing text
+
+    Args:
+        votes_df: pd.DataFrame
+        ref_annotator_col: name of the column that contains the reference
+            annotator's preference, e.g. "preferred_text" usually
+
+    Returns:
+        dict: overall metrics
     """
 
     # get a single row per comparison_id
@@ -292,17 +304,16 @@ def get_overall_metrics(votes_df: pd.DataFrame) -> dict:
 
     # if preferred_text is text_a, preferred_text_str is value of column "text_a" (otherwise of "text_b")
     votes_df["preferred_text_str"] = votes_df.apply(
-        lambda x: x["text_a"] if x["preferred_text"] == "text_a" else x["text_b"],
+        lambda x: x["text_a"] if x[ref_annotator_col] == "text_a" else x["text_b"],
         axis=1,
     )
     votes_df["rejected_text_str"] = votes_df.apply(
-        lambda x: x["text_b"] if x["preferred_text"] == "text_a" else x["text_a"],
+        lambda x: x["text_b"] if x[ref_annotator_col] == "text_a" else x["text_a"],
         axis=1,
     )
 
     num_votes = len(votes_df)
-    num_text_a_preferred = votes_df["preferred_text"].value_counts().get("text_a", 0)
-    num_text_b_preferred = votes_df["preferred_text"].value_counts().get("text_b", 0)
+    num_text_a_preferred = votes_df[ref_annotator_col].value_counts().get("text_a", 0)
 
     average_length_text_a = votes_df["text_a"].str.len().mean()
     average_length_text_b = votes_df["text_b"].str.len().mean()
@@ -318,7 +329,7 @@ def get_overall_metrics(votes_df: pd.DataFrame) -> dict:
         {True: "text_a", False: "text_b"}
     )
     votes_df["longer_text_preferred"] = (
-        votes_df["preferred_text"] == votes_df["longer_text"]
+        votes_df[ref_annotator_col] == votes_df["longer_text"]
     )
 
     num_longer_text_preferred = votes_df["longer_text_preferred"].sum()
