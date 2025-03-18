@@ -94,23 +94,34 @@ def create_votes_dict(results_dir: pathlib.Path) -> list[dict]:
             lambda x: convert_vote_to_string(x.get(int(principle_id), None))
         )
 
-        def convert_from_agree_disagree_to_text_a_text_b(row, column_name: str):
-            assert row["preferred_text"] in [
-                "text_a",
-                "text_b",
-            ], "Tie or other votes currently not supported."
-            pref_text = row["preferred_text"]
-            rejected_text = "text_b" if pref_text == "text_a" else "text_a"
-            if row[column_name] == "Agree":
-                return pref_text
-            elif row[column_name] == "Disagree":
-                return rejected_text
-            else:
-                return "Not applicable"
+        # Vectorized implementation instead of row-by-row apply
+        # First check that all preferred_text values are either text_a or text_b
+        assert (
+            full_df["preferred_text"].isin(["text_a", "text_b"]).all()
+        ), "Tie or other votes currently not supported."
 
-        full_df[column_name] = full_df.apply(
-            convert_from_agree_disagree_to_text_a_text_b, axis=1, args=(column_name,)
+        # Create a Series for the rejected text (opposite of preferred_text)
+        rejected_text = pd.Series(
+            [
+                "text_b" if pt == "text_a" else "text_a"
+                for pt in full_df["preferred_text"]
+            ],
+            index=full_df.index,
         )
+
+        # Create masks based on the current column values
+        agree_mask = full_df[column_name] == "Agree"
+        disagree_mask = full_df[column_name] == "Disagree"
+
+        # Create a copy of the column to store results
+        result = pd.Series("Not applicable", index=full_df.index)
+
+        # Set values based on conditions
+        result[agree_mask] = full_df.loc[agree_mask, "preferred_text"].values
+        result[disagree_mask] = rejected_text.loc[disagree_mask].values
+
+        # Update the column
+        full_df[column_name] = result
 
         # ensure column is categorical
         full_df[column_name] = full_df[column_name].astype("category")
