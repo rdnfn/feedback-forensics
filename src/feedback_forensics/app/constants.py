@@ -20,27 +20,6 @@ DEFAULT_DATASET_NAMES = json.loads(os.getenv("FF_DEFAULT_DATASET_NAMES", "[]"))
 USERNAME = os.getenv("FF_APP_USER")
 PASSWORD = os.getenv("FF_APP_PW")
 
-### Layout and dimensions
-PRINCIPLE_SHORT_LENGTH = 70  # length of principle shown before cutting off
-# this sets where the actual plot starts and ends (individual datapoints)
-END_RECONSTRUCTION_PLOT_X = 0.99
-
-# px values for different components
-FIG_HEIGHT_PER_PRINCIPLE = 20  # height of each principle in px
-FIG_HEIGHT_HEADER = 45
-FIG_HEIGHT_BOTTOM = 10
-FIG_GAP_BETWEEN_TABLES = 50
-FIG_GAP_BETWEEN_HEADER_AND_TABLE = 20
-
-# columns size
-SPACE_PER_NUM_COL = 0.05
-
-
-PRINCIPLE_END_X = 0.40
-METRICS_START_X = PRINCIPLE_END_X + 0.01
-MENU_X = 0.04
-
-
 # Text style
 FONT_FAMILY = '"Open Sans", verdana, arial, sans-serif'
 FONT_COLOR = "white"
