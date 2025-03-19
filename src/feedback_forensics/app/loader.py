@@ -51,13 +51,13 @@ def get_votes_dict(results_dir: pathlib.Path, cache: dict) -> dict:
 
 
 def create_votes_dict(results_dir: pathlib.Path) -> list[dict]:
-    """Create the votes dataframe from log files.
+    """Create the votes dataframe and voter metadata from ICAI log files.
 
     Args:
         results_dir (pathlib.Path): Path to the results directory.
 
     Returns:
-        pd.DataFrame: The votes dataframe.
+       dict: A dictionary containing the votes dataframe and annotator metadata.
     """
 
     # load relevant data from experiment logs
