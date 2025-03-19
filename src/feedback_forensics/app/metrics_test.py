@@ -152,8 +152,7 @@ def test_compute_metrics():
     assert p1_metrics["relevance"] == 0.5  # 1 relevant out of 2 total
 
     # Test with baseline metrics
-    baseline_metrics = compute_metrics(votes_df)
-    metrics_with_baseline = compute_metrics(votes_df, baseline_metrics=baseline_metrics)
+    metrics_with_baseline = compute_metrics(votes_df)
 
     # Check that diff and base metrics exist
     assert "strength_diff" in metrics_with_baseline["metrics"]
