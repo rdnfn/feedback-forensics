@@ -36,53 +36,6 @@ FIG_GAP_BETWEEN_HEADER_AND_TABLE = 20
 SPACE_PER_NUM_COL = 0.05
 
 
-def get_fig_proportions_y(num_principles: int, num_metrics: int):
-    """Get the y-proportions for the figure for different components.
-
-    This is all relative, with 0 being the bottom of the figure and 1 being the top."""
-
-    metrics_table_height_px = (num_metrics + 2) * FIG_HEIGHT_PER_PRINCIPLE
-
-    principles_height_px = FIG_HEIGHT_PER_PRINCIPLE * num_principles
-
-    total_height_px = (
-        FIG_HEIGHT_HEADER
-        + metrics_table_height_px
-        + FIG_GAP_BETWEEN_TABLES
-        + principles_height_px
-        + FIG_HEIGHT_BOTTOM
-    )
-
-    metrics_table_bottom_y_px = (
-        FIG_HEIGHT_BOTTOM + principles_height_px + FIG_GAP_BETWEEN_TABLES
-    )
-    metrics_table_top_y_px = metrics_table_bottom_y_px + metrics_table_height_px
-
-    table_top_y_px = FIG_HEIGHT_BOTTOM + principles_height_px
-    table_bottom_y_px = FIG_HEIGHT_BOTTOM
-    header_bottom_y_px = table_top_y_px + FIG_GAP_BETWEEN_HEADER_AND_TABLE
-
-    return {
-        "principle_table": {
-            "relative": {
-                "heading_y": header_bottom_y_px / total_height_px,
-                "table_top_y": table_top_y_px / total_height_px,
-                "table_bottom_y": table_bottom_y_px / total_height_px,
-                "metrics_table_top_y": metrics_table_top_y_px / total_height_px,
-                "metrics_table_bottom_y": metrics_table_bottom_y_px / total_height_px,
-                "row_height": FIG_HEIGHT_PER_PRINCIPLE / total_height_px,
-            },
-            "absolute": {
-                "heading_bottom_y": header_bottom_y_px,
-                "table_top_y": table_top_y_px,
-                "table_bottom_y": table_bottom_y_px,
-                "total_height": total_height_px,
-                "principles_height": principles_height_px,
-            },
-        }
-    }
-
-
 PRINCIPLE_END_X = 0.40
 METRICS_START_X = PRINCIPLE_END_X + 0.01
 MENU_X = 0.04
