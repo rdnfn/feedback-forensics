@@ -41,7 +41,7 @@ pip install feedback-forensics
 To start the app locally, run the following command in your terminal:
 
 ```sh
-feedback-forensics
+feedback-forensics -d data/output/example
 ```
 
 This will start the Gradio interface on localhost port 7860 (e.g. http://localhost:7860).
