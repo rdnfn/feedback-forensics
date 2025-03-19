@@ -113,7 +113,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             else:
                 votes_dicts = split_votes_dicts(votes_dicts, split_col, selected_vals)
 
-        fig = feedback_forensics.app.plotting_v2.generate_plot(
+        fig = feedback_forensics.app.plotting.generate_plot(
             votes_dicts=votes_dicts,
         )
 
