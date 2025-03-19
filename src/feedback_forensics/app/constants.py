@@ -8,8 +8,6 @@ import importlib.metadata
 
 VERSION = importlib.metadata.version("feedback_forensics")
 
-DEFAULT_DATASET_PATH = "exp/outputs/prism_v2"
-
 # Constants from environment vars
 # get env var with github token
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
@@ -19,9 +17,8 @@ DEFAULT_DATASET_NAMES = json.loads(os.getenv("FF_DEFAULT_DATASET_NAMES", "[]"))
 
 # App username and password
 # Will block app behind login if env vars are set
-USERNAME = os.getenv("ICAI_APP_USER")
-PASSWORD = os.getenv("ICAI_APP_PW")
-ALLOW_LOCAL_RESULTS = os.getenv("ICAI_ALLOW_LOCAL_RESULTS", "true").lower() == "true"
+USERNAME = os.getenv("FF_APP_USER")
+PASSWORD = os.getenv("FF_APP_PW")
 
 ### Layout and dimensions
 PRINCIPLE_SHORT_LENGTH = 70  # length of principle shown before cutting off

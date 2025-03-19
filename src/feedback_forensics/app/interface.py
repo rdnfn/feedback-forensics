@@ -1,13 +1,10 @@
 import gradio as gr
 import pandas as pd
-import json
 
 from feedback_forensics.app.callbacks import generate_callbacks, attach_callbacks
 from feedback_forensics.app.constants import (
     NONE_SELECTED_VALUE,
     VERSION,
-    ALLOW_LOCAL_RESULTS,
-    DEFAULT_DATASET_PATH,
 )
 from feedback_forensics.app.datasets import (
     get_available_datasets,
@@ -18,7 +15,7 @@ from feedback_forensics.app.info_texts import (
     get_datasets_description,
     METRICS_DESCRIPTION,
 )
-from feedback_forensics.app.metrics import METRIC_COL_OPTIONS
+
 from feedback_forensics.app.styling import CUSTOM_CSS, THEME
 from feedback_forensics.app.utils import get_gradio_image_path
 
