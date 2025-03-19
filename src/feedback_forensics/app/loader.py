@@ -79,6 +79,10 @@ def create_votes_dict(results_dir: pathlib.Path) -> list[dict]:
     full_df["votes_dicts"] = full_df["votes"].apply(ast.literal_eval)
 
     annotator_metadata = {}
+    annotator_metadata["preferred_text"] = {
+        "variant": "ground_truth",
+        "annotator_visible_name": "Ground truth",
+    }
 
     # Create separate columns for each principle annotation
     for principle_id, principle_text in principles_by_id.items():

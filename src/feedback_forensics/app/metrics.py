@@ -105,28 +105,16 @@ def compute_metrics(votes_dict: dict) -> dict:
     ref_annotator_col = votes_dict["reference_annotator_col"]
 
     annotator_cols = list(annotator_metadata.keys())
-    principles = [annotator_metadata[col]["principle_text"] for col in annotator_cols]
+    annotator_names = [
+        annotator_metadata[col]["annotator_visible_name"] for col in annotator_cols
+    ]
     num_pairs = len(votes_df)
 
     metrics = {}
 
-    # more efficient than doing operation for each principle group separately
-    # value_counts_all = (
-    #    votes_df.groupby(["principle", "vote"], observed=False)
-    #    .size()
-    #    .unstack(fill_value=0)
-    # )
-
-    # this is equivalent to:
-    # grouped = votes_df.groupby("principle", observed=False)
-    # for principle in principles:
-    #     value_counts = grouped.get_group(principle)["vote"].value_counts(
-    #         sort=False, dropna=False
-    #     )
-
     for annotator_col in annotator_cols:
 
-        principle = annotator_metadata[annotator_col]["principle_text"]
+        annotator_name = annotator_metadata[annotator_col]["annotator_visible_name"]
 
         # check if annotator_col agrees with ref_annotator_col per row
         # Vectorized implementation instead of apply for better performance
@@ -149,21 +137,20 @@ def compute_metrics(votes_dict: dict) -> dict:
         for metric_name, metric_fn in metric_fns.items():
             if metric_name not in metrics:
                 metrics[metric_name] = {}
-            if "by_principle" not in metrics[metric_name]:
-                metrics[metric_name]["by_principle"] = {}
-            metrics[metric_name]["by_principle"][principle] = metric_fn(value_counts)
+            if "by_annotator" not in metrics[metric_name]:
+                metrics[metric_name]["by_annotator"] = {}
+            metrics[metric_name]["by_annotator"][annotator_name] = metric_fn(
+                value_counts
+            )
 
     for metric_name, metric_dict in metrics.items():
-        metric_dict["principle_order"] = sorted(
-            principles,
-            key=lambda x: (
-                metric_dict["by_principle"][x],
-                metrics["relevance"]["by_principle"][x],
-            ),
+        metric_dict["annotator_order"] = sorted(
+            annotator_names,
+            key=lambda x: (metric_dict["by_annotator"][x],),
         )
 
     return {
-        "principles": principles,
+        "annotator_names": annotator_names,
         "num_pairs": num_pairs,
         "metrics": metrics,
     }
@@ -208,8 +195,8 @@ METRIC_COL_OPTIONS = {
 }
 
 
-def get_metric_cols_by_principle(
-    principle: str,
+def get_metric_cols_by_annotator(
+    annotator_name: str,
     metrics: dict,
     metric_names: str,
     metrics_cols_start_y: float,
@@ -221,7 +208,7 @@ def get_metric_cols_by_principle(
     return [
         [
             metrics_cols_start_y + (i + 1) * metric_col_width,
-            metrics["metrics"][metric_name]["by_principle"][principle],
+            metrics["metrics"][metric_name]["by_annotator"][annotator_name],
             METRIC_COL_OPTIONS[metric_name]["short"],
             METRIC_COL_OPTIONS[metric_name]["descr"],
         ]
@@ -237,31 +224,31 @@ def get_ordering_options(
     order_options = {
         "agreement": [
             "Agreement ↓",
-            metrics["metrics"]["agreement"]["principle_order"],
+            metrics["metrics"]["agreement"]["annotator_order"],
         ],
         "acc": [
             "Accuracy ↓",
-            metrics["metrics"]["acc"]["principle_order"],
+            metrics["metrics"]["acc"]["annotator_order"],
         ],
         "relevance": [
             "Relevance ↓",
-            metrics["metrics"]["relevance"]["principle_order"],
+            metrics["metrics"]["relevance"]["annotator_order"],
         ],
         "principle_strength": [
             "Principle strength ↓",
-            metrics["metrics"]["principle_strength"]["principle_order"],
+            metrics["metrics"]["principle_strength"]["annotator_order"],
         ],
         "cohens_kappa": [
             "Cohen's kappa ↓",
-            metrics["metrics"]["cohens_kappa"]["principle_order"],
+            metrics["metrics"]["cohens_kappa"]["annotator_order"],
         ],
         "principle_strength_base": [
             "Principle strength on full dataset ↓",
-            metrics["metrics"]["principle_strength_base"]["principle_order"],
+            metrics["metrics"]["principle_strength_base"]["annotator_order"],
         ],
         "principle_strength_diff": [
             "Principle strength difference ↓",
-            metrics["metrics"]["principle_strength_diff"]["principle_order"],
+            metrics["metrics"]["principle_strength_diff"]["annotator_order"],
         ],
     }
 

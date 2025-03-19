@@ -430,7 +430,7 @@ def get_table_contents_from_metrics(metrics: dict[str, dict]) -> dict:
     Args:
         metrics: A dictionary where keys are dataset names and values are
                 metric dictionaries containing metrics for that dataset.
-                Structure: {dataset_name: {metrics: {metric_name: {by_principle: ...}}}}
+                Structure: {dataset_name: {metrics: {metric_name: {by_annotator: ...}}}}
 
     Returns:
         A dictionary of table views, where each view contains data, values, and colors
@@ -451,7 +451,7 @@ def get_table_contents_from_metrics(metrics: dict[str, dict]) -> dict:
             # Create DataFrame with principles as rows and datasets as columns
             data = pd.DataFrame(
                 {
-                    dataset_name: metrics_dict["metrics"][metric_name]["by_principle"]
+                    dataset_name: metrics_dict["metrics"][metric_name]["by_annotator"]
                     for dataset_name, metrics_dict in metrics.items()
                 }
             )

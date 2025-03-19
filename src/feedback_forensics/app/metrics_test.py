@@ -139,12 +139,12 @@ def test_compute_metrics():
     assert "metrics" in metrics
 
     # Check principles
-    assert set(metrics["principles"]) == {"p1", "p2"}
+    assert set(metrics["annotator_names"]) == {"p1", "p2"}
     assert metrics["num_pairs"] == 2
 
     # Check metrics for p1
     p1_metrics = {
-        metric: metrics["metrics"][metric]["by_principle"]["p1"]
+        metric: metrics["metrics"][metric]["by_annotator"]["p1"]
         for metric in ["agreement", "acc", "relevance", "strength"]
     }
     assert p1_metrics["agreement"] == 0.5  # 1 agree out of 2 total
