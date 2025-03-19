@@ -66,12 +66,6 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
     def load_data(
         data: dict,
-        *,
-        reset_filters_if_new: bool = True,
-        used_from_button: bool = False,
-        filterable_columns: list[str] | None = None,
-        dataset_name: str = None,
-        dataset_description: str = None,
     ) -> dict:
         """Load data with dictionary inputs instead of individual arguments."""
         datasets = data[inp["active_datasets_dropdown"]]
@@ -141,8 +135,10 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             ]
         return avail_cols
 
-    def update_col_split_dropdowns(data: dict):
-        """Update column and split value dropdowns."""
+    def update_single_dataset_menus(data: dict):
+        """Update menus for single dataset analysis
+
+        Includes splitting dataset by column and selecting annotators."""
 
         datasets = data[inp["active_datasets_dropdown"]]
 
@@ -167,6 +163,9 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 ),
                 inp["split_col_non_available_md"]: gr.Markdown(
                     visible=True,
+                ),
+                inp["advanced_settings_accordion"]: gr.Accordion(
+                    visible=False,
                 ),
             }
         else:
@@ -200,6 +199,9 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 ),
                 inp["split_col_non_available_md"]: gr.Markdown(
                     visible=False,
+                ),
+                inp["advanced_settings_accordion"]: gr.Accordion(
+                    visible=True,
                 ),
             }
 
@@ -273,7 +275,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             )
         if "col" not in config:
             # update split col dropdowns even if no column is selected
-            split_col_interface_dict = update_col_split_dropdowns(data)
+            split_col_interface_dict = update_single_dataset_menus(data)
             return_dict = {
                 **return_dict,
                 **split_col_interface_dict,
@@ -308,7 +310,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 else:
                     data[inp["split_col_dropdown"]] = split_col
 
-                split_col_interface_dict = update_col_split_dropdowns(data)
+                split_col_interface_dict = update_single_dataset_menus(data)
                 return_dict = {
                     **return_dict,
                     **split_col_interface_dict,
@@ -347,7 +349,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
     return {
         "load_data": load_data,
         "load_from_query_params": load_from_query_params,
-        "update_col_split_dropdowns": update_col_split_dropdowns,
+        "update_single_dataset_menus": update_single_dataset_menus,
         "update_col_split_value_dropdown": update_col_split_value_dropdown,
     }
 
@@ -362,6 +364,8 @@ def attach_callbacks(
         state["avail_datasets"],
         inp["split_col_dropdown"],
         inp["split_col_selected_vals_dropdown"],
+        inp["annotator_rows_dropdown"],
+        inp["annotator_cols_dropdown"],
         state["app_url"],
         state["cache"],
     }
@@ -370,6 +374,9 @@ def attach_callbacks(
         inp["split_col_dropdown"],
         inp["split_col_selected_vals_dropdown"],
         inp["split_col_non_available_md"],
+        inp["advanced_settings_accordion"],
+        inp["annotator_rows_dropdown"],
+        inp["annotator_cols_dropdown"],
         inp["load_btn"],
     ]
 
@@ -377,6 +384,9 @@ def attach_callbacks(
         inp["split_col_dropdown"],
         inp["split_col_selected_vals_dropdown"],
         inp["split_col_non_available_md"],
+        inp["advanced_settings_accordion"],
+        inp["annotator_rows_dropdown"],
+        inp["annotator_cols_dropdown"],
         out["share_link"],
         out["plot"],
         state["cache"],
@@ -390,9 +400,10 @@ def attach_callbacks(
         outputs=load_data_outputs,
     )
 
-    # update column split dropdowns when active dataset is changed
+    # update single dataset menus when active dataset is changed
+    # (e.g. hiding this menu if multiple datasets are selected)
     inp["active_datasets_dropdown"].input(
-        callbacks["update_col_split_dropdowns"],
+        callbacks["update_single_dataset_menus"],
         inputs=all_inputs,
         outputs=dataset_selection_outputs,
     )

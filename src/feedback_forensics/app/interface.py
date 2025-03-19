@@ -130,6 +130,13 @@ def _create_configuration_panel(inp: dict, state: dict):
                         get_datasets_description(datasets),
                         container=True,
                     )
+
+                # single dataset configuration
+                inp["split_col_non_available_md"] = gr.Markdown(
+                    value="<div style='opacity: 0.6'><i>Some configuration options (grouping by column, selecting annotators) are only available when selecting a single dataset. Select a single dataset to use these features.</i></div>",
+                    visible=True,
+                    container=True,
+                )
                 inp["split_col_dropdown"] = gr.Dropdown(
                     label="🗃️ Group dataset by column",
                     info="Create separate results for data subsets grouped by this column's values. If no column is selected, entire original dataset will be analyzed. ",
@@ -147,11 +154,26 @@ def _create_configuration_panel(inp: dict, state: dict):
                     interactive=False,
                     visible=False,
                 )
-                inp["split_col_non_available_md"] = gr.Markdown(
-                    value="<div style='opacity: 0.6'><i>Grouping dataset by the values of a column is only available when selecting a single dataset. Select a single dataset to use this feature.</i></div>",
-                    visible=True,
-                    container=True,
+                inp["advanced_settings_accordion"] = gr.Accordion(
+                    "🔧 Advanced settings", open=False
                 )
+                with inp["advanced_settings_accordion"]:
+                    inp["annotator_rows_dropdown"] = gr.Dropdown(
+                        label="👥↓ Annotator rows",
+                        info="Select the annotators to be included as a row in the results table. By default only objective-following annotators are included.",
+                        choices=[NONE_SELECTED_VALUE],
+                        value=[NONE_SELECTED_VALUE],
+                        multiselect=True,
+                    )
+                    inp["annotator_cols_dropdown"] = gr.Dropdown(
+                        label="👥→ Annotator columns",
+                        info="Select the annotators to be included as a column in the results table. By default only a single (ground-truth) annotator is included.",
+                        choices=["preferred_text"],
+                        value=["preferred_text"],
+                        multiselect=True,
+                    )
+
+                # final button to run analysis
                 inp["load_btn"] = gr.Button("Run analysis", variant="secondary")
 
 
