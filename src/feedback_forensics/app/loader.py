@@ -87,6 +87,7 @@ def create_votes_dict(results_dir: pathlib.Path) -> list[dict]:
             "variant": "icai_principle",
             "principle_id": principle_id,
             "principle_text": principle_text,
+            "annotator_visible_name": principle_text,
         }
 
         # Extract vote for this principle and convert to string
