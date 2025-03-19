@@ -69,6 +69,15 @@ def split_votes_dicts(
 def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
     """Generate callbacks for the ICAI app."""
 
+    def _get_annotator_col_names(
+        annotator_visible_names: list[str], annotator_metadata: dict
+    ) -> list[str]:
+        return [
+            annotator_col
+            for annotator_col, annotator_metadata in annotator_metadata.items()
+            if annotator_metadata["annotator_visible_name"] in annotator_visible_names
+        ]
+
     def load_data(
         data: dict,
     ) -> dict:
@@ -113,7 +122,35 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 votes_dicts = split_votes_dicts(votes_dicts, split_col, selected_vals)
 
         else:
-            pass
+            selected_annotator_visible_names = data[inp["annotator_cols_dropdown"]]
+            annotator_metadata = votes_dicts[datasets[0]]["annotator_metadata"]
+            annotator_cols = _get_annotator_col_names(
+                selected_annotator_visible_names, annotator_metadata
+            )
+            annotator_rows = _get_annotator_col_names(
+                data[inp["annotator_rows_dropdown"]],
+                votes_dicts[datasets[0]]["annotator_metadata"],
+            )
+
+            if len(annotator_cols) > 1:
+                assert (
+                    len(votes_dicts) == 1
+                ), "Only one votes_df is supported for now when selecting multipleannotator columns"
+                votes_dicts = {
+                    annotator_name: {
+                        "df": votes_dict["df"],
+                        "annotator_metadata": votes_dict["annotator_metadata"],
+                        "reference_annotator_col": annotator_col,
+                    }
+                    for annotator_col, annotator_name in zip(
+                        annotator_cols, selected_annotator_visible_names
+                    )
+                }
+
+            # update set of annotator rows (keys in annotator_metadata)
+            if len(annotator_rows) >= 1:
+                for votes_dict in votes_dicts.values():
+                    votes_dict["shown_annotator_rows"] = annotator_rows
 
         fig = feedback_forensics.app.plotting.generate_plot(
             votes_dicts=votes_dicts,

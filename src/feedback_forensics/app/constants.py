@@ -51,7 +51,7 @@ PAPER_BACKGROUND_COLOR = "#27272a"  # "white"  # LIGHT_GREY
 PLOT_BACKGROUND_COLOR = "#27272a"  # "white"  # LIGHT_GREY
 
 NONE_SELECTED_VALUE = "(None selected)"
-DEFAULT_ANNOTATOR_NAME = "Ground truth"
+DEFAULT_ANNOTATOR_NAME = "preferred_text"
 
 
 # Plotly config

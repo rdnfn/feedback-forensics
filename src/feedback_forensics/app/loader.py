@@ -4,6 +4,8 @@ import ast
 import pandas as pd
 from loguru import logger
 
+from feedback_forensics.app.constants import DEFAULT_ANNOTATOR_NAME
+
 
 def load_json_file(path: str):
     with open(path, "r") as f:
@@ -81,8 +83,10 @@ def create_votes_dict(results_dir: pathlib.Path) -> list[dict]:
     annotator_metadata = {}
     annotator_metadata["preferred_text"] = {
         "variant": "ground_truth",
-        "annotator_visible_name": "Ground truth",
+        "annotator_visible_name": DEFAULT_ANNOTATOR_NAME,
     }
+
+    principle_annotator_cols = []
 
     # Create separate columns for each principle annotation
     for principle_id, principle_text in principles_by_id.items():
@@ -93,6 +97,8 @@ def create_votes_dict(results_dir: pathlib.Path) -> list[dict]:
             "principle_text": principle_text,
             "annotator_visible_name": principle_text,
         }
+
+        principle_annotator_cols.append(column_name)
 
         # Extract vote for this principle and convert to string
         full_df[column_name] = full_df["votes_dicts"].apply(
@@ -139,6 +145,7 @@ def create_votes_dict(results_dir: pathlib.Path) -> list[dict]:
 
     return {
         "df": full_df,
+        "shown_annotator_rows": principle_annotator_cols,
         "annotator_metadata": annotator_metadata,
         "reference_annotator_col": "preferred_text",
     }
