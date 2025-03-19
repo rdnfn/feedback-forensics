@@ -20,6 +20,7 @@ DEFAULT_DATASET_NAMES = json.loads(os.getenv("FF_DEFAULT_DATASET_NAMES", "[]"))
 USERNAME = os.getenv("FF_APP_USER")
 PASSWORD = os.getenv("FF_APP_PW")
 
+
 # Text style
 FONT_FAMILY = '"Open Sans", verdana, arial, sans-serif'
 FONT_COLOR = "white"
@@ -50,6 +51,7 @@ PAPER_BACKGROUND_COLOR = "#27272a"  # "white"  # LIGHT_GREY
 PLOT_BACKGROUND_COLOR = "#27272a"  # "white"  # LIGHT_GREY
 
 NONE_SELECTED_VALUE = "(None selected)"
+DEFAULT_ANNOTATOR_NAME = "Ground truth"
 
 
 # Plotly config

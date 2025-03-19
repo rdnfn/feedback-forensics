@@ -158,18 +158,18 @@ def _create_configuration_panel(inp: dict, state: dict):
                     "🔧 Advanced settings", open=False
                 )
                 with inp["advanced_settings_accordion"]:
-                    inp["annotator_rows_dropdown"] = gr.Dropdown(
-                        label="👥↓ Annotator rows",
-                        info="Select the annotators to be included as a row in the results table. By default only objective-following annotators are included.",
-                        choices=[NONE_SELECTED_VALUE],
-                        value=[NONE_SELECTED_VALUE],
-                        multiselect=True,
-                    )
                     inp["annotator_cols_dropdown"] = gr.Dropdown(
                         label="👥→ Annotator columns",
                         info="Select the annotators to be included as a column in the results table. By default only a single (ground-truth) annotator is included.",
                         choices=["preferred_text"],
                         value=["preferred_text"],
+                        multiselect=True,
+                    )
+                    inp["annotator_rows_dropdown"] = gr.Dropdown(
+                        label="👥↓ Annotator rows",
+                        info="Select the annotators to be included as a row in the results table. By default only objective-following annotators are included.",
+                        choices=[NONE_SELECTED_VALUE],
+                        value=[NONE_SELECTED_VALUE],
                         multiselect=True,
                     )
 

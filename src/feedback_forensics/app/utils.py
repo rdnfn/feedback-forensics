@@ -1,5 +1,6 @@
 # general utils for app
 
+import json
 from importlib import resources
 from pathlib import Path
 import gradio as gr
@@ -33,3 +34,14 @@ def get_csv_columns(file_path: str | Path) -> list[str]:
         List of column names
     """
     return sorted(pd.read_csv(file_path, nrows=0).columns.tolist())
+
+
+def load_json_file(file_path: str | Path) -> dict:
+    """Load a JSON file.
+
+    Args:
+        file_path: Path to the JSON file
+    """
+    with open(file_path, "r", encoding="utf-8") as f:
+        content = json.load(f)
+    return content

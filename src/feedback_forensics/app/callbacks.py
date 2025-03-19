@@ -4,11 +4,16 @@ import pathlib
 
 import gradio as gr
 import pandas as pd
+from loguru import logger
 
 from feedback_forensics.app.loader import get_votes_dict
 import feedback_forensics.app.plotting
-from feedback_forensics.app.utils import get_csv_columns
-from feedback_forensics.app.constants import NONE_SELECTED_VALUE, APP_BASE_URL
+from feedback_forensics.app.utils import get_csv_columns, load_json_file
+from feedback_forensics.app.constants import (
+    NONE_SELECTED_VALUE,
+    APP_BASE_URL,
+    DEFAULT_ANNOTATOR_NAME,
+)
 from feedback_forensics.app.datasets import (
     get_available_datasets_names,
     get_default_dataset_names,
@@ -107,6 +112,9 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             else:
                 votes_dicts = split_votes_dicts(votes_dicts, split_col, selected_vals)
 
+        else:
+            pass
+
         fig = feedback_forensics.app.plotting.generate_plot(
             votes_dicts=votes_dicts,
         )
@@ -135,6 +143,40 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             ]
         return avail_cols
 
+    def _get_principle_annotator_names(dataset_name, data) -> str:
+        dataset_config = data[state["avail_datasets"]][dataset_name]
+
+        principle_path = (
+            dataset_config.path
+            / "results"
+            / "030_distilled_principles_per_cluster.json"
+        )
+        annotator_names = list(load_json_file(principle_path).values())
+
+        return annotator_names
+
+    def _get_default_annotator_cols_config(data) -> str:
+        """Get the default annotator cols config.
+
+        This sets the annotator columns to the default, and the rows to all principle annotators
+        """
+        datasets = data[inp["active_datasets_dropdown"]]
+        avail_principle_annotator_names = _get_principle_annotator_names(
+            datasets[0], data
+        )
+        return {
+            inp["annotator_cols_dropdown"]: gr.Dropdown(
+                choices=avail_principle_annotator_names + [DEFAULT_ANNOTATOR_NAME],
+                value=[DEFAULT_ANNOTATOR_NAME],
+                interactive=True,
+            ),
+            inp["annotator_rows_dropdown"]: gr.Dropdown(
+                choices=avail_principle_annotator_names + [DEFAULT_ANNOTATOR_NAME],
+                value=avail_principle_annotator_names,
+                interactive=True,
+            ),
+        }
+
     def update_single_dataset_menus(data: dict):
         """Update menus for single dataset analysis
 
@@ -149,6 +191,9 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
         if menus_inactive:
             return {
+                inp["split_col_non_available_md"]: gr.Markdown(
+                    visible=True,
+                ),
                 inp["split_col_dropdown"]: gr.Dropdown(
                     choices=[NONE_SELECTED_VALUE],
                     value=NONE_SELECTED_VALUE,
@@ -161,16 +206,12 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                     interactive=False,
                     visible=False,
                 ),
-                inp["split_col_non_available_md"]: gr.Markdown(
-                    visible=True,
-                ),
                 inp["advanced_settings_accordion"]: gr.Accordion(
                     visible=False,
                 ),
             }
         else:
             split_col = data[inp["split_col_dropdown"]]
-
             avail_cols = _get_columns_in_dataset(datasets[0], data)
 
             if split_col not in avail_cols:
@@ -203,6 +244,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 inp["advanced_settings_accordion"]: gr.Accordion(
                     visible=True,
                 ),
+                **_get_default_annotator_cols_config(data),
             }
 
     def _get_avail_col_values(col_name, data):
@@ -225,6 +267,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
     def update_col_split_value_dropdown(data: dict):
         """Update column split value dropdown."""
         split_col = data[inp["split_col_dropdown"]]
+        datasets = data[inp["active_datasets_dropdown"]]
 
         if split_col != NONE_SELECTED_VALUE:
             avail_values = _get_avail_col_values(split_col, data)
@@ -236,6 +279,12 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                     interactive=True,
                     visible=True,
                 ),
+                inp["annotator_cols_dropdown"]: gr.Dropdown(
+                    interactive=False,
+                ),
+                inp["annotator_rows_dropdown"]: gr.Dropdown(
+                    interactive=False,
+                ),
             }
         else:
             return {
@@ -245,6 +294,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                     interactive=False,
                     visible=False,
                 ),
+                **_get_default_annotator_cols_config(data),
             }
 
     def load_from_query_params(data: dict, request: gr.Request):
