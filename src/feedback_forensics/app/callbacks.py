@@ -132,10 +132,10 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 votes_dicts[datasets[0]]["annotator_metadata"],
             )
 
-            if len(annotator_cols) > 1:
+            if annotator_cols != [DEFAULT_ANNOTATOR_NAME] and len(annotator_cols) >= 1:
                 assert (
                     len(votes_dicts) == 1
-                ), "Only one votes_df is supported for now when selecting multipleannotator columns"
+                ), "Only one votes_df is supported for now when selecting multiple annotator columns"
                 votes_dicts = {
                     annotator_name: {
                         "df": votes_dict["df"],
