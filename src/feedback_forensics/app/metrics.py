@@ -1,6 +1,7 @@
 """Compute metrics"""
 
 import pandas as pd
+import gradio as gr
 
 from loguru import logger
 
@@ -102,9 +103,17 @@ def compute_metrics(votes_dict: dict) -> dict:
 
     votes_df: pd.DataFrame = votes_dict["df"]
     annotator_metadata = votes_dict["annotator_metadata"]
+    annotator_cols = votes_dict["shown_annotator_rows"]
+    logger.info(f"annotator_cols: {annotator_cols}")
     ref_annotator_col = votes_dict["reference_annotator_col"]
 
-    annotator_cols = list(annotator_metadata.keys())
+    # check that ref annotator col only contains "text_a" or "text_b"
+    if not all(votes_df[ref_annotator_col].isin(["text_a", "text_b"])):
+        values = ", ".join(list(votes_df[ref_annotator_col].unique()))
+        gr.Warning(
+            f"Reference annotator column '{ref_annotator_col}' contains values other than 'text_a' or 'text_b'. This may lead to incorrect metrics. Proceed with caution! (Values: {values})"
+        )
+
     annotator_names = [
         annotator_metadata[col]["annotator_visible_name"] for col in annotator_cols
     ]
