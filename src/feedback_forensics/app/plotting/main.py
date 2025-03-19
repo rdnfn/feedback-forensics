@@ -1,8 +1,8 @@
 import pandas as pd
 
 import feedback_forensics.app.metrics
-from feedback_forensics.app.plotting_v2.table import create_fig_with_tables
-from feedback_forensics.app.plotting_v2.table import get_table_contents_from_metrics
+from feedback_forensics.app.plotting.table import create_fig_with_tables
+from feedback_forensics.app.plotting.table import get_table_contents_from_metrics
 
 
 def generate_plot(

@@ -6,7 +6,7 @@ import gradio as gr
 import pandas as pd
 
 from feedback_forensics.app.loader import get_votes_dict
-import feedback_forensics.app.plotting_v2
+import feedback_forensics.app.plotting
 from feedback_forensics.app.utils import get_csv_columns
 from feedback_forensics.app.constants import NONE_SELECTED_VALUE, APP_BASE_URL
 from feedback_forensics.app.datasets import (
