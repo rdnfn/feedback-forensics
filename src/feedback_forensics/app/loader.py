@@ -80,7 +80,7 @@ def create_votes_dict(results_dir: pathlib.Path) -> list[dict]:
 
     annotator_metadata = {}
 
-    # Instead of exploding into rows, create columns for each principle
+    # Create separate columns for each principle annotation
     for principle_id, principle_text in principles_by_id.items():
         column_name = f"annotation_principle_{principle_id}"
         annotator_metadata[column_name] = {
