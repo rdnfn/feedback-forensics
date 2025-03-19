@@ -1,11 +1,9 @@
 """Call backs to be used in the app."""
 
-import json
 import pathlib
 
 import gradio as gr
 import pandas as pd
-from loguru import logger
 
 from feedback_forensics.app.loader import get_votes_dict
 import feedback_forensics.app.plotting
@@ -13,10 +11,6 @@ import feedback_forensics.app.plotting_v2
 from feedback_forensics.app.utils import get_csv_columns
 from feedback_forensics.app.constants import NONE_SELECTED_VALUE, APP_BASE_URL
 from feedback_forensics.app.datasets import (
-    get_config_from_name,
-    get_dataset_from_name,
-    BuiltinDataset,
-    Config,
     get_available_datasets_names,
     get_default_dataset_names,
 )
@@ -252,151 +246,6 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 ),
             }
 
-    def update_dataset_buttons(active_dataset: str) -> dict:
-        """Update dataset button variants based on active dataset."""
-        updates = {}
-        for name, btn in inp["dataset_btns"].items():
-            updates[btn] = gr.Button(
-                variant="primary" if name == active_dataset else "secondary"
-            )
-        return updates
-
-    def update_advanced_config_and_load_data(data: dict):
-        """Update config with dictionary inputs instead of individual arguments."""
-        prior_state_datapath = data[state["datapath"]]
-        selected_adv_config = data[inp["simple_config_dropdown"]]
-        cache = data[state["cache"]]
-
-        # get dataset name from button clicked
-        # other buttons are not in data dict
-        dataset_name = None
-        for button in inp["dataset_btns"].values():
-            if button in data:
-                dataset_name = data[button]
-
-        if dataset_name is None:
-            dataset_name = data[state["active_dataset"]]
-
-        # load dataset specific setup
-        dataset_config: BuiltinDataset = get_dataset_from_name(dataset_name)
-
-        new_path = True if dataset_config.path != prior_state_datapath else False
-
-        if not dataset_config.options:
-            simple_config_avail = False
-        else:
-            simple_config_avail = True
-
-        # load selected advanced config
-        if new_path:
-            if dataset_config.options:
-                selected_adv_config = (
-                    dataset_config.options[0].name
-                    if dataset_config.options
-                    else NONE_SELECTED_VALUE
-                )
-            else:
-                selected_adv_config = NONE_SELECTED_VALUE
-
-        adv_config: Config = get_config_from_name(
-            selected_adv_config, dataset_config.options
-        )
-
-        # Update button variants
-        button_updates = update_dataset_buttons(dataset_name)
-
-        return {
-            **button_updates,
-            inp["simple_config_dropdown_placeholder"]: gr.Text(
-                visible=not simple_config_avail
-            ),
-            inp["simple_config_dropdown"]: gr.Dropdown(
-                choices=(
-                    [config.name for config in dataset_config.options]
-                    + [NONE_SELECTED_VALUE]
-                    if dataset_config.options
-                    else [NONE_SELECTED_VALUE]
-                ),
-                value=selected_adv_config,
-                interactive=True,
-                visible=simple_config_avail,
-            ),
-            state["active_dataset"]: dataset_name,  # Update active dataset state
-            inp["datapath"]: dataset_config.path,
-            state["datapath"]: dataset_config.path,
-            state["dataset_name"]: dataset_name,
-            **load_data(
-                {
-                    inp["datapath"]: dataset_config.path,
-                    state["datapath"]: prior_state_datapath,
-                    inp[
-                        "show_individual_prefs_dropdown"
-                    ]: adv_config.show_individual_prefs,
-                    inp["pref_order_dropdown"]: adv_config.pref_order,
-                    inp["plot_col_name_dropdown"]: adv_config.plot_col_name,
-                    inp["plot_col_value_dropdown"]: adv_config.plot_col_values,
-                    inp["filter_col_dropdown"]: adv_config.filter_col,
-                    inp["filter_value_dropdown"]: adv_config.filter_value,
-                    inp["filter_col_dropdown_2"]: adv_config.filter_col_2,
-                    inp["filter_value_dropdown_2"]: adv_config.filter_value_2,
-                    inp["metrics_dropdown"]: adv_config.metrics,
-                    state["cache"]: cache,
-                },
-                reset_filters_if_new=False,
-                used_from_button=True,
-                filterable_columns=dataset_config.filterable_columns,
-                dataset_name=dataset_config.name,
-                dataset_description=dataset_config.description,
-            ),
-            inp["filter_value_dropdown"]: gr.Dropdown(
-                choices=[adv_config.filter_value],
-                value=adv_config.filter_value,
-                interactive=True,
-            ),
-            inp["filter_value_dropdown_2"]: gr.Dropdown(
-                choices=[adv_config.filter_value_2],
-                value=adv_config.filter_value_2,
-                interactive=True,
-            ),
-            inp["show_individual_prefs_dropdown"]: gr.Dropdown(
-                value=adv_config.show_individual_prefs,
-                interactive=True,
-            ),
-            inp["pref_order_dropdown"]: gr.Dropdown(
-                value=adv_config.pref_order,
-                interactive=True,
-            ),
-            inp["metrics_dropdown"]: gr.Dropdown(
-                value=adv_config.metrics,
-                interactive=True,
-            ),
-        }
-
-    def set_filter_val_dropdown(data: dict):
-        """Set filter values with dictionary inputs."""
-        votes_df = data.pop(state["unfiltered_df"])
-        column = data.popitem()[1]
-
-        if NONE_SELECTED_VALUE in votes_df.columns:
-            raise gr.Error(
-                f"Column '{NONE_SELECTED_VALUE}' is in the "
-                "dataframe. This is currently not "
-                "supported."
-            )
-        if column == NONE_SELECTED_VALUE:
-            return gr.Dropdown(
-                choices=[NONE_SELECTED_VALUE],
-                value=NONE_SELECTED_VALUE,
-                interactive=True,
-            )
-        else:
-            avail_values = votes_df[column].unique().tolist()
-            return gr.Dropdown(
-                choices=[NONE_SELECTED_VALUE] + avail_values,
-                value=NONE_SELECTED_VALUE,
-                interactive=True,
-            )
-
     def load_from_query_params(data: dict, request: gr.Request):
         """Load data from query params."""
         config = get_config_from_query_params(request)
@@ -499,62 +348,9 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
     return {
         "load_data": load_data,
         "load_from_query_params": load_from_query_params,
-        "set_filter_val_dropdown": set_filter_val_dropdown,
-        "update_advanced_config_and_load_data": update_advanced_config_and_load_data,
         "update_col_split_dropdowns": update_col_split_dropdowns,
         "update_col_split_value_dropdown": update_col_split_value_dropdown,
     }
-
-
-def create_dataset_info(
-    unfiltered_df: pd.DataFrame,
-    filtered_df: pd.DataFrame,
-    dataset_name: str | None = None,
-    dataset_path: str | None = None,
-    dataset_description: str | None = None,
-) -> str:
-    """Create dataset info markdown string.
-
-    Args:
-        df: DataFrame containing the dataset
-        dataset_name: Name of the dataset
-        dataset_description: Description of the dataset
-
-    Returns:
-        str: Markdown formatted dataset info
-    """
-    if unfiltered_df.empty:
-        return "*No dataset loaded*"
-
-    if dataset_name is None:
-        dataset_name = "N/A"
-    if dataset_description is None:
-        dataset_description = "N/A"
-    if dataset_path is None:
-        dataset_path = "N/A"
-
-    metrics = {}
-
-    for name, df in [("Unfiltered", unfiltered_df), ("Filtered", filtered_df)]:
-        metrics[name] = {}
-        metrics[name]["num_comparisons"] = df["comparison_id"].nunique()
-        metrics[name]["num_principles"] = df["principle"].nunique()
-        metrics[name]["num_total_votes"] = len(df)
-
-    info = f"""
-**Name**: {dataset_name}
-
-**Path**: {dataset_path}
-
-**Description**: {dataset_description}
-
-**Metrics:**
-- *Total pairwise comparisons*: {metrics["Unfiltered"]["num_comparisons"]:,} (shown: {metrics["Filtered"]["num_comparisons"]:,})
-- *Total tested principles*: {metrics["Unfiltered"]["num_principles"]:,} (shown: {metrics["Filtered"]["num_principles"]:,})
-- *Total votes (comparisons x principles)*: {metrics["Unfiltered"]["num_total_votes"]:,} (shown: {metrics["Filtered"]["num_total_votes"]:,})
-    """
-
-    return info
 
 
 def attach_callbacks(
@@ -567,21 +363,7 @@ def attach_callbacks(
         state["avail_datasets"],
         inp["split_col_dropdown"],
         inp["split_col_selected_vals_dropdown"],
-        inp["datapath"],
-        state["datapath"],
-        state["dataset_name"],
-        state["active_dataset"],
         state["app_url"],
-        inp["show_individual_prefs_dropdown"],
-        inp["pref_order_dropdown"],
-        inp["plot_col_name_dropdown"],
-        inp["plot_col_value_dropdown"],
-        inp["filter_col_dropdown"],
-        inp["filter_value_dropdown"],
-        inp["filter_col_dropdown_2"],
-        inp["filter_value_dropdown_2"],
-        inp["metrics_dropdown"],
-        inp["simple_config_dropdown"],
         state["cache"],
     }
 
@@ -596,97 +378,32 @@ def attach_callbacks(
         inp["split_col_dropdown"],
         inp["split_col_selected_vals_dropdown"],
         inp["split_col_non_available_md"],
-        inp["plot_col_name_dropdown"],
-        inp["plot_col_value_dropdown"],
-        inp["filter_col_dropdown"],
-        inp["filter_col_dropdown_2"],
         out["share_link"],
         out["plot"],
-        state["df"],
-        state["unfiltered_df"],
-        state["datapath"],
-        state["active_dataset"],
-        state["dataset_name"],
         state["cache"],
-        inp["datapath"],
-        inp["dataset_info"],
         inp["load_btn"],
-    ] + list(inp["dataset_btns"].values())
+    ]
 
-    # reload data when load button is clicked or view config is changed
+    # reload data when load button is clicked
     inp["load_btn"].click(
         callbacks["load_data"],
         inputs=all_inputs,
         outputs=load_data_outputs,
     )
 
-    for config_value_dropdown in [
-        inp["pref_order_dropdown"],
-        inp["show_individual_prefs_dropdown"],
-        inp["plot_col_value_dropdown"],
-        inp["filter_value_dropdown"],
-        inp["filter_value_dropdown_2"],
-        inp["metrics_dropdown"],
-    ]:
-        config_value_dropdown.input(
-            callbacks["load_data"],
-            inputs=all_inputs,
-            outputs=load_data_outputs,
-        )
-
-    update_load_data_outputs = (
-        load_data_outputs
-        + [
-            inp["simple_config_dropdown"],
-            inp["simple_config_dropdown_placeholder"],
-            inp["plot_col_value_dropdown"],
-            inp["filter_value_dropdown"],
-            inp["filter_value_dropdown_2"],
-            inp["show_individual_prefs_dropdown"],
-            inp["pref_order_dropdown"],
-            inp["metrics_dropdown"],
-            state["active_dataset"],  # Add active dataset state
-        ]
-        + list(inp["dataset_btns"].values())
-    )  # Add all dataset buttons as outputs
-
+    # update column split dropdowns when active dataset is changed
     inp["active_datasets_dropdown"].input(
         callbacks["update_col_split_dropdowns"],
         inputs=all_inputs,
         outputs=dataset_selection_outputs,
     )
+
+    # update column split value dropdowns when split column is changed
     inp["split_col_dropdown"].input(
         callbacks["update_col_split_value_dropdown"],
         inputs=all_inputs,
         outputs=dataset_selection_outputs,
     )
-
-    # TODO: remove old dataset selection panel (including from callbacks etc.)
-    for dataset_button in inp["dataset_btns"].values():
-        dataset_button.click(
-            callbacks["update_advanced_config_and_load_data"],
-            inputs=all_inputs.union({dataset_button}),
-            outputs=update_load_data_outputs,
-        )
-
-    inp["simple_config_dropdown"].input(
-        callbacks["update_advanced_config_and_load_data"],
-        inputs=all_inputs,
-        outputs=update_load_data_outputs,
-    )
-
-    # update filter value dropdowns when
-    # corresponding filter column dropdown is changed
-    for dropdown, output in [
-        (inp["plot_col_name_dropdown"], inp["plot_col_value_dropdown"]),
-        (inp["filter_col_dropdown"], inp["filter_value_dropdown"]),
-        (inp["filter_col_dropdown_2"], inp["filter_value_dropdown_2"]),
-    ]:
-        dropdown.input(
-            callbacks["set_filter_val_dropdown"],
-            inputs={state["unfiltered_df"], dropdown},
-            outputs=[output],
-        )
 
     # finally add callbacks that run on start of app
     demo.load(
