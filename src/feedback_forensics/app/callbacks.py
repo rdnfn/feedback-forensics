@@ -189,6 +189,10 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             / "030_distilled_principles_per_cluster.json"
         )
         annotator_names = list(load_json_file(principle_path).values())
+        annotator_names = [
+            "Objective: " + name.replace("Select the response that", "").strip(" .")
+            for name in annotator_names
+        ]
 
         return annotator_names
 

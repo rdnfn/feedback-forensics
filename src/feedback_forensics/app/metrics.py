@@ -115,7 +115,7 @@ def compute_metrics(votes_dict: dict) -> dict:
         )
 
     annotator_names = [
-        annotator_metadata[col]["annotator_visible_name"] for col in annotator_cols
+        annotator_metadata[col]["annotator_in_row_name"] for col in annotator_cols
     ]
     num_pairs = len(votes_df)
 
@@ -123,7 +123,7 @@ def compute_metrics(votes_dict: dict) -> dict:
 
     for annotator_col in annotator_cols:
 
-        annotator_name = annotator_metadata[annotator_col]["annotator_visible_name"]
+        annotator_name = annotator_metadata[annotator_col]["annotator_in_row_name"]
 
         # check if annotator_col agrees with ref_annotator_col per row
         # Vectorized implementation instead of apply for better performance

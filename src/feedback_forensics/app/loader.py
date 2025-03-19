@@ -84,6 +84,7 @@ def create_votes_dict(results_dir: pathlib.Path) -> list[dict]:
     annotator_metadata["preferred_text"] = {
         "variant": "ground_truth",
         "annotator_visible_name": DEFAULT_ANNOTATOR_NAME,
+        "annotator_in_row_name": DEFAULT_ANNOTATOR_NAME,
     }
 
     principle_annotator_cols = []
@@ -91,11 +92,16 @@ def create_votes_dict(results_dir: pathlib.Path) -> list[dict]:
     # Create separate columns for each principle annotation
     for principle_id, principle_text in principles_by_id.items():
         column_name = f"annotation_principle_{principle_id}"
+        short_principle_text = principle_text.replace(
+            "Select the response that", ""
+        ).strip(" .")
+
         annotator_metadata[column_name] = {
             "variant": "icai_principle",
             "principle_id": principle_id,
             "principle_text": principle_text,
-            "annotator_visible_name": principle_text,
+            "annotator_visible_name": "Objective: " + short_principle_text,
+            "annotator_in_row_name": short_principle_text,
         }
 
         principle_annotator_cols.append(column_name)
