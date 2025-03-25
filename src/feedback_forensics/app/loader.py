@@ -4,7 +4,9 @@ import ast
 import pandas as pd
 from loguru import logger
 
-from feedback_forensics.app.constants import DEFAULT_ANNOTATOR_NAME
+from feedback_forensics.app.constants import (
+    DEFAULT_ANNOTATOR_NAME,
+)
 
 
 def load_json_file(path: str):
@@ -52,6 +54,27 @@ def get_votes_dict(results_dir: pathlib.Path, cache: dict) -> dict:
         return votes_dict
 
 
+def _check_for_nondefault_annotators(df: pd.DataFrame) -> dict:
+    """Check for non-default annotators in the dataframe.
+
+    Checks for each column in dataframe if it contains a column
+    with values "text_a" or "text_b", and if so, adds it as an
+    annotator metadata entry."""
+
+    annotator_metadata = {}
+
+    for col in df.columns:
+        if col != DEFAULT_ANNOTATOR_NAME and df[col].isin(["text_a", "text_b"]).any():
+            annotator_metadata[col] = {
+                "variant": "nondefault_annotation_column",
+                "annotator_visible_name": col,
+                "annotator_in_row_name": col,
+            }
+
+    logger.info(f"Found {len(annotator_metadata)} non-default annotators")
+    return annotator_metadata
+
+
 def create_votes_dict(results_dir: pathlib.Path) -> list[dict]:
     """Create the votes dataframe and voter metadata from ICAI log files.
 
@@ -81,11 +104,13 @@ def create_votes_dict(results_dir: pathlib.Path) -> list[dict]:
     full_df["votes_dicts"] = full_df["votes"].apply(ast.literal_eval)
 
     annotator_metadata = {}
-    annotator_metadata["preferred_text"] = {
-        "variant": "ground_truth",
+    annotator_metadata[DEFAULT_ANNOTATOR_NAME] = {
+        "variant": "default_annotator",
         "annotator_visible_name": DEFAULT_ANNOTATOR_NAME,
         "annotator_in_row_name": DEFAULT_ANNOTATOR_NAME,
     }
+
+    annotator_metadata.update(_check_for_nondefault_annotators(full_df))
 
     principle_annotator_cols = []
 
