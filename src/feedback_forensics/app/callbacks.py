@@ -61,6 +61,7 @@ def split_votes_dicts(
             "df": group,
             "annotator_metadata": votes_dict["annotator_metadata"],
             "reference_annotator_col": votes_dict["reference_annotator_col"],
+            "shown_annotator_rows": votes_dict["shown_annotator_rows"],
         }
 
     return split_dicts
@@ -182,8 +183,8 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         return avail_cols
 
     def _get_principle_annotator_names(dataset_name, data) -> str:
+        """Get principle-following annotators from json without loading full dataset."""
         dataset_config = data[state["avail_datasets"]][dataset_name]
-
         principle_path = (
             dataset_config.path
             / "results"
@@ -197,6 +198,13 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
         return annotator_names
 
+    def _get_datacol_annotator_names(dataset_name, data) -> str:
+        """Get the annotator names from csv file without loading full dataset."""
+        dataset_config = data[state["avail_datasets"]][dataset_name]
+        datacol_path = dataset_config.path / "results" / "000_train_data.csv"
+        datacol_annotator_names = get_csv_columns(datacol_path)
+        return datacol_annotator_names
+
     def _get_default_annotator_cols_config(data) -> str:
         """Get the default annotator cols config.
 
@@ -206,14 +214,15 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         avail_principle_annotator_names = _get_principle_annotator_names(
             datasets[0], data
         )
+        avail_datacol_annotator_names = _get_datacol_annotator_names(datasets[0], data)
         return {
             inp["annotator_cols_dropdown"]: gr.Dropdown(
-                choices=avail_principle_annotator_names + [DEFAULT_ANNOTATOR_NAME],
+                choices=avail_principle_annotator_names + avail_datacol_annotator_names,
                 value=[DEFAULT_ANNOTATOR_NAME],
                 interactive=True,
             ),
             inp["annotator_rows_dropdown"]: gr.Dropdown(
-                choices=avail_principle_annotator_names + [DEFAULT_ANNOTATOR_NAME],
+                choices=avail_principle_annotator_names + avail_datacol_annotator_names,
                 value=avail_principle_annotator_names,
                 interactive=True,
             ),
