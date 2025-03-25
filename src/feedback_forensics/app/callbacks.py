@@ -121,7 +121,8 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             else:
                 votes_dicts = split_votes_dicts(votes_dicts, split_col, selected_vals)
 
-        else:
+        if len(votes_dicts) == 1:
+            dataset_name = list(votes_dicts.keys())[0]
             selected_annotator_visible_names = data[inp["annotator_cols_dropdown"]]
             annotator_metadata = votes_dicts[datasets[0]]["annotator_metadata"]
             annotator_cols = _get_annotator_col_names(
@@ -137,7 +138,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                     len(votes_dicts) == 1
                 ), "Only one votes_df is supported for now when selecting multiple annotator columns"
                 votes_dicts = {
-                    annotator_name: {
+                    f"{dataset_name} - {annotator_name}": {
                         "df": votes_dict["df"],
                         "annotator_metadata": votes_dict["annotator_metadata"],
                         "reference_annotator_col": annotator_col,
