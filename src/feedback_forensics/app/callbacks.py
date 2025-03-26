@@ -134,6 +134,9 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
             votes_dicts[dataset] = votes_dict
 
+        default_annotator_rows = votes_dicts[datasets[0]]["shown_annotator_rows"]
+        default_annotator_cols = [votes_dicts[datasets[0]]["reference_annotator_col"]]
+
         # parsing of potential url params
         if split_col != NONE_SELECTED_VALUE and split_col is not None:
 
@@ -195,17 +198,23 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
         plot = gr.Plot(fig)
 
+        url_kwargs = {
+            "datasets": datasets,
+            "col": data[inp["split_col_dropdown"]],
+            "col_vals": data[inp["split_col_selected_vals_dropdown"]],
+            "base_url": data[state["app_url"]],
+        }
+
+        # only add annotator rows and cols if they are not the default
+        if annotator_rows != default_annotator_rows:
+            url_kwargs["annotator_rows"] = data[inp["annotator_rows_dropdown"]]
+        if annotator_cols != default_annotator_cols:
+            url_kwargs["annotator_cols"] = data[inp["annotator_cols_dropdown"]]
+
         return {
             out["plot"]: plot,
             state["cache"]: cache,
-            out["share_link"]: get_url_with_query_params(
-                datasets=datasets,
-                col=data[inp["split_col_dropdown"]],
-                col_vals=data[inp["split_col_selected_vals_dropdown"]],
-                base_url=data[state["app_url"]],
-                annotator_rows=data[inp["annotator_rows_dropdown"]],
-                annotator_cols=data[inp["annotator_cols_dropdown"]],
-            ),
+            out["share_link"]: get_url_with_query_params(**url_kwargs),
         }
 
     def _get_columns_in_dataset(dataset_name, data) -> str:
