@@ -2,6 +2,7 @@
 
 import pandas as pd
 import gradio as gr
+import numpy as np
 
 from loguru import logger
 
@@ -293,17 +294,18 @@ def get_overall_metrics(votes_df: pd.DataFrame, ref_annotator_col: str) -> dict:
         dict: overall metrics
     """
 
-    # get a single row per comparison_id
-    votes_df = votes_df.groupby("comparison_id").first()
+    # assert that comparison_id is unique
+    assert votes_df["comparison_id"].nunique() == len(
+        votes_df
+    ), "comparison_id is not unique"
 
-    # if preferred_text is text_a, preferred_text_str is value of column "text_a" (otherwise of "text_b")
-    votes_df["preferred_text_str"] = votes_df.apply(
-        lambda x: x["text_a"] if x[ref_annotator_col] == "text_a" else x["text_b"],
-        axis=1,
+    # Vectorized implementation: use numpy where instead of apply
+    is_text_a = votes_df[ref_annotator_col] == "text_a"
+    votes_df["preferred_text_str"] = np.where(
+        is_text_a, votes_df["text_a"], votes_df["text_b"]
     )
-    votes_df["rejected_text_str"] = votes_df.apply(
-        lambda x: x["text_b"] if x[ref_annotator_col] == "text_a" else x["text_a"],
-        axis=1,
+    votes_df["rejected_text_str"] = np.where(
+        is_text_a, votes_df["text_b"], votes_df["text_a"]
     )
 
     num_votes = len(votes_df)
