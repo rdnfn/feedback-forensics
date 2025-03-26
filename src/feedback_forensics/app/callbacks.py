@@ -164,17 +164,31 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         )
 
         # check if multiple annotator columns and datasets are selected
-        if len(annotator_cols) >= 1 and len(votes_dicts) > 1:
+        if len(annotator_cols) > 1 and len(votes_dicts) > 1:
             gr.Warning(
                 f"Only one votes_df is supported when selecting multiple annotator columns. "
                 f"Currently {len(votes_dicts)} votes_dfs are loaded with the following annotators: "
                 f"{annotator_cols_visible_names}. Only using the first annotator column ({annotator_cols[0]})."
             )
             annotator_cols = [annotator_cols[0]]
+            annotator_cols_visible_names = [annotator_cols_visible_names[0]]
 
         # split votes_dicts into one per annotator column (only available for one dataset)
         if len(annotator_cols) >= 1:
-            dataset_name = list(votes_dicts.keys())[0]
+            if len(votes_dicts) == 1:
+                dataset_name = list(votes_dicts.keys())[0]
+                dataset_names = [dataset_name] * len(annotator_cols)
+                votes_dicts = [votes_dicts[dataset_name]] * len(annotator_cols)
+            else:
+                dataset_names = list(votes_dicts.keys())
+                votes_dicts = list(votes_dicts.values())
+
+            if len(annotator_cols) == 1:
+                annotator_cols = annotator_cols * len(dataset_names)
+                annotator_cols_visible_names = annotator_cols_visible_names * len(
+                    dataset_names
+                )
+
             votes_dicts = {
                 f"{dataset_name} ({annotator_name})": {
                     "df": votes_dict["df"],
@@ -182,8 +196,11 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                     "reference_annotator_col": annotator_col,
                     "shown_annotator_rows": votes_dict["shown_annotator_rows"],
                 }
-                for annotator_col, annotator_name in zip(
-                    annotator_cols, annotator_cols_visible_names
+                for annotator_col, annotator_name, dataset_name, votes_dict in zip(
+                    annotator_cols,
+                    annotator_cols_visible_names,
+                    dataset_names,
+                    votes_dicts,
                 )
             }
 
@@ -376,12 +393,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                     interactive=True,
                     visible=True,
                 ),
-                inp["annotator_cols_dropdown"]: gr.Dropdown(
-                    interactive=False,
-                ),
-                inp["annotator_rows_dropdown"]: gr.Dropdown(
-                    interactive=False,
-                ),
+                **_get_default_annotator_cols_config(data),
             }
         else:
             return {
