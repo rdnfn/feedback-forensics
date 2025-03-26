@@ -111,8 +111,9 @@ def compute_metrics(votes_dict: dict) -> dict:
     if not all(votes_df[ref_annotator_col].isin(["text_a", "text_b"])):
         values = ", ".join(list(votes_df[ref_annotator_col].unique()))
         gr.Warning(
-            f"Reference annotator column '{ref_annotator_col}' contains values other than 'text_a' or 'text_b'. This may lead to incorrect metrics. Proceed with caution! (Values: {values})"
+            f"Reference annotator column '{ref_annotator_col}' contains values other than 'text_a' or 'text_b'(Values: {values}). Metrics will be computed on the subset of votes where the reference annotator is 'text_a' or 'text_b'."
         )
+        votes_df = votes_df[votes_df[ref_annotator_col].isin(["text_a", "text_b"])]
 
     annotator_names = [
         annotator_metadata[col]["annotator_in_row_name"] for col in annotator_cols
@@ -298,6 +299,9 @@ def get_overall_metrics(votes_df: pd.DataFrame, ref_annotator_col: str) -> dict:
     assert votes_df["comparison_id"].nunique() == len(
         votes_df
     ), "comparison_id is not unique"
+
+    # limit to votes where ref_annotator_col is "text_a" or "text_b"
+    votes_df = votes_df[votes_df[ref_annotator_col].isin(["text_a", "text_b"])]
 
     # Vectorized implementation: use numpy where instead of apply
     is_text_a = votes_df[ref_annotator_col] == "text_a"
