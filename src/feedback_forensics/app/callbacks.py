@@ -203,6 +203,8 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 col=data[inp["split_col_dropdown"]],
                 col_vals=data[inp["split_col_selected_vals_dropdown"]],
                 base_url=data[state["app_url"]],
+                annotator_rows=data[inp["annotator_rows_dropdown"]],
+                annotator_cols=data[inp["annotator_cols_dropdown"]],
             ),
         }
 
@@ -409,6 +411,57 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             return_dict[inp["active_datasets_dropdown"]] = gr.Dropdown(
                 value=config["datasets"],
             )
+
+            # Get available annotators for the selected dataset
+            if "annotator_rows" in config or "annotator_cols" in config:
+                avail_principle_annotator_names = _get_principle_annotator_names(
+                    config["datasets"][0], data
+                )
+                avail_datacol_annotator_names = _get_datacol_annotator_names(
+                    config["datasets"][0], data
+                )
+                all_available_annotators = (
+                    avail_principle_annotator_names + avail_datacol_annotator_names
+                )
+
+                # If annotator rows are specified in the URL
+                if "annotator_rows" in config:
+                    url_annotator_rows = config["annotator_rows"]
+                    annotator_rows = transfer_url_list_to_nonurl_list(
+                        url_list=url_annotator_rows,
+                        nonurl_list=all_available_annotators,
+                    )
+                    if len(annotator_rows) != len(url_annotator_rows):
+                        gr.Warning(
+                            f"URL problem: not all annotator rows in URL ({url_annotator_rows}) could be read successfully. Requested rows: {url_annotator_rows}, retrieved rows: {annotator_rows}.",
+                            duration=15,
+                        )
+                    data[inp["annotator_rows_dropdown"]] = annotator_rows
+                    return_dict[inp["annotator_rows_dropdown"]] = gr.Dropdown(
+                        choices=all_available_annotators,
+                        value=annotator_rows,
+                        interactive=True,
+                    )
+
+                # If annotator columns are specified in the URL
+                if "annotator_cols" in config:
+                    url_annotator_cols = config["annotator_cols"]
+                    annotator_cols = transfer_url_list_to_nonurl_list(
+                        url_list=url_annotator_cols,
+                        nonurl_list=all_available_annotators,
+                    )
+                    if len(annotator_cols) != len(url_annotator_cols):
+                        gr.Warning(
+                            f"URL problem: not all annotator columns in URL ({url_annotator_cols}) could be read successfully. Requested columns: {url_annotator_cols}, retrieved columns: {annotator_cols}.",
+                            duration=15,
+                        )
+                    data[inp["annotator_cols_dropdown"]] = annotator_cols
+                    return_dict[inp["annotator_cols_dropdown"]] = gr.Dropdown(
+                        choices=all_available_annotators,
+                        value=annotator_cols,
+                        interactive=True,
+                    )
+
         if "col" not in config:
             # update split col dropdowns even if no column is selected
             split_col_interface_dict = update_single_dataset_menus(data)
