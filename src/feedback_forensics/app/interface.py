@@ -168,8 +168,8 @@ def _create_configuration_panel(inp: dict, state: dict):
                     inp["annotator_rows_dropdown"] = gr.Dropdown(
                         label="👥↓ Annotator rows",
                         info="Select the annotators to be included as a row in the results table. By default only objective-following annotators are included.",
-                        choices=[NONE_SELECTED_VALUE],
-                        value=[NONE_SELECTED_VALUE],
+                        choices=None,
+                        value=None,
                         multiselect=True,
                     )
 

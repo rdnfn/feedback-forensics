@@ -1,9 +1,10 @@
 """Call backs to be used in the app."""
 
 import pathlib
-
+import copy
 import gradio as gr
 import pandas as pd
+
 from loguru import logger
 
 from feedback_forensics.app.loader import get_votes_dict
@@ -70,14 +71,42 @@ def split_votes_dicts(
 def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
     """Generate callbacks for the ICAI app."""
 
-    def _get_annotator_col_names(
-        annotator_visible_names: list[str], annotator_metadata: dict
+    def _get_annotator_df_col_names(
+        annotator_visible_names: list[str], votes_dicts: dict[str, dict]
     ) -> list[str]:
-        return [
-            annotator_col
-            for annotator_col, annotator_metadata in annotator_metadata.items()
-            if annotator_metadata["annotator_visible_name"] in annotator_visible_names
+        """Get the column names of the annotators in votes_df.
+
+        Note that this fn can be used both for annotators shown in rows and columns of
+        the final output plot. All annotators are columns in the original votes_df.
+
+        This also gives warning if not all annotators are available across all datasets.
+        """
+        # get mappings from visible names to column names for each dataset
+        visible_to_cols = {}
+        for dataset_name, votes_dict in votes_dicts.items():
+            metadata = votes_dict["annotator_metadata"]
+            visible_to_col = {
+                value["annotator_visible_name"]: col for col, value in metadata.items()
+            }
+            visible_to_cols[dataset_name] = visible_to_col
+
+        updated_annotator_visible_names = copy.deepcopy(annotator_visible_names)
+
+        for annotator_name in annotator_visible_names:
+            for dataset_name, visible_to_col in visible_to_cols.items():
+                if annotator_name not in visible_to_col:
+                    gr.Warning(
+                        f"Annotator '{annotator_name}' (visible name) not found in dataset '{dataset_name}'. Skipping this annotator."
+                    )
+                    # remove annotator from annotator_visible_names
+                    updated_annotator_visible_names.remove(annotator_name)
+
+        # get column names for the remaining annotators
+        col_names = [
+            visible_to_col[annotator_name]
+            for annotator_name in updated_annotator_visible_names
         ]
+        return col_names
 
     def load_data(
         data: dict,
@@ -122,37 +151,43 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             else:
                 votes_dicts = split_votes_dicts(votes_dicts, split_col, selected_vals)
 
-        if len(votes_dicts) == 1:
+        annotator_cols_visible_names = data[inp["annotator_cols_dropdown"]]
+        annotator_cols = _get_annotator_df_col_names(
+            annotator_cols_visible_names, votes_dicts
+        )
+        annotator_rows_visible_names = data[inp["annotator_rows_dropdown"]]
+        annotator_rows = _get_annotator_df_col_names(
+            annotator_rows_visible_names, votes_dicts
+        )
+
+        # check if multiple annotator columns and datasets are selected
+        if len(annotator_cols) >= 1 and len(votes_dicts) > 1:
+            gr.Warning(
+                f"Only one votes_df is supported when selecting multiple annotator columns. "
+                f"Currently {len(votes_dicts)} votes_dfs are loaded with the following annotators: "
+                f"{annotator_cols_visible_names}. Only using the first annotator column ({annotator_cols[0]})."
+            )
+            annotator_cols = [annotator_cols[0]]
+
+        # split votes_dicts into one per annotator column (only available for one dataset)
+        if len(annotator_cols) >= 1:
             dataset_name = list(votes_dicts.keys())[0]
-            selected_annotator_visible_names = data[inp["annotator_cols_dropdown"]]
-            annotator_metadata = votes_dicts[datasets[0]]["annotator_metadata"]
-            annotator_cols = _get_annotator_col_names(
-                selected_annotator_visible_names, annotator_metadata
-            )
-            annotator_rows = _get_annotator_col_names(
-                data[inp["annotator_rows_dropdown"]],
-                votes_dicts[datasets[0]]["annotator_metadata"],
-            )
-
-            if annotator_cols != [DEFAULT_ANNOTATOR_NAME] and len(annotator_cols) >= 1:
-                assert (
-                    len(votes_dicts) == 1
-                ), "Only one votes_df is supported for now when selecting multiple annotator columns"
-                votes_dicts = {
-                    f"{dataset_name} - {annotator_name}": {
-                        "df": votes_dict["df"],
-                        "annotator_metadata": votes_dict["annotator_metadata"],
-                        "reference_annotator_col": annotator_col,
-                    }
-                    for annotator_col, annotator_name in zip(
-                        annotator_cols, selected_annotator_visible_names
-                    )
+            votes_dicts = {
+                f"{dataset_name} ({annotator_name})": {
+                    "df": votes_dict["df"],
+                    "annotator_metadata": votes_dict["annotator_metadata"],
+                    "reference_annotator_col": annotator_col,
+                    "shown_annotator_rows": votes_dict["shown_annotator_rows"],
                 }
+                for annotator_col, annotator_name in zip(
+                    annotator_cols, annotator_cols_visible_names
+                )
+            }
 
-            # update set of annotator rows (keys in annotator_metadata)
-            if len(annotator_rows) >= 1:
-                for votes_dict in votes_dicts.values():
-                    votes_dict["shown_annotator_rows"] = annotator_rows
+        # update set of annotator rows (keys in annotator_metadata)
+        if len(annotator_rows) >= 1:
+            for votes_dict in votes_dicts.values():
+                votes_dict["shown_annotator_rows"] = annotator_rows
 
         fig = feedback_forensics.app.plotting.generate_plot(
             votes_dicts=votes_dicts,
