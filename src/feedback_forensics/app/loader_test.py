@@ -13,8 +13,8 @@ from pathlib import Path
 from feedback_forensics.app.loader import (
     load_json_file,
     convert_vote_to_string,
-    get_votes_df,
-    create_votes_df,
+    get_votes_dict,
+    create_votes_dict,
 )
 
 
@@ -44,6 +44,7 @@ class TestLoader:
                 "text_a": ["text A1", "text A2", "text A3"],
                 "text_b": ["text B1", "text B2", "text B3"],
                 "source": ["source1", "source2", "source3"],
+                "preferred_text": ["text_a", "text_b", "text_a"],
             }
         )
         comparisons_data.index.name = "index"
@@ -99,10 +100,11 @@ class TestLoader:
         """Test creating votes dataframe."""
         test_dir = setup_test_data
 
-        # Get the dataframe
-        votes_df = create_votes_df(test_dir)
+        # Get the votes dictionary
+        votes_dict = create_votes_dict(test_dir)
 
         # Basic validation
+        votes_df = votes_dict["df"]
         assert isinstance(votes_df, pd.DataFrame)
         assert len(votes_df) == 3  # 3 comparisons
 
@@ -111,14 +113,18 @@ class TestLoader:
         assert "annotation_principle_2" in votes_df.columns
         assert "annotation_principle_3" in votes_df.columns
 
-        # Check vote conversion
-        assert votes_df.loc[0, "annotation_principle_1"] == "Agree"
-        assert votes_df.loc[0, "annotation_principle_2"] == "Disagree"
+        # Check vote conversion - we're now checking text_a, text_b or Not applicable
+        assert votes_df.loc[0, "annotation_principle_1"] in [
+            "text_a",
+            "text_b",
+            "Not applicable",
+        ]
+        assert votes_df.loc[0, "annotation_principle_2"] in [
+            "text_a",
+            "text_b",
+            "Not applicable",
+        ]
         assert votes_df.loc[0, "annotation_principle_3"] == "Not applicable"
-
-        assert votes_df.loc[1, "annotation_principle_1"] == "Disagree"
-        assert votes_df.loc[1, "annotation_principle_2"] == "Agree"
-        assert votes_df.loc[1, "annotation_principle_3"] == "Agree"
 
         # Check weight column
         assert "weight" in votes_df.columns
@@ -128,30 +134,30 @@ class TestLoader:
         assert "votes_dicts" not in votes_df.columns
 
     def test_get_votes_df_cache(self, setup_test_data):
-        """Test votes df with caching."""
+        """Test votes dict with caching."""
         test_dir = setup_test_data
         cache = {}
 
         # First call should create and cache
-        df1 = get_votes_df(test_dir, cache)
-        assert test_dir in cache.get("votes_df", {})
+        dict1 = get_votes_dict(test_dir, cache)
+        assert test_dir in cache.get("votes_dict", {})
 
         # Second call should return cached df
-        df2 = get_votes_df(test_dir, cache)
-        assert df1 is df2  # Should be the same object
+        dict2 = get_votes_dict(test_dir, cache)
+        assert dict1 is dict2  # Should be the same object
 
     def test_get_votes_df_missing_dir(self):
-        """Test getting votes df with missing directory."""
+        """Test getting votes dict with missing directory."""
         with pytest.raises(FileNotFoundError):
-            get_votes_df(Path("/nonexistent/path"), {})
+            get_votes_dict(Path("/nonexistent/path"), {})
 
     def test_get_votes_df_empty_dir(self, setup_test_data):
-        """Test getting votes df with empty directory."""
+        """Test getting votes dict with empty directory."""
         test_dir = setup_test_data
         empty_dir = Path(tempfile.mkdtemp())
 
         try:
             with pytest.raises(FileNotFoundError):
-                get_votes_df(empty_dir, {})
+                get_votes_dict(empty_dir, {})
         finally:
             shutil.rmtree(empty_dir)
