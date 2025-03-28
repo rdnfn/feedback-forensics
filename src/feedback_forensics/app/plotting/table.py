@@ -430,7 +430,7 @@ def get_table_contents_from_metrics(metrics: dict[str, dict]) -> dict:
     Args:
         metrics: A dictionary where keys are dataset names and values are
                 metric dictionaries containing metrics for that dataset.
-                Structure: {dataset_name: {metrics: {metric_name: {by_principle: ...}}}}
+                Structure: {dataset_name: {metrics: {metric_name: {by_annotator: ...}}}}
 
     Returns:
         A dictionary of table views, where each view contains data, values, and colors
@@ -451,7 +451,7 @@ def get_table_contents_from_metrics(metrics: dict[str, dict]) -> dict:
             # Create DataFrame with principles as rows and datasets as columns
             data = pd.DataFrame(
                 {
-                    dataset_name: metrics_dict["metrics"][metric_name]["by_principle"]
+                    dataset_name: metrics_dict["metrics"][metric_name]["by_annotator"]
                     for dataset_name, metrics_dict in metrics.items()
                 }
             )
@@ -585,10 +585,12 @@ def create_fig_with_tables(
     if all_annotations:
         fig.update_layout(annotations=all_annotations)
 
+    margin = dict(l=20, r=20, t=100, b=20)
+
     fig.update_layout(
         paper_bgcolor=PAPER_BG_COLOR,
-        height=sum(table_heights),
-        margin=dict(l=20, r=20, t=75, b=20),
+        height=total_height + margin["t"] + margin["b"] + 50,
+        margin=margin,
     )
 
     return fig

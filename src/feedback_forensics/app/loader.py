@@ -4,6 +4,10 @@ import ast
 import pandas as pd
 from loguru import logger
 
+from feedback_forensics.app.constants import (
+    DEFAULT_ANNOTATOR_NAME,
+)
+
 
 def load_json_file(path: str):
     with open(path, "r") as f:
@@ -25,7 +29,7 @@ def convert_vote_to_string(vote: bool | None) -> str:
         raise ValueError(f"Completely invalid vote value: {vote}")
 
 
-def get_votes_df(results_dir: pathlib.Path, cache: dict) -> pd.DataFrame:
+def get_votes_dict(results_dir: pathlib.Path, cache: dict) -> dict:
     """
     Get the votes dataframe for a given results directory.
     If the dataframe is already in the cache, return it.
@@ -39,26 +43,46 @@ def get_votes_df(results_dir: pathlib.Path, cache: dict) -> pd.DataFrame:
     if not any(results_dir.iterdir()):
         raise FileNotFoundError(f"Results directory is empty in path '{results_dir}'")
 
-    if "votes_df" in cache and results_dir in cache["votes_df"]:
-        return cache["votes_df"][results_dir]
+    if "votes_dict" in cache and results_dir in cache["votes_dict"]:
+        return cache["votes_dict"][results_dir]
     else:
-        votes_df = create_votes_df(results_dir)
+        votes_dict = create_votes_dict(results_dir)
 
-        if "votes_df" not in cache:
-            cache["votes_df"] = {}
-        cache["votes_df"][results_dir] = votes_df
+        if "votes_dict" not in cache:
+            cache["votes_dict"] = {}
+        cache["votes_dict"][results_dir] = votes_dict
+        return votes_dict
 
-        return votes_df
+
+def _check_for_nondefault_annotators(df: pd.DataFrame) -> dict:
+    """Check for non-default annotators in the dataframe.
+
+    Checks for each column in dataframe if it contains a column
+    with values "text_a" or "text_b", and if so, adds it as an
+    annotator metadata entry."""
+
+    annotator_metadata = {}
+
+    for col in df.columns:
+        if col != DEFAULT_ANNOTATOR_NAME and df[col].isin(["text_a", "text_b"]).any():
+            annotator_metadata[col] = {
+                "variant": "nondefault_annotation_column",
+                "annotator_visible_name": col,
+                "annotator_in_row_name": col,
+            }
+
+    logger.info(f"Found {len(annotator_metadata)} non-default annotators")
+    return annotator_metadata
 
 
-def create_votes_df(results_dir: pathlib.Path) -> list[dict]:
-    """Create the votes dataframe from log files.
+def create_votes_dict(results_dir: pathlib.Path) -> list[dict]:
+    """Create the votes dataframe and voter metadata from ICAI log files.
 
     Args:
         results_dir (pathlib.Path): Path to the results directory.
 
     Returns:
-        pd.DataFrame: The votes dataframe.
+       dict: A dictionary containing the votes dataframe and annotator metadata.
     """
 
     # load relevant data from experiment logs
@@ -79,40 +103,80 @@ def create_votes_df(results_dir: pathlib.Path) -> list[dict]:
     # add vote data column
     full_df["votes_dicts"] = full_df["votes"].apply(ast.literal_eval)
 
-    def get_voting_data_columns(row):
-        # votes are saved as dict with principle_id as key
-        # and True, False, or None as value
-        vote_dict = row["votes_dicts"]
-        vote_principle_ids = list(vote_dict.keys())
-        vote_principles = [principles_by_id[str(id)] for id in vote_principle_ids]
-        vote_values = list(vote_dict.values())
+    annotator_metadata = {}
+    annotator_metadata[DEFAULT_ANNOTATOR_NAME] = {
+        "variant": "default_annotator",
+        "annotator_visible_name": DEFAULT_ANNOTATOR_NAME,
+        "annotator_in_row_name": DEFAULT_ANNOTATOR_NAME,
+    }
 
-        return vote_principle_ids, vote_principles, vote_values
+    annotator_metadata.update(_check_for_nondefault_annotators(full_df))
 
-    (
-        full_df["principle_id"],
-        full_df["principle"],
-        full_df["vote"],
-    ) = zip(*full_df.apply(get_voting_data_columns, axis=1))
+    principle_annotator_cols = []
 
-    # explode into multiple rows
-    # such that each row contains one principle and vote
-    # (rather than one principle and a dict of multiple votes)
-    full_df = full_df.explode(["principle_id", "principle", "vote"])
+    # Create separate columns for each principle annotation
+    for principle_id, principle_text in principles_by_id.items():
+        column_name = f"annotation_principle_{principle_id}"
+        short_principle_text = principle_text.replace(
+            "Select the response that", ""
+        ).strip(" .")
 
-    # sanity check: make sure our length is correct
-    if len(full_df) != len(comparison_df) * len(principles_by_id):
-        votes_per_comparison = full_df.value_counts("comparison_id")
-        max_votes = full_df.groupby("principle_id").size().max()
-        min_votes = full_df.groupby("principle_id").size().min()
-        logger.info(
-            f"Note: not all principles have same number of votes (max: {max_votes} min: {min_votes}). This observation is not necessarily a problem, just indicating that ~{1 - min_votes/max_votes:.3f}% of votes may have been faulty."
+        annotator_metadata[column_name] = {
+            "variant": "icai_principle",
+            "principle_id": principle_id,
+            "principle_text": principle_text,
+            "annotator_visible_name": "Objective: " + short_principle_text,
+            "annotator_in_row_name": short_principle_text,
+        }
+
+        principle_annotator_cols.append(column_name)
+
+        # Extract vote for this principle and convert to string
+        full_df[column_name] = full_df["votes_dicts"].apply(
+            lambda x: convert_vote_to_string(x.get(int(principle_id), None))
         )
 
-    # convert votes from True/False/None to strings
-    full_df["vote"] = full_df["vote"].apply(convert_vote_to_string)
+        # Vectorized implementation instead of row-by-row apply
+        # First check that all preferred_text values are either text_a or text_b
+        assert (
+            full_df["preferred_text"].isin(["text_a", "text_b"]).all()
+        ), "Tie or other votes currently not supported."
+
+        # Create a Series for the rejected text (opposite of preferred_text)
+        rejected_text = pd.Series(
+            [
+                "text_b" if pt == "text_a" else "text_a"
+                for pt in full_df["preferred_text"]
+            ],
+            index=full_df.index,
+        )
+
+        # Create masks based on the current column values
+        agree_mask = full_df[column_name] == "Agree"
+        disagree_mask = full_df[column_name] == "Disagree"
+
+        # Create a copy of the column to store results
+        result = pd.Series("Not applicable", index=full_df.index)
+
+        # Set values based on conditions
+        result[agree_mask] = full_df.loc[agree_mask, "preferred_text"].values
+        result[disagree_mask] = rejected_text.loc[disagree_mask].values
+
+        # Update the column
+        full_df[column_name] = result
+
+        # ensure column is categorical
+        full_df[column_name] = full_df[column_name].astype("category")
 
     # add a weight column
     full_df["weight"] = 1
 
-    return full_df
+    # Clean up temporary columns if no longer needed
+    full_df = full_df.drop(columns=["votes_dicts"])
+
+    return {
+        "df": full_df,
+        "shown_annotator_rows": principle_annotator_cols,
+        "annotator_metadata": annotator_metadata,
+        "reference_annotator_col": "preferred_text",
+    }
