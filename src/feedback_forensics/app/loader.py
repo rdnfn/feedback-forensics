@@ -29,29 +29,146 @@ def convert_vote_to_string(vote: bool | None) -> str:
         raise ValueError(f"Completely invalid vote value: {vote}")
 
 
-def get_votes_dict(results_dir: pathlib.Path, cache: dict) -> dict:
+def get_votes_dict(results_path: pathlib.Path, cache: dict) -> dict:
     """
     Get the votes dataframe for a given results directory.
     If the dataframe is already in the cache, return it.
     Otherwise, create it, add it to the cache, and return it.
     """
 
-    if not results_dir.exists():
-        raise FileNotFoundError(f"Results directory not found in path '{results_dir}'")
+    if not results_path.exists():
+        raise FileNotFoundError(f"Results directory not found in path '{results_path}'")
 
-    # check if the results dir is empty
-    if not any(results_dir.iterdir()):
-        raise FileNotFoundError(f"Results directory is empty in path '{results_dir}'")
-
-    if "votes_dict" in cache and results_dir in cache["votes_dict"]:
-        return cache["votes_dict"][results_dir]
+    if "votes_dict" in cache and results_path in cache["votes_dict"]:
+        return cache["votes_dict"][results_path]
     else:
-        votes_dict = create_votes_dict(results_dir)
+        # check if results_path is a directory and non empty
+        if results_path.is_dir():
+            if not any(results_path.iterdir()):
+                raise FileNotFoundError(f"Empty directory: {results_path}")
+            # use class method to create votes dict
+            votes_dict = create_votes_dict_from_icai_log_files(results_path)
+        elif results_path.is_file() and results_path.suffix == ".json":
+            votes_dict = get_votes_dict_from_annotated_pairs_json(results_path)
+        else:
+            raise FileNotFoundError(f"Unsupported results directory: {results_path}")
 
         if "votes_dict" not in cache:
             cache["votes_dict"] = {}
-        cache["votes_dict"][results_dir] = votes_dict
+        cache["votes_dict"][results_path] = votes_dict
         return votes_dict
+
+
+def get_votes_dict_from_annotated_pairs_json(results_path: pathlib.Path) -> dict:
+    """
+    Get the votes dataframe for a given json path
+    """
+
+    # load json file
+    json_data = load_json_file(results_path)
+
+    # create dataframe from comparisons
+    comparisons_data = []
+    for comparison in json_data["comparisons"]:
+        row_data = {
+            "comparison_id": comparison["id"],
+            "text_a": comparison["text_a"],
+            "text_b": comparison["text_b"],
+        }
+
+        # Add prompt if it exists
+        if comparison.get("prompt"):
+            row_data["prompt"] = comparison["prompt"]
+
+        # Add annotations
+        for annotator_id, annotation in comparison.get("annotations", {}).items():
+            if "pref" in annotation:
+                row_data[annotator_id] = annotation["pref"]
+            else:
+                logger.warning(
+                    f"No preference found for annotator {annotator_id} in comparison {comparison['id']}"
+                )
+
+        # add metadata columns per comparison
+        for key, value in comparison.get("metadata", {}).items():
+            row_data[key] = value
+
+        comparisons_data.append(row_data)
+
+    # create dataframe
+    full_df = pd.DataFrame(comparisons_data)
+
+    # Create annotator metadata
+    annotator_metadata = {}
+    principle_annotator_cols = []
+
+    for annotator_id, annotator_info in json_data["annotators"].items():
+        if annotator_id == json_data["metadata"].get("default_annotator"):
+            annotator_metadata[annotator_id] = {
+                "variant": "default_annotator",
+                "annotator_visible_name": annotator_info.get("name", annotator_id),
+                "annotator_in_row_name": annotator_id,
+            }
+        elif annotator_info.get("type") == "principle":
+            short_principle_text = (
+                annotator_info["description"]
+                .replace("Select the response that", "")
+                .strip(" .")
+            )
+
+            annotator_metadata[annotator_id] = {
+                "variant": "icai_principle",
+                "principle_id": annotator_id,
+                "principle_text": annotator_info["description"],
+                "annotator_visible_name": "Objective: " + short_principle_text,
+                "annotator_in_row_name": short_principle_text,
+            }
+
+            principle_annotator_cols.append(annotator_id)
+
+            # Convert the preference to the same format as in the log files
+            if annotator_id in full_df.columns:
+                # Create a Series for the rejected text (opposite of preferred_text)
+                rejected_text = pd.Series(
+                    [
+                        "text_b" if pt == "text_a" else "text_a"
+                        for pt in full_df[json_data["metadata"]["default_annotator"]]
+                    ],
+                    index=full_df.index,
+                )
+
+                # Create a copy of the column to store results
+                result = pd.Series("Not applicable", index=full_df.index)
+
+                # Set values based on conditions
+                result[
+                    full_df[json_data["metadata"]["default_annotator"]]
+                    == full_df[annotator_id]
+                ] = full_df[json_data["metadata"]["default_annotator"]]
+                result[
+                    full_df[json_data["metadata"]["default_annotator"]]
+                    != full_df[annotator_id]
+                ] = rejected_text
+
+                # Update the column
+                full_df[annotator_id] = result
+
+                # ensure column is categorical
+                full_df[annotator_id] = full_df[annotator_id].astype("category")
+
+    # Rename the default annotator column to "preferred_text" for consistency
+    if json_data["metadata"].get("default_annotator") in full_df.columns:
+        full_df["preferred_text"] = full_df[json_data["metadata"]["default_annotator"]]
+
+    # Add weight column
+    full_df["weight"] = 1
+
+    return {
+        "df": full_df,
+        "shown_annotator_rows": principle_annotator_cols,
+        "annotator_metadata": annotator_metadata,
+        "reference_annotator_col": "preferred_text",
+    }
 
 
 def _check_for_nondefault_annotators(df: pd.DataFrame) -> dict:
@@ -75,7 +192,7 @@ def _check_for_nondefault_annotators(df: pd.DataFrame) -> dict:
     return annotator_metadata
 
 
-def create_votes_dict(results_dir: pathlib.Path) -> list[dict]:
+def create_votes_dict_from_icai_log_files(results_dir: pathlib.Path) -> list[dict]:
     """Create the votes dataframe and voter metadata from ICAI log files.
 
     Args:

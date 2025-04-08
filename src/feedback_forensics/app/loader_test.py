@@ -2,10 +2,7 @@
 Tests for the loader module.
 """
 
-import os
 import json
-import tempfile
-import shutil
 import pandas as pd
 import pytest
 from pathlib import Path
@@ -14,7 +11,8 @@ from feedback_forensics.app.loader import (
     load_json_file,
     convert_vote_to_string,
     get_votes_dict,
-    create_votes_dict,
+    create_votes_dict_from_icai_log_files,
+    get_votes_dict_from_annotated_pairs_json,
 )
 
 
@@ -22,11 +20,8 @@ class TestLoader:
     """Test class for the loader module."""
 
     @pytest.fixture
-    def setup_test_data(self):
+    def setup_test_data(self, tmp_path):
         """Set up temporary test directory with mock data files for testing."""
-        # Create a temporary directory
-        test_dir = Path(tempfile.mkdtemp())
-
         # Create test data
         # 1. Create principles JSON file
         principles_data = {
@@ -34,8 +29,8 @@ class TestLoader:
             "2": "Principle 2 text",
             "3": "Principle 3 text",
         }
-        principles_file = test_dir / "030_distilled_principles_per_cluster.json"
-        with open(principles_file, "w") as f:
+        principles_file = tmp_path / "030_distilled_principles_per_cluster.json"
+        with open(principles_file, "w", encoding="utf-8") as f:
             json.dump(principles_data, f)
 
         # 2. Create comparison data CSV
@@ -48,7 +43,7 @@ class TestLoader:
             }
         )
         comparisons_data.index.name = "index"
-        comparisons_file = test_dir / "000_train_data.csv"
+        comparisons_file = tmp_path / "000_train_data.csv"
         comparisons_data.to_csv(comparisons_file)
 
         # 3. Create votes data CSV
@@ -62,13 +57,72 @@ class TestLoader:
             }
         )
         votes_data.index.name = "index"
-        votes_file = test_dir / "040_votes_per_comparison.csv"
+        votes_file = tmp_path / "040_votes_per_comparison.csv"
         votes_data.to_csv(votes_file)
 
-        yield test_dir
+        return tmp_path
 
-        # Cleanup after tests
-        shutil.rmtree(test_dir)
+    @pytest.fixture
+    def setup_annotated_pairs_json(self, tmp_path):
+        """Set up a temporary JSON file with annotated pairs data for testing."""
+        # Create test JSON data
+        json_data = {
+            "metadata": {
+                "version": "1.0",
+                "description": "Annotated pairs dataset with annotations from ICAI",
+                "created_at": "2025-04-02T16:02:37Z",
+                "dataset_name": "ICAI Dataset - 2025-04-02_16-02-05",
+                "default_annotator": "d36860d4",
+            },
+            "annotators": {
+                "d36860d4": {
+                    "name": "Human",
+                    "description": "Human annotator from original dataset",
+                    "type": "human",
+                },
+                "2f45a6d0": {
+                    "description": "Select the response that evokes a sense of mystery.",
+                    "type": "principle",
+                },
+                "435cef52": {
+                    "description": "Select the response that features a more adventurous setting.",
+                    "type": "principle",
+                },
+            },
+            "comparisons": [
+                {
+                    "id": "2fbb184f",
+                    "prompt": "Write a story about a pet.",
+                    "text_a": "In the heart of a bustling city, a sleek black cat named Shadow prowled the moonlit rooftops, her eyes gleaming with curiosity and mischief. She discovered a hidden garden atop an old apartment building, where she danced under the stars, chasing fireflies that glowed like tiny lanterns. As dawn painted the sky in hues of orange and pink, Shadow found her way back home, carrying the secret of the garden in her heart.",
+                    "text_b": "Across the town, in a cozy neighborhood, a golden retriever named Buddy embarked on his daily adventure, tail wagging with uncontainable excitement. He found a lost toy under the bushes in the park, its colors faded and fabric worn, but to Buddy, it was a treasure untold. Returning home with his newfound prize, Buddy's joyful barks filled the air, reminding everyone in the house that happiness can be found in the simplest of things.",
+                    "annotations": {
+                        "d36860d4": {"pref": "text_a"},
+                        "2f45a6d0": {"pref": "text_a"},
+                        "435cef52": {"pref": "text_a"},
+                    },
+                    "metadata": {"source": "test_source", "category": "fiction"},
+                },
+                {
+                    "id": "3a7c9e2d",
+                    "prompt": "Write a story about a pet.",
+                    "text_a": "In a quiet suburban backyard, a small rabbit named Hoppy nibbled on fresh carrots, his nose twitching with delight. The garden was his kingdom, filled with tall grass to hide in and flowers to admire. As the sun set, Hoppy would return to his cozy hutch, dreaming of tomorrow's adventures in his little paradise.",
+                    "text_b": "Deep in the forest, a wise old owl named Oliver perched high in an ancient oak tree, watching over the woodland creatures below. His keen eyes spotted a family of mice scurrying home, and he hooted softly, a gentle reminder that he was their silent guardian. As night fell, Oliver spread his wings and soared through the moonlit sky, a majestic shadow against the stars.",
+                    "annotations": {
+                        "d36860d4": {"pref": "text_b"},
+                        "2f45a6d0": {"pref": "text_b"},
+                        "435cef52": {"pref": "text_a"},
+                    },
+                    "metadata": {"source": "test_source", "category": "fiction"},
+                },
+            ],
+        }
+
+        # Write JSON to file
+        json_file = tmp_path / "annotated_pairs.json"
+        with open(json_file, "w", encoding="utf-8") as f:
+            json.dump(json_data, f)
+
+        return json_file
 
     def test_load_json_file(self, setup_test_data):
         """Test loading JSON file."""
@@ -101,7 +155,7 @@ class TestLoader:
         test_dir = setup_test_data
 
         # Get the votes dictionary
-        votes_dict = create_votes_dict(test_dir)
+        votes_dict = create_votes_dict_from_icai_log_files(test_dir)
 
         # Basic validation
         votes_df = votes_dict["df"]
@@ -151,13 +205,120 @@ class TestLoader:
         with pytest.raises(FileNotFoundError):
             get_votes_dict(Path("/nonexistent/path"), {})
 
-    def test_get_votes_df_empty_dir(self, setup_test_data):
+    def test_get_votes_df_empty_dir(self, tmp_path):
         """Test getting votes dict with empty directory."""
-        test_dir = setup_test_data
-        empty_dir = Path(tempfile.mkdtemp())
+        empty_dir = tmp_path / "empty_dir"
+        empty_dir.mkdir()
 
-        try:
-            with pytest.raises(FileNotFoundError):
-                get_votes_dict(empty_dir, {})
-        finally:
-            shutil.rmtree(empty_dir)
+        with pytest.raises(FileNotFoundError):
+            get_votes_dict(empty_dir, {})
+
+    def test_get_votes_dict_from_annotated_pairs_json(self, setup_annotated_pairs_json):
+        """Test getting votes dict from annotated pairs JSON."""
+        json_file = setup_annotated_pairs_json
+
+        # Get the votes dictionary
+        votes_dict = get_votes_dict_from_annotated_pairs_json(json_file)
+
+        # Basic validation
+        assert isinstance(votes_dict, dict)
+        assert "df" in votes_dict
+        assert "shown_annotator_rows" in votes_dict
+        assert "annotator_metadata" in votes_dict
+        assert "reference_annotator_col" in votes_dict
+
+        # Check DataFrame
+        df = votes_dict["df"]
+        assert isinstance(df, pd.DataFrame)
+        assert len(df) == 2  # 2 comparisons
+
+        # Check columns
+        assert "comparison_id" in df.columns
+        assert "text_a" in df.columns
+        assert "text_b" in df.columns
+        assert "prompt" in df.columns
+        assert "d36860d4" in df.columns  # default annotator
+        assert "2f45a6d0" in df.columns  # principle annotator
+        assert "435cef52" in df.columns  # principle annotator
+        assert "preferred_text" in df.columns
+        assert "weight" in df.columns
+        assert "source" in df.columns
+        assert "category" in df.columns
+
+        # Check annotator metadata
+        annotator_metadata = votes_dict["annotator_metadata"]
+        assert "d36860d4" in annotator_metadata
+        assert annotator_metadata["d36860d4"]["variant"] == "default_annotator"
+        assert "2f45a6d0" in annotator_metadata
+        assert annotator_metadata["2f45a6d0"]["variant"] == "icai_principle"
+        assert "435cef52" in annotator_metadata
+        assert annotator_metadata["435cef52"]["variant"] == "icai_principle"
+
+        # Check shown annotator rows
+        shown_annotator_rows = votes_dict["shown_annotator_rows"]
+        assert "2f45a6d0" in shown_annotator_rows
+        assert "435cef52" in shown_annotator_rows
+
+        # Check reference annotator column
+        assert votes_dict["reference_annotator_col"] == "preferred_text"
+
+        # Check principle annotations
+        # For the first comparison, all annotators prefer text_a
+        assert df.loc[0, "d36860d4"] == "text_a"
+        assert df.loc[0, "2f45a6d0"] == "text_a"
+        assert df.loc[0, "435cef52"] == "text_a"
+
+        # For the second comparison, default annotator and first principle prefer text_b, second principle prefers text_a
+        assert df.loc[1, "d36860d4"] == "text_b"
+        assert df.loc[1, "2f45a6d0"] == "text_b"
+        assert df.loc[1, "435cef52"] == "text_a"
+
+    def test_get_votes_dict_from_annotated_pairs_json_missing_pref(
+        self, setup_annotated_pairs_json
+    ):
+        """Test getting votes dict from annotated pairs JSON with missing preferences."""
+        json_file = setup_annotated_pairs_json
+
+        # Modify the JSON to have a missing preference
+        with open(json_file, "r", encoding="utf-8") as f:
+            json_data = json.load(f)
+
+        # Remove a preference
+        json_data["comparisons"][0]["annotations"]["2f45a6d0"] = {}
+
+        # Write back to file
+        with open(json_file, "w", encoding="utf-8") as f:
+            json.dump(json_data, f)
+
+        # Get the votes dictionary
+        votes_dict = get_votes_dict_from_annotated_pairs_json(json_file)
+
+        # Check that the function still works
+        assert isinstance(votes_dict, dict)
+        assert "df" in votes_dict
+
+        # Check that the missing preference is handled
+        df = votes_dict["df"]
+        assert "2f45a6d0" in df.columns
+
+    def test_get_votes_dict_from_annotated_pairs_json_with_metadata(
+        self, setup_annotated_pairs_json
+    ):
+        """Test getting votes dict from annotated pairs JSON with metadata."""
+        json_file = setup_annotated_pairs_json
+
+        # Get the votes dictionary
+        votes_dict = get_votes_dict_from_annotated_pairs_json(json_file)
+
+        # Check DataFrame
+        df = votes_dict["df"]
+
+        # Check metadata columns
+        assert "source" in df.columns
+        assert "category" in df.columns
+
+        # Check metadata values
+        assert df.loc[0, "source"] == "test_source"
+        assert df.loc[0, "category"] == "fiction"
+        assert df.loc[1, "source"] == "test_source"
+        assert df.loc[1, "category"] == "fiction"
