@@ -133,7 +133,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             dataset_config = data[state["avail_datasets"]][dataset]
             path = dataset_config.path
             # check results dir inside the path
-            results_dir = pathlib.Path(path) / "results"
+            results_dir = pathlib.Path(path)
             votes_dict = get_votes_dict(results_dir, cache=cache)
 
             votes_dicts[dataset] = votes_dict
@@ -264,13 +264,32 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
     def _get_principle_annotator_names(dataset_name, data) -> str:
         """Get principle-following annotators from json without loading full dataset."""
+
         dataset_config = data[state["avail_datasets"]][dataset_name]
-        principle_path = (
-            dataset_config.path
-            / "results"
-            / "030_distilled_principles_per_cluster.json"
-        )
-        annotator_names = list(load_json_file(principle_path).values())
+        if dataset_config.path.is_dir():
+            principle_path = (
+                dataset_config.path
+                / "results"
+                / "030_distilled_principles_per_cluster.json"
+            )
+            annotator_names = list(load_json_file(principle_path).values())
+        elif dataset_config.path.is_file() and dataset_config.path.suffix == ".json":
+            all_annotators = get_value_from_json(
+                dataset_config.path,
+                "annotators",
+            )
+            principle_annotators = [
+                annotator
+                for annotator in all_annotators.values()
+                if annotator["type"] == "principle"
+            ]
+            annotator_names = [
+                annotator["description"] for annotator in principle_annotators
+            ]
+        else:
+            raise ValueError(
+                f"Dataset {dataset_name} is not a directory or a json file. Please check the dataset path."
+            )
         annotator_names = [
             "Objective: " + name.replace("Select the response that", "").strip(" .")
             for name in annotator_names
@@ -281,8 +300,23 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
     def _get_datacol_annotator_names(dataset_name, data) -> str:
         """Get the annotator names from csv file without loading full dataset."""
         dataset_config = data[state["avail_datasets"]][dataset_name]
-        datacol_path = dataset_config.path / "results" / "000_train_data.csv"
-        datacol_annotator_names = get_csv_columns(datacol_path)
+        if dataset_config.path.is_dir():
+            datacol_path = dataset_config.path / "results" / "000_train_data.csv"
+            datacol_annotator_names = get_csv_columns(datacol_path)
+        elif dataset_config.path.is_file() and dataset_config.path.suffix == ".json":
+            all_annotators = get_value_from_json(
+                dataset_config.path,
+                "annotators",
+            )
+            datacol_annotator_names = [
+                annotator["name"] if "name" in annotator else annotator["description"]
+                for annotator in all_annotators.values()
+                if annotator["type"] != "principle"
+            ]
+        else:
+            raise ValueError(
+                f"Dataset {dataset_name} is not a directory or a json file. Please check the dataset path."
+            )
         return datacol_annotator_names
 
     def _get_default_annotator_cols_config(data) -> str:

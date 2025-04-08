@@ -47,7 +47,7 @@ def get_votes_dict(results_path: pathlib.Path, cache: dict) -> dict:
             if not any(results_path.iterdir()):
                 raise FileNotFoundError(f"Empty directory: {results_path}")
             # use class method to create votes dict
-            votes_dict = create_votes_dict_from_icai_log_files(results_path)
+            votes_dict = create_votes_dict_from_icai_log_files(results_path / "results")
         elif results_path.is_file() and results_path.suffix == ".json":
             votes_dict = get_votes_dict_from_annotated_pairs_json(results_path)
         else:
@@ -86,7 +86,7 @@ def get_votes_dict_from_annotated_pairs_json(results_path: pathlib.Path) -> dict
                 row_data[annotator_id] = annotation["pref"]
             else:
                 logger.warning(
-                    f"No preference found for annotator {annotator_id} in comparison {comparison['id']}"
+                    f"No preference found for annotator {annotator_id} in comparison {comparison['id']}, (annotation: '{annotation}')"
                 )
 
         # add metadata columns per comparison
