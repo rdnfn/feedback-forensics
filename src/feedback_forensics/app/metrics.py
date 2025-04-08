@@ -3,15 +3,18 @@
 import pandas as pd
 import gradio as gr
 import numpy as np
+import sklearn.metrics
 
 from loguru import logger
 
 
-def get_agreement(value_counts: pd.Series) -> float:
+def get_agreement(
+    value_counts: pd.Series, *, annotation_a=None, annotation_b=None
+) -> float:
     return value_counts.get("Agree", 0) / value_counts.sum()
 
 
-def get_acc(value_counts: pd.Series) -> float:
+def get_acc(value_counts: pd.Series, *, annotation_a=None, annotation_b=None) -> float:
     """
     Accuracy: proportion of non-irrelevant votes ('agree' or 'disagree')
     that agree with original preferences.
@@ -28,36 +31,27 @@ def get_acc(value_counts: pd.Series) -> float:
         return num_agreed / denominator
 
 
-def get_cohens_kappa(value_counts: pd.Series) -> float:
+def get_cohens_kappa(
+    value_counts: pd.Series, *, annotation_a=None, annotation_b=None
+) -> float:
     """
     Cohen's kappa: measures agreement beyond chance.
 
-    Since the ICAI principle annotator randomizes the order of the alternatives
-    (see the function `get_preference_vote_for_single_text` in ICAI), it has no
-    position bias and the probability of chance agreement is 50% (even if the
-    dataset has position bias). Therefore, the calculation simplifies to
-
-    Cohen's kappa = (accuracy - 0.5) / 0.5 = 2 * (accuracy - 0.5)
-
-    This ranges from -1 (perfect disagreement) through 0 (random agreement)
-    to 1 (perfect agreement).
-
-    Returns 0 if there are no relevant votes.
+    This takes into account agreement across categories (including non-text_a/text_b votes).
     """
-    num_agreed = value_counts.get("Agree", 0)
-    num_disagreed = value_counts.get("Disagree", 0)
-
-    accuracy = get_acc(value_counts)
-    return 2 * (accuracy - 0.5)
 
 
-def get_relevance(value_counts: pd.Series) -> float:
+def get_relevance(
+    value_counts: pd.Series, *, annotation_a=None, annotation_b=None
+) -> float:
     return (
         value_counts.get("Agree", 0) + value_counts.get("Disagree", 0)
     ) / value_counts.sum()
 
 
-def get_principle_strength(value_counts: pd.Series) -> float:
+def get_principle_strength(
+    value_counts: pd.Series, *, annotation_a=None, annotation_b=None
+) -> float:
     """
     Relevance-weighted Cohen's kappa: combines Cohen's kappa with relevance.
 
@@ -69,19 +63,25 @@ def get_principle_strength(value_counts: pd.Series) -> float:
     return cohens_kappa * relevance
 
 
-def get_num_votes(value_counts: pd.Series) -> int:
+def get_num_votes(
+    value_counts: pd.Series, *, annotation_a=None, annotation_b=None
+) -> int:
     return value_counts.sum()
 
 
-def get_agreed(value_counts: pd.Series) -> int:
+def get_agreed(value_counts: pd.Series, *, annotation_a=None, annotation_b=None) -> int:
     return value_counts.get("Agree", 0)
 
 
-def get_disagreed(value_counts: pd.Series) -> int:
+def get_disagreed(
+    value_counts: pd.Series, *, annotation_a=None, annotation_b=None
+) -> int:
     return value_counts.get("Disagree", 0)
 
 
-def get_not_applicable(value_counts: pd.Series) -> int:
+def get_not_applicable(
+    value_counts: pd.Series, *, annotation_a=None, annotation_b=None
+) -> int:
     return value_counts.get("Not applicable", 0)
 
 
