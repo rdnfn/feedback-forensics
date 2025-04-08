@@ -33,6 +33,7 @@ dependencies = [
   "ipywidgets", # IProgress in jupyter notebooks
   "gradio",
   "plotly",
+  "ijson",
 ]
 
 [project.optional-dependencies]
