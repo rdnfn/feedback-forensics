@@ -6,7 +6,9 @@ from pathlib import Path
 import gradio as gr
 import pandas as pd
 import ijson
-from io import BytesIO
+from loguru import logger
+import time
+import re
 
 
 def get_image_path(image_name: str) -> Path:
@@ -54,38 +56,111 @@ def get_value_from_json(file_path: str | Path, key_path: str) -> any:
 
     This function uses ijson to parse the JSON file incrementally, which is memory efficient
     for large JSON files. It follows the dot-notation key path to find the desired value.
-    Note: Array access is not supported.
 
     Args:
         file_path: Path to the JSON file
         key_path: Dot-notation key path to the desired value (e.g., "user.settings.theme")
+                  Also supports array indexing with bracket notation (e.g., "users[0].name")
 
     Returns:
-        The value found at the specified key path, or None if not found
+        The value found at the specified key path, or None if not found.
+        For arrays, returns a list of all values in the array.
     """
     # Convert file_path to string if it's a Path object
     file_path_str = str(file_path)
 
+    # Check if the key_path contains array indexing with bracket notation
+    array_index = None
+    base_key_path = key_path
+    match = re.search(r"(.*)\[(\d+)\]$", key_path)
+    if match:
+        base_key_path = match.group(1)
+        array_index = int(match.group(2))
+
     try:
         with open(file_path_str, "rb") as file:
-            # Use ijson to parse the file and get the value at the specified key path
+            # Use ijson.parse to find the value at the specified key path
             parser = ijson.parse(file)
 
-            for prefix, event, value in parser:
-                # Check if we're in the target key path
-                if prefix == key_path:
-                    return value
+            # Track if we're inside an array
+            in_array = False
+            array_values = []
+            current_prefix = None
 
-                # Handle nested objects
-                if prefix.startswith(key_path + "."):
-                    if event == "start_map":
-                        continue
+            # For handling objects within arrays
+            current_object = {}
+            current_key = None
+            in_object = False
+
+            for prefix, event, value in parser:
+                # If we found the exact key path
+                if prefix == base_key_path:
+                    if event == "start_array":
+                        in_array = True
+                        array_values = []
+                        current_prefix = prefix
+                    elif event == "end_array":
+                        in_array = False
+                        # If we're looking for a specific array index
+                        if array_index is not None and 0 <= array_index < len(
+                            array_values
+                        ):
+                            return array_values[array_index]
+                        return array_values
+                    elif event == "start_map":
+                        in_object = True
+                        current_object = {}
                     elif event == "end_map":
+                        in_object = False
+                        if in_array:
+                            array_values.append(current_object)
+                        else:
+                            return current_object
+                    elif event == "map_key":
+                        current_key = value
+                    elif event not in [
+                        "start_map",
+                        "end_map",
+                        "start_array",
+                        "end_array",
+                    ]:
+                        if in_object:
+                            current_object[current_key] = value
+                        else:
+                            return value
+
+                # Handle nested objects and arrays
+                elif prefix.startswith(base_key_path + "."):
+                    # If we're in an array, collect values
+                    if in_array and current_prefix == base_key_path:
+                        if event == "start_map":
+                            in_object = True
+                            current_object = {}
+                        elif event == "end_map":
+                            in_object = False
+                            array_values.append(current_object)
+                        elif event == "map_key":
+                            current_key = value
+                        elif event not in [
+                            "start_map",
+                            "end_map",
+                            "start_array",
+                            "end_array",
+                        ]:
+                            if in_object:
+                                current_object[current_key] = value
+                            else:
+                                array_values.append(value)
+                    # Skip map start/end events for nested objects
+                    elif event in ["start_map", "end_map", "start_array", "end_array"]:
                         continue
                     else:
                         return value
 
+            logger.warning(
+                f"Key path {key_path} not found in JSON file {file_path_str}"
+            )
             return None
     except Exception as e:
-        print(f"Error accessing JSON file: {e}")
+        logger.error(f"Error accessing JSON file: {e}")
         return None
