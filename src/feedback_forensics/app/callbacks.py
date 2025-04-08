@@ -9,7 +9,11 @@ from loguru import logger
 
 from feedback_forensics.app.loader import get_votes_dict
 import feedback_forensics.app.plotting
-from feedback_forensics.app.utils import get_csv_columns, load_json_file
+from feedback_forensics.app.utils import (
+    get_csv_columns,
+    load_json_file,
+    get_value_from_json,
+)
 from feedback_forensics.app.constants import (
     NONE_SELECTED_VALUE,
     APP_BASE_URL,
@@ -236,9 +240,22 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
     def _get_columns_in_dataset(dataset_name, data) -> str:
         dataset_config = data[state["avail_datasets"]][dataset_name]
-        avail_cols = get_csv_columns(
-            dataset_config.path / "results" / "000_train_data.csv",
-        )
+
+        # check if dataset is dir or json
+        if dataset_config.path.is_dir():
+            avail_cols = get_csv_columns(
+                dataset_config.path / "results" / "000_train_data.csv",
+            )
+        elif dataset_config.path.is_file() and dataset_config.path.suffix == ".json":
+            avail_cols = get_value_from_json(
+                dataset_config.path,
+                "metadata.available_metadata_keys_per_comparison",
+            )
+        else:
+            raise ValueError(
+                f"Dataset {dataset_name} is not a directory or a json file. Please check the dataset path."
+            )
+
         if dataset_config.filterable_columns:
             avail_cols = [
                 col for col in avail_cols if col in dataset_config.filterable_columns
