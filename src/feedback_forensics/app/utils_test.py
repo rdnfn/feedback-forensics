@@ -165,3 +165,16 @@ def test_get_value_from_json_nested_array_of_objects(sample_json_file):
         {"id": 3, "value": "third"},
     ]
     assert result == expected
+
+
+def test_nested_dict_with_array_of_objects(sample_json_file):
+    """Test getting a nested dict with an array of objects."""
+    result = get_value_from_json(sample_json_file, "nested.arrays")
+    expected = [
+        {"id": 1, "value": "first"},
+        {"id": 2, "value": "second"},
+        {"id": 3, "value": "third"},
+    ]
+
+    assert isinstance(result, dict)
+    assert result["complex"] == expected

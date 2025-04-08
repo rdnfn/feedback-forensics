@@ -79,7 +79,32 @@ def get_value_from_json(file_path: str | Path, key_path: str) -> any:
 
     try:
         with open(file_path_str, "rb") as file:
-            # Use ijson.parse to find the value at the specified key path
+            # Try to use a direct approach for nested objects first
+            # This will handle the case where we're looking for a specific object that might contain arrays
+            try:
+                # Simple first approach using ijson.items - works for many common cases
+                # Especially for returning complete objects at a given path
+                parts = base_key_path.split(".")
+
+                if len(parts) > 0:
+                    # Try to get the object directly using ijson.items
+                    for item in ijson.items(file, base_key_path):
+                        # If we're looking for a specific array index
+                        if (
+                            isinstance(item, list)
+                            and array_index is not None
+                            and 0 <= array_index < len(item)
+                        ):
+                            return item[array_index]
+                        return item
+
+                # Reset file position for the fallback approach
+                file.seek(0)
+            except Exception:
+                # Fall back to manual parsing if the direct approach fails
+                file.seek(0)
+
+            # Fallback: Use ijson.parse to find the value at the specified key path
             parser = ijson.parse(file)
 
             # Track if we're inside an array
@@ -91,6 +116,11 @@ def get_value_from_json(file_path: str | Path, key_path: str) -> any:
             current_object = {}
             current_key = None
             in_object = False
+
+            # For handling nested objects
+            nested_objects = {}
+            current_nested_path = None
+            collecting_nested = False
 
             for prefix, event, value in parser:
                 # If we found the exact key path
@@ -110,9 +140,15 @@ def get_value_from_json(file_path: str | Path, key_path: str) -> any:
                     elif event == "start_map":
                         in_object = True
                         current_object = {}
+                        collecting_nested = True
+                        current_nested_path = prefix
+                        nested_objects[current_nested_path] = {}
                     elif event == "end_map":
                         in_object = False
-                        if in_array:
+                        if collecting_nested and current_nested_path == base_key_path:
+                            collecting_nested = False
+                            return nested_objects[current_nested_path]
+                        elif in_array:
                             array_values.append(current_object)
                         else:
                             return current_object
@@ -131,6 +167,29 @@ def get_value_from_json(file_path: str | Path, key_path: str) -> any:
 
                 # Handle nested objects and arrays
                 elif prefix.startswith(base_key_path + "."):
+                    parts = prefix.split(".")
+
+                    # If we're collecting a nested object
+                    if (
+                        collecting_nested
+                        and current_nested_path
+                        and prefix.startswith(current_nested_path)
+                    ):
+                        if (
+                            len(parts) == len(current_nested_path.split(".")) + 1
+                            and event == "map_key"
+                        ):
+                            nested_key = parts[-1]
+                            nested_objects[current_nested_path][value] = {}
+                        elif len(parts) == len(current_nested_path.split(".")) + 1:
+                            nested_key = parts[-1]
+                            if event == "start_array":
+                                nested_objects[current_nested_path][nested_key] = []
+                            elif event == "start_map":
+                                nested_objects[current_nested_path][nested_key] = {}
+                            elif event not in ["end_array", "end_map"]:
+                                nested_objects[current_nested_path][nested_key] = value
+
                     # If we're in an array, collect values
                     if in_array and current_prefix == base_key_path:
                         if event == "start_map":
