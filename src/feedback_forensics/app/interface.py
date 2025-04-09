@@ -162,8 +162,8 @@ def _create_configuration_panel(inp: dict, state: dict):
                     inp["annotator_cols_dropdown"] = gr.Dropdown(
                         label="👥→ Annotator columns",
                         info="Select the annotators to be included as a column in the results table. By default only a single (ground-truth) annotator is included.",
-                        choices=["preferred_text"],
-                        value=["preferred_text"],
+                        choices=None,
+                        value=None,
                         multiselect=True,
                     )
                     inp["annotator_rows_dropdown"] = gr.Dropdown(

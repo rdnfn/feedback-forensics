@@ -420,7 +420,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
     def _get_avail_col_values(col_name, data):
         dataset = data[inp["active_datasets_dropdown"]][0]
         dataset_config = data[state["avail_datasets"]][dataset]
-        results_dir = pathlib.Path(dataset_config.path) / "results"
+        results_dir = pathlib.Path(dataset_config.path)
         cache = data[state["cache"]]
         votes_dict = get_votes_dict(results_dir, cache=cache)
         votes_df = votes_dict["df"]
