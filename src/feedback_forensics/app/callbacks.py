@@ -228,9 +228,9 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         }
 
         # only add annotator rows and cols if they are not the default
-        if annotator_rows != default_annotator_rows:
+        if sorted(annotator_rows) != sorted(default_annotator_rows):
             url_kwargs["annotator_rows"] = data[inp["annotator_rows_dropdown"]]
-        if annotator_cols != default_annotator_cols:
+        if sorted(annotator_cols) != sorted(default_annotator_cols):
             url_kwargs["annotator_cols"] = data[inp["annotator_cols_dropdown"]]
 
         return {
