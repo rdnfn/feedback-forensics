@@ -6,9 +6,12 @@ import json
 # App/package version
 import importlib.metadata
 
-VERSION = importlib.metadata.version("feedback_forensics")
+from inverse_cai.data.annotated_pairs_format import (
+    hash_string,
+    DEFAULT_ANNOTATOR_DESCRIPTION,
+)
 
-DEFAULT_DATASET_PATH = "exp/outputs/prism_v2"
+VERSION = importlib.metadata.version("feedback_forensics")
 
 # Constants from environment vars
 # get env var with github token
@@ -19,81 +22,16 @@ DEFAULT_DATASET_NAMES = json.loads(os.getenv("FF_DEFAULT_DATASET_NAMES", "[]"))
 
 # App username and password
 # Will block app behind login if env vars are set
-USERNAME = os.getenv("ICAI_APP_USER")
-PASSWORD = os.getenv("ICAI_APP_PW")
-ALLOW_LOCAL_RESULTS = os.getenv("ICAI_ALLOW_LOCAL_RESULTS", "true").lower() == "true"
-
-### Layout and dimensions
-PRINCIPLE_SHORT_LENGTH = 70  # length of principle shown before cutting off
-# this sets where the actual plot starts and ends (individual datapoints)
-END_RECONSTRUCTION_PLOT_X = 0.99
-
-# px values for different components
-FIG_HEIGHT_PER_PRINCIPLE = 20  # height of each principle in px
-FIG_HEIGHT_HEADER = 45
-FIG_HEIGHT_BOTTOM = 10
-FIG_GAP_BETWEEN_TABLES = 50
-FIG_GAP_BETWEEN_HEADER_AND_TABLE = 20
-
-# columns size
-SPACE_PER_NUM_COL = 0.05
-
-
-def get_fig_proportions_y(num_principles: int, num_metrics: int):
-    """Get the y-proportions for the figure for different components.
-
-    This is all relative, with 0 being the bottom of the figure and 1 being the top."""
-
-    metrics_table_height_px = (num_metrics + 2) * FIG_HEIGHT_PER_PRINCIPLE
-
-    principles_height_px = FIG_HEIGHT_PER_PRINCIPLE * num_principles
-
-    total_height_px = (
-        FIG_HEIGHT_HEADER
-        + metrics_table_height_px
-        + FIG_GAP_BETWEEN_TABLES
-        + principles_height_px
-        + FIG_HEIGHT_BOTTOM
-    )
-
-    metrics_table_bottom_y_px = (
-        FIG_HEIGHT_BOTTOM + principles_height_px + FIG_GAP_BETWEEN_TABLES
-    )
-    metrics_table_top_y_px = metrics_table_bottom_y_px + metrics_table_height_px
-
-    table_top_y_px = FIG_HEIGHT_BOTTOM + principles_height_px
-    table_bottom_y_px = FIG_HEIGHT_BOTTOM
-    header_bottom_y_px = table_top_y_px + FIG_GAP_BETWEEN_HEADER_AND_TABLE
-
-    return {
-        "principle_table": {
-            "relative": {
-                "heading_y": header_bottom_y_px / total_height_px,
-                "table_top_y": table_top_y_px / total_height_px,
-                "table_bottom_y": table_bottom_y_px / total_height_px,
-                "metrics_table_top_y": metrics_table_top_y_px / total_height_px,
-                "metrics_table_bottom_y": metrics_table_bottom_y_px / total_height_px,
-                "row_height": FIG_HEIGHT_PER_PRINCIPLE / total_height_px,
-            },
-            "absolute": {
-                "heading_bottom_y": header_bottom_y_px,
-                "table_top_y": table_top_y_px,
-                "table_bottom_y": table_bottom_y_px,
-                "total_height": total_height_px,
-                "principles_height": principles_height_px,
-            },
-        }
-    }
-
-
-PRINCIPLE_END_X = 0.40
-METRICS_START_X = PRINCIPLE_END_X + 0.01
-MENU_X = 0.04
+USERNAME = os.getenv("FF_APP_USER")
+PASSWORD = os.getenv("FF_APP_PW")
 
 
 # Text style
 FONT_FAMILY = '"Open Sans", verdana, arial, sans-serif'
 FONT_COLOR = "white"
+
+# Writing
+PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS = "AI: "
 
 
 ### Colors
@@ -121,6 +59,8 @@ PAPER_BACKGROUND_COLOR = "#27272a"  # "white"  # LIGHT_GREY
 PLOT_BACKGROUND_COLOR = "#27272a"  # "white"  # LIGHT_GREY
 
 NONE_SELECTED_VALUE = "(None selected)"
+DEFAULT_ANNOTATOR_NAME = "preferred_text"
+DEFAULT_ANNOTATOR_HASH = hash_string(DEFAULT_ANNOTATOR_DESCRIPTION)
 
 
 # Plotly config

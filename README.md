@@ -3,7 +3,7 @@
   <img src="src/feedback_forensics/assets/feedback_forensics_logo.png" alt="Feebdack Forensics Logo" width="330px"></a>
   <br>
   <a href="https://app.feedbackforensics.com/">
-  <img src="docs/img/demo_v3.gif" alt="" width="650px"></a>
+  <img src="docs/img/demo_v4.gif" alt="" width="650px"></a>
   <br>
   <a href="https://app.feedbackforensics.com/">
   <img src="docs/img/run_demo_button.png" alt="Run demo" width="170px"></a>
