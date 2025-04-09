@@ -40,6 +40,11 @@ def get_cohens_kappa(
     This takes into account agreement across categories (including non-text_a/text_b votes).
     """
 
+    # TODO: replace with sklearn.metrics.cohen_kappa_score
+
+    accuracy = get_acc(value_counts)
+    return 2 * (accuracy - 0.5)
+
 
 def get_relevance(
     value_counts: pd.Series, *, annotation_a=None, annotation_b=None
