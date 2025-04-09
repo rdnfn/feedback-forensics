@@ -108,6 +108,13 @@ MULTIPREF = BuiltinDataset(
     source="https://huggingface.co/datasets/allenai/multipref",
 )
 
+LLAMA4_ARENA = BuiltinDataset(
+    name="🏟️🦙 Llama 4 Arena data",
+    path=DATA_DIR / "llama4_arena_original_data.json",
+    description="Original data of Llama-4-Maverick-03-26-Experimental arena results.",
+    source="https://huggingface.co/spaces/lmarena-ai/Llama-4-Maverick-03-26-Experimental_battles/tree/main/data",
+)
+
 # List of all built-in datasets
 _BUILTIN_DATASETS = [
     ARENA_V2,
@@ -117,6 +124,7 @@ _BUILTIN_DATASETS = [
     ANTHROPIC_HARMLESS,
     OLMO2_0325,
     MULTIPREF,
+    LLAMA4_ARENA,
 ]
 _available_datasets = []
 
