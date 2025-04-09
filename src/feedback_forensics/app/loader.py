@@ -3,9 +3,10 @@ import json
 import ast
 import pandas as pd
 from loguru import logger
-
+from inverse_cai.data.annotated_pairs_format import hash_string
 from feedback_forensics.app.constants import (
     DEFAULT_ANNOTATOR_NAME,
+    DEFAULT_ANNOTATOR_HASH,
     PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS,
 )
 
@@ -128,10 +129,6 @@ def get_votes_dict_from_annotated_pairs_json(results_path: pathlib.Path) -> dict
 
             principle_annotator_cols.append(annotator_id)
 
-    # Rename the default annotator column to "preferred_text" for consistency
-    if json_data["metadata"].get("default_annotator") in full_df.columns:
-        full_df["preferred_text"] = full_df[json_data["metadata"]["default_annotator"]]
-
     # Add weight column
     full_df["weight"] = 1
 
@@ -139,7 +136,7 @@ def get_votes_dict_from_annotated_pairs_json(results_path: pathlib.Path) -> dict
         "df": full_df,
         "shown_annotator_rows": principle_annotator_cols,
         "annotator_metadata": annotator_metadata,
-        "reference_annotator_col": "preferred_text",
+        "reference_annotator_col": DEFAULT_ANNOTATOR_HASH,
     }
 
 
@@ -193,7 +190,7 @@ def create_votes_dict_from_icai_log_files(results_dir: pathlib.Path) -> list[dic
     full_df["votes_dicts"] = full_df["votes"].apply(ast.literal_eval)
 
     annotator_metadata = {}
-    annotator_metadata[DEFAULT_ANNOTATOR_NAME] = {
+    annotator_metadata[DEFAULT_ANNOTATOR_HASH] = {
         "variant": "default_annotator",
         "annotator_visible_name": DEFAULT_ANNOTATOR_NAME,
         "annotator_in_row_name": DEFAULT_ANNOTATOR_NAME,
@@ -205,7 +202,7 @@ def create_votes_dict_from_icai_log_files(results_dir: pathlib.Path) -> list[dic
 
     # Create separate columns for each principle annotation
     for principle_id, principle_text in principles_by_id.items():
-        column_name = f"annotation_principle_{principle_id}"
+        column_name = hash_string(principle_text)
         short_principle_text = principle_text.replace(
             "Select the response that", ""
         ).strip(" .")
@@ -229,14 +226,18 @@ def create_votes_dict_from_icai_log_files(results_dir: pathlib.Path) -> list[dic
         # Vectorized implementation instead of row-by-row apply
         # First check that all preferred_text values are either text_a or text_b
         assert (
-            full_df["preferred_text"].isin(["text_a", "text_b"]).all()
+            full_df[DEFAULT_ANNOTATOR_NAME].isin(["text_a", "text_b"]).all()
         ), "Tie or other votes currently not supported."
 
         # Create a Series for the rejected text (opposite of preferred_text)
         rejected_text = pd.Series(
             [
-                "text_b" if pt == "text_a" else "text_a"
-                for pt in full_df["preferred_text"]
+                (
+                    "text_b"
+                    if pt == "text_a"
+                    else "text_a" if pt in ["text_a", "text_b"] else "Not applicable"
+                )
+                for pt in full_df[DEFAULT_ANNOTATOR_NAME]
             ],
             index=full_df.index,
         )
@@ -249,7 +250,7 @@ def create_votes_dict_from_icai_log_files(results_dir: pathlib.Path) -> list[dic
         result = pd.Series("Not applicable", index=full_df.index)
 
         # Set values based on conditions
-        result[agree_mask] = full_df.loc[agree_mask, "preferred_text"].values
+        result[agree_mask] = full_df.loc[agree_mask, DEFAULT_ANNOTATOR_NAME].values
         result[disagree_mask] = rejected_text.loc[disagree_mask].values
 
         # Update the column
@@ -257,16 +258,20 @@ def create_votes_dict_from_icai_log_files(results_dir: pathlib.Path) -> list[dic
 
         # ensure column is categorical
         full_df[column_name] = full_df[column_name].astype("category")
-
     # add a weight column
     full_df["weight"] = 1
 
     # Clean up temporary columns if no longer needed
     full_df = full_df.drop(columns=["votes_dicts"])
 
+    # rename preferred_text to default_annotator_hash
+    full_df.rename(
+        columns={DEFAULT_ANNOTATOR_NAME: DEFAULT_ANNOTATOR_HASH}, inplace=True
+    )
+
     return {
         "df": full_df,
         "shown_annotator_rows": principle_annotator_cols,
         "annotator_metadata": annotator_metadata,
-        "reference_annotator_col": "preferred_text",
+        "reference_annotator_col": DEFAULT_ANNOTATOR_HASH,
     }

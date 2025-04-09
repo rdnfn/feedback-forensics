@@ -6,6 +6,11 @@ import json
 # App/package version
 import importlib.metadata
 
+from inverse_cai.data.annotated_pairs_format import (
+    hash_string,
+    DEFAULT_ANNOTATOR_DESCRIPTION,
+)
+
 VERSION = importlib.metadata.version("feedback_forensics")
 
 # Constants from environment vars
@@ -55,6 +60,7 @@ PLOT_BACKGROUND_COLOR = "#27272a"  # "white"  # LIGHT_GREY
 
 NONE_SELECTED_VALUE = "(None selected)"
 DEFAULT_ANNOTATOR_NAME = "preferred_text"
+DEFAULT_ANNOTATOR_HASH = hash_string(DEFAULT_ANNOTATOR_DESCRIPTION)
 
 
 # Plotly config
