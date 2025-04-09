@@ -128,36 +128,6 @@ def get_votes_dict_from_annotated_pairs_json(results_path: pathlib.Path) -> dict
 
             principle_annotator_cols.append(annotator_id)
 
-            # Convert the preference to the same format as in the log files
-            if annotator_id in full_df.columns:
-                # Create a Series for the rejected text (opposite of preferred_text)
-                rejected_text = pd.Series(
-                    [
-                        "text_b" if pt == "text_a" else "text_a"
-                        for pt in full_df[json_data["metadata"]["default_annotator"]]
-                    ],
-                    index=full_df.index,
-                )
-
-                # Create a copy of the column to store results
-                result = pd.Series("Not applicable", index=full_df.index)
-
-                # Set values based on conditions
-                result[
-                    full_df[json_data["metadata"]["default_annotator"]]
-                    == full_df[annotator_id]
-                ] = full_df[json_data["metadata"]["default_annotator"]]
-                result[
-                    full_df[json_data["metadata"]["default_annotator"]]
-                    != full_df[annotator_id]
-                ] = rejected_text
-
-                # Update the column
-                full_df[annotator_id] = result
-
-                # ensure column is categorical
-                full_df[annotator_id] = full_df[annotator_id].astype("category")
-
     # Rename the default annotator column to "preferred_text" for consistency
     if json_data["metadata"].get("default_annotator") in full_df.columns:
         full_df["preferred_text"] = full_df[json_data["metadata"]["default_annotator"]]
