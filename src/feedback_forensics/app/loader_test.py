@@ -14,7 +14,7 @@ from feedback_forensics.app.loader import (
     create_votes_dict_from_icai_log_files,
     get_votes_dict_from_annotated_pairs_json,
 )
-from feedback_forensics.app.constants import DEFAULT_ANNOTATOR_HASH
+from feedback_forensics.app.constants import DEFAULT_ANNOTATOR_HASH, hash_string
 
 
 class TestLoader:
@@ -164,22 +164,22 @@ class TestLoader:
         assert len(votes_df) == 3  # 3 comparisons
 
         # Check column creation
-        assert "annotation_principle_1" in votes_df.columns
-        assert "annotation_principle_2" in votes_df.columns
-        assert "annotation_principle_3" in votes_df.columns
+        assert hash_string("Principle 1 text") in votes_df.columns
+        assert hash_string("Principle 2 text") in votes_df.columns
+        assert hash_string("Principle 3 text") in votes_df.columns
 
         # Check vote conversion - we're now checking text_a, text_b or Not applicable
-        assert votes_df.loc[0, "annotation_principle_1"] in [
+        assert votes_df.loc[0, hash_string("Principle 1 text")] in [
             "text_a",
             "text_b",
             "Not applicable",
         ]
-        assert votes_df.loc[0, "annotation_principle_2"] in [
+        assert votes_df.loc[0, hash_string("Principle 2 text")] in [
             "text_a",
             "text_b",
             "Not applicable",
         ]
-        assert votes_df.loc[0, "annotation_principle_3"] == "Not applicable"
+        assert votes_df.loc[0, hash_string("Principle 3 text")] == "Not applicable"
 
         # Check weight column
         assert "weight" in votes_df.columns
