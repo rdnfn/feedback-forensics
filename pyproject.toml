@@ -14,6 +14,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
+  "inverse_cai",
   "langchain",
   "python-dotenv",
   "langchain-openai",
