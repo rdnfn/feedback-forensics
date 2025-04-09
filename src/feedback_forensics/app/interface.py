@@ -5,6 +5,7 @@ from feedback_forensics.app.callbacks import generate_callbacks, attach_callback
 from feedback_forensics.app.constants import (
     NONE_SELECTED_VALUE,
     VERSION,
+    PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS,
 )
 from feedback_forensics.app.datasets import (
     get_available_datasets,
@@ -167,7 +168,7 @@ def _create_configuration_panel(inp: dict, state: dict):
                     )
                     inp["annotator_rows_dropdown"] = gr.Dropdown(
                         label="👥↓ Annotator rows",
-                        info="Select the annotators to be included as a row in the results table. By default only objective-following annotators are included.",
+                        info=f'Select the annotators to be included as a row in the results table. By default only objective-following AI annotators are included (named as "{PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS} \<OBJECTIVE\>").',
                         choices=None,
                         value=None,
                         multiselect=True,

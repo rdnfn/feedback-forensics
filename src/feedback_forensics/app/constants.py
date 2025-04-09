@@ -25,6 +25,9 @@ PASSWORD = os.getenv("FF_APP_PW")
 FONT_FAMILY = '"Open Sans", verdana, arial, sans-serif'
 FONT_COLOR = "white"
 
+# Writing
+PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS = "AI: "
+
 
 ### Colors
 LIGHT_GREEN = "#d9ead3"

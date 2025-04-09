@@ -6,6 +6,7 @@ from loguru import logger
 
 from feedback_forensics.app.constants import (
     DEFAULT_ANNOTATOR_NAME,
+    PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS,
 )
 
 
@@ -120,7 +121,8 @@ def get_votes_dict_from_annotated_pairs_json(results_path: pathlib.Path) -> dict
                 "variant": "icai_principle",
                 "principle_id": annotator_id,
                 "principle_text": annotator_info["description"],
-                "annotator_visible_name": "Objective: " + short_principle_text,
+                "annotator_visible_name": PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS
+                + short_principle_text,
                 "annotator_in_row_name": short_principle_text,
             }
 
@@ -242,7 +244,8 @@ def create_votes_dict_from_icai_log_files(results_dir: pathlib.Path) -> list[dic
             "variant": "icai_principle",
             "principle_id": principle_id,
             "principle_text": principle_text,
-            "annotator_visible_name": "Objective: " + short_principle_text,
+            "annotator_visible_name": PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS
+            + short_principle_text,
             "annotator_in_row_name": short_principle_text,
         }
 
