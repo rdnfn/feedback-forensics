@@ -14,6 +14,7 @@ from feedback_forensics.app.loader import (
     create_votes_dict_from_icai_log_files,
     get_votes_dict_from_annotated_pairs_json,
 )
+from feedback_forensics.app.constants import DEFAULT_ANNOTATOR_HASH
 
 
 class TestLoader:
@@ -240,7 +241,6 @@ class TestLoader:
         assert "d36860d4" in df.columns  # default annotator
         assert "2f45a6d0" in df.columns  # principle annotator
         assert "435cef52" in df.columns  # principle annotator
-        assert "preferred_text" in df.columns
         assert "weight" in df.columns
         assert "source" in df.columns
         assert "category" in df.columns
@@ -260,7 +260,7 @@ class TestLoader:
         assert "435cef52" in shown_annotator_rows
 
         # Check reference annotator column
-        assert votes_dict["reference_annotator_col"] == "preferred_text"
+        assert votes_dict["reference_annotator_col"] == DEFAULT_ANNOTATOR_HASH
 
         # Check principle annotations
         # For the first comparison, all annotators prefer text_a
