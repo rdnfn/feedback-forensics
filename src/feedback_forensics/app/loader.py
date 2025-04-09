@@ -110,6 +110,7 @@ def get_votes_dict_from_annotated_pairs_json(results_path: pathlib.Path) -> dict
                 "variant": "default_annotator",
                 "annotator_visible_name": annotator_info.get("name", annotator_id),
                 "annotator_in_row_name": annotator_id,
+                "annotator_description": annotator_info.get("description", ""),
             }
         elif annotator_info.get("type") == "principle":
             short_principle_text = (
@@ -125,9 +126,17 @@ def get_votes_dict_from_annotated_pairs_json(results_path: pathlib.Path) -> dict
                 "annotator_visible_name": PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS
                 + short_principle_text,
                 "annotator_in_row_name": short_principle_text,
+                "annotator_description": annotator_info.get("description", ""),
             }
 
             principle_annotator_cols.append(annotator_id)
+        else:
+            annotator_metadata[annotator_id] = {
+                "variant": "nondefault_annotator",
+                "annotator_visible_name": annotator_info.get("name", annotator_id),
+                "annotator_in_row_name": annotator_id,
+                "annotator_description": annotator_info.get("description", ""),
+            }
 
     # Add weight column
     full_df["weight"] = 1
