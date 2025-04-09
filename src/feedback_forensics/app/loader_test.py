@@ -30,7 +30,10 @@ class TestLoader:
             "2": "Principle 2 text",
             "3": "Principle 3 text",
         }
-        principles_file = tmp_path / "030_distilled_principles_per_cluster.json"
+        results_path = tmp_path / "results"
+        results_path.mkdir(parents=True, exist_ok=True)
+
+        principles_file = results_path / "030_distilled_principles_per_cluster.json"
         with open(principles_file, "w", encoding="utf-8") as f:
             json.dump(principles_data, f)
 
@@ -44,7 +47,7 @@ class TestLoader:
             }
         )
         comparisons_data.index.name = "index"
-        comparisons_file = tmp_path / "000_train_data.csv"
+        comparisons_file = results_path / "000_train_data.csv"
         comparisons_data.to_csv(comparisons_file)
 
         # 3. Create votes data CSV
@@ -58,7 +61,7 @@ class TestLoader:
             }
         )
         votes_data.index.name = "index"
-        votes_file = tmp_path / "040_votes_per_comparison.csv"
+        votes_file = results_path / "040_votes_per_comparison.csv"
         votes_data.to_csv(votes_file)
 
         return tmp_path
@@ -128,7 +131,9 @@ class TestLoader:
     def test_load_json_file(self, setup_test_data):
         """Test loading JSON file."""
         test_dir = setup_test_data
-        principles_file = test_dir / "030_distilled_principles_per_cluster.json"
+        principles_file = (
+            test_dir / "results" / "030_distilled_principles_per_cluster.json"
+        )
 
         # Test loading
         data = load_json_file(principles_file)
@@ -156,7 +161,7 @@ class TestLoader:
         test_dir = setup_test_data
 
         # Get the votes dictionary
-        votes_dict = create_votes_dict_from_icai_log_files(test_dir)
+        votes_dict = create_votes_dict_from_icai_log_files(test_dir / "results")
 
         # Basic validation
         votes_df = votes_dict["df"]
