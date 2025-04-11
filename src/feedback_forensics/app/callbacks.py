@@ -195,7 +195,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 )
 
             votes_dicts = {
-                f"{dataset_name} ({annotator_name})": {
+                f"{dataset_name}\n({annotator_name.replace('-', ' ')})": {
                     "df": votes_dict["df"],
                     "annotator_metadata": votes_dict["annotator_metadata"],
                     "reference_annotator_col": annotator_col,
