@@ -114,7 +114,7 @@ def compute_metrics(votes_dict: dict) -> dict:
 
     # check that ref annotator col only contains "text_a" or "text_b"
     if not all(votes_df[ref_annotator_col].isin(["text_a", "text_b"])):
-        values = ", ".join(list(votes_df[ref_annotator_col].unique()))
+        values = ", ".join([str(v) for v in list(votes_df[ref_annotator_col].unique())])
         gr.Warning(
             f"Reference annotator column '{ref_annotator_col}' contains values other than 'text_a' or 'text_b'(Values: {values}). Metrics will be computed on the subset of votes where the reference annotator is 'text_a' or 'text_b'."
         )
