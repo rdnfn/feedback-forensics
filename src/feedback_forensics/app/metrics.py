@@ -115,9 +115,9 @@ def compute_metrics(votes_dict: dict) -> dict:
     # check that ref annotator col only contains "text_a" or "text_b"
     if not all(votes_df[ref_annotator_col].isin(["text_a", "text_b"])):
         values = ", ".join([str(v) for v in list(votes_df[ref_annotator_col].unique())])
-        gr.Warning(
-            f"Reference annotator column '{ref_annotator_col}' contains values other than 'text_a' or 'text_b'(Values: {values}). Metrics will be computed on the subset of votes where the reference annotator is 'text_a' or 'text_b'."
-        )
+        # gr.Warning(
+        #    f"Reference annotator column '{ref_annotator_col}' contains values other than 'text_a' or 'text_b'(Values: {values}). Metrics will be computed on the subset of votes where the reference annotator is 'text_a' or 'text_b'."
+        # )
         votes_df = votes_df[votes_df[ref_annotator_col].isin(["text_a", "text_b"])]
 
     annotator_names = [
@@ -353,10 +353,10 @@ def get_overall_metrics(votes_df: pd.DataFrame, ref_annotator_col: str) -> dict:
 
     return {
         "Number of preference pairs": num_votes,
-        "Prop preferring text_a": num_text_a_preferred / num_votes,
+        "Prop selecting text_a": num_text_a_preferred / num_votes,
         "Avg len text_a (chars)": average_length_text_a,
         "Avg len text_b (chars)": average_length_text_b,
-        "Avg len pref. text (chars)": average_length_preferred_text,
-        "Avg len rej. text (chars)": average_length_rejected_text,
-        "Prop preferring longer text": proportion_longer_text_preferred,
+        "Avg len selected text (chars)": average_length_preferred_text,
+        "Avg len rejected text (chars)": average_length_rejected_text,
+        "Prop selecting longer text": proportion_longer_text_preferred,
     }
