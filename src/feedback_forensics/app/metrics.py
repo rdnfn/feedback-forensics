@@ -301,9 +301,20 @@ def get_overall_metrics(votes_df: pd.DataFrame, ref_annotator_col: str) -> dict:
     """
 
     # assert that comparison_id is unique
-    assert votes_df["comparison_id"].nunique() == len(
-        votes_df
-    ), "comparison_id is not unique"
+    comparison_id_counts = votes_df["comparison_id"].value_counts()
+    # TODO: ensure that all comparison_ids are unique
+    # even if two models produce the same output for the same prompt
+    # this should not happen
+    non_unique_comparison_ids = comparison_id_counts[comparison_id_counts > 1]
+    if len(non_unique_comparison_ids) > 0:
+        logger.warning(
+            f"Comparison_id is not unique. non-unique values:\n{non_unique_comparison_ids}"
+        )
+        # limiting to unique comparison_ids, always only leaving in the first occurrence
+        votes_df = votes_df.drop_duplicates(subset=["comparison_id"])
+        logger.warning(
+            f"Limiting to unique comparison_ids, always only leaving in the first occurrence. Num of comparisons removed: {non_unique_comparison_ids.sum() - len(non_unique_comparison_ids)}"
+        )
 
     # limit to votes where ref_annotator_col is "text_a" or "text_b"
     votes_df = votes_df[votes_df[ref_annotator_col].isin(["text_a", "text_b"])]
