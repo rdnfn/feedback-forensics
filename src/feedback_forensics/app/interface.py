@@ -194,11 +194,6 @@ def _create_results_panel(out: dict):
                 interactive=True,
                 show_label=True,
             )
-            with gr.Accordion("ℹ️ Metrics explanation", open=False):
-                out["metrics_info"] = gr.Markdown(
-                    METRICS_DESCRIPTION,
-                    container=True,
-                )
 
         gr.Markdown("### Overall metrics")
         out["overall_metrics_table"] = gr.Dataframe(
@@ -207,31 +202,38 @@ def _create_results_panel(out: dict):
         )
         gr.Markdown("### Annotation metrics")
 
-        # Add control dropdowns for the annotator table
-        with gr.Row():
-            out["metric_name_dropdown"] = gr.Dropdown(
-                label="Metric",
-                choices=list(METRIC_COL_OPTIONS.keys()),
-                value="strength",
-                interactive=True,
-            )
-            out["sort_by_dropdown"] = gr.Dropdown(
-                label="Sort by",
-                choices=["(First dataset)"],
-                value="(First dataset)",
-                interactive=True,
-            )
-            out["sort_order_dropdown"] = gr.Dropdown(
-                label="Sort order",
-                choices=["Descending", "Ascending"],
-                value="Descending",
-                interactive=True,
-            )
+        with gr.Group():
+            # Add control dropdowns for the annotator table
+            with gr.Row():
+                out["metric_name_dropdown"] = gr.Dropdown(
+                    label="Metric",
+                    choices=list(METRIC_COL_OPTIONS.keys()),
+                    value="strength",
+                    interactive=True,
+                )
+                out["sort_by_dropdown"] = gr.Dropdown(
+                    label="Sort by",
+                    choices=["(First dataset)"],
+                    value="(First dataset)",
+                    interactive=True,
+                )
+                out["sort_order_dropdown"] = gr.Dropdown(
+                    label="Sort order",
+                    choices=["Descending", "Ascending"],
+                    value="Descending",
+                    interactive=True,
+                )
 
-        out["annotator_table"] = gr.Dataframe(
-            value=pd.DataFrame(),
-            headers=["No data loaded"],
-        )
+            with gr.Accordion("ℹ️ Metrics explanation", open=False):
+                out["metrics_info"] = gr.Markdown(
+                    METRICS_DESCRIPTION,
+                    container=True,
+                )
+
+            out["annotator_table"] = gr.Dataframe(
+                value=pd.DataFrame(),
+                headers=["No data loaded"],
+            )
 
 
 def _force_dark_theme(block):
