@@ -123,6 +123,9 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         cache = data[state["cache"]]
         split_col = data[inp["split_col_dropdown"]]
         selected_vals = data[inp["split_col_selected_vals_dropdown"]]
+        metric_name = data[out["metric_name_dropdown"]]
+        sort_by = data[out["sort_by_dropdown"]]
+        sort_ascending = data[out["sort_order_dropdown"]] == "Ascending"
 
         if len(datasets) == 0:
             gr.Warning(
@@ -237,10 +240,9 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 feedback_forensics.app.metrics.compute_metrics(votes_dict)
             )
 
-        metric_name = DEFAULT_METRIC_NAME
         sort_by_choices = list(votes_dicts.keys())
-        sort_by = sort_by_choices[0]
-        sort_ascending = False
+        if sort_by not in sort_by_choices and sort_by_choices:
+            sort_by = sort_by_choices[0]
 
         tables = feedback_forensics.app.plotting.generate_dataframes(
             annotator_metrics=annotator_metrics,
@@ -255,6 +257,9 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             "col": data[inp["split_col_dropdown"]],
             "col_vals": data[inp["split_col_selected_vals_dropdown"]],
             "base_url": data[state["app_url"]],
+            "metric": metric_name,
+            "sort_by": sort_by,
+            "sort_order": "Ascending" if sort_ascending else "Descending",
         }
 
         # only add annotator rows and cols if they are not the default
@@ -273,6 +278,8 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             ),
             state["computed_annotator_metrics"]: annotator_metrics,
             state["computed_overall_metrics"]: overall_metrics,
+            state["default_annotator_cols"]: default_annotator_cols,
+            state["default_annotator_rows"]: default_annotator_rows,
             out["metric_name_dropdown"]: gr.Dropdown(
                 value=metric_name,
                 interactive=True,
@@ -592,6 +599,29 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                         interactive=True,
                     )
 
+        # Handle metric, sort_by, and sort_order parameters
+        if "metric" in config:
+            data[out["metric_name_dropdown"]] = config["metric"]
+            return_dict[out["metric_name_dropdown"]] = gr.Dropdown(
+                value=config["metric"],
+                interactive=True,
+            )
+
+        if "sort_by" in config:
+            data[out["sort_by_dropdown"]] = config["sort_by"]
+            # We'll update choices after loading data
+            return_dict[out["sort_by_dropdown"]] = gr.Dropdown(
+                value=config["sort_by"],
+                interactive=True,
+            )
+
+        if "sort_order" in config:
+            data[out["sort_order_dropdown"]] = config["sort_order"]
+            return_dict[out["sort_order_dropdown"]] = gr.Dropdown(
+                value=config["sort_order"],
+                interactive=True,
+            )
+
         if "col" not in config:
             # update split col dropdowns even if no column is selected
             split_col_interface_dict = update_single_dataset_menus(data)
@@ -683,8 +713,54 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             sort_ascending=sort_ascending,
         )
 
+        default_sort_by = list(annotator_metrics.keys())[0]
+        default_sort_ascending = False
+
+        # Update the share link when metric parameters change
+        url_kwargs = {
+            "datasets": data[inp["active_datasets_dropdown"]],
+            "col": data[inp["split_col_dropdown"]],
+            "col_vals": data[inp["split_col_selected_vals_dropdown"]],
+            "base_url": data[state["app_url"]],
+            "metric": None if metric_name == DEFAULT_METRIC_NAME else metric_name,
+            "sort_by": None if sort_by == default_sort_by else sort_by,
+            "sort_order": (
+                None
+                if sort_ascending == default_sort_ascending
+                else "Ascending" if sort_ascending else "Descending"
+            ),
+        }
+
+        # Only add annotator rows and cols if they exist in the state
+        if (
+            inp["annotator_rows_dropdown"] in data
+            and data[inp["annotator_rows_dropdown"]]
+        ):
+            url_kwargs["annotator_rows"] = data[inp["annotator_rows_dropdown"]]
+        if (
+            inp["annotator_cols_dropdown"] in data
+            and data[inp["annotator_cols_dropdown"]]
+        ):
+            url_kwargs["annotator_cols"] = data[inp["annotator_cols_dropdown"]]
+
+        inp_annotator_cols = data[inp["annotator_cols_dropdown"]]
+        inp_annotator_rows = data[inp["annotator_rows_dropdown"]]
+        default_annotator_cols = data[state["default_annotator_cols"]]
+        default_annotator_rows = data[state["default_annotator_rows"]]
+        if sorted(default_annotator_cols) != sorted(inp_annotator_cols):
+            print(
+                f"Updating annotator cols: {default_annotator_cols} -> {inp_annotator_cols}"
+            )
+            url_kwargs["annotator_cols"] = inp_annotator_cols
+        if sorted(default_annotator_rows) != sorted(inp_annotator_rows):
+            print(
+                f"Updating annotator rows: {default_annotator_rows} -> {inp_annotator_rows}"
+            )
+            url_kwargs["annotator_rows"] = inp_annotator_rows
+
         return {
             out["annotator_table"]: tables["annotator"],
+            out["share_link"]: get_url_with_query_params(**url_kwargs),
         }
 
     return {
@@ -715,6 +791,8 @@ def attach_callbacks(
         out["sort_order_dropdown"],
         state["computed_annotator_metrics"],
         state["computed_overall_metrics"],
+        state["default_annotator_cols"],
+        state["default_annotator_rows"],
     }
 
     dataset_selection_outputs = [
@@ -744,11 +822,14 @@ def attach_callbacks(
         out["metric_name_dropdown"],
         state["computed_annotator_metrics"],
         state["computed_overall_metrics"],
+        state["default_annotator_cols"],
+        state["default_annotator_rows"],
     ]
 
     annotation_table_outputs = [
         out["annotator_table"],
         out["sort_by_dropdown"],
+        out["share_link"],
     ]
 
     # reload data when load button is clicked

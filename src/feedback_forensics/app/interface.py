@@ -106,6 +106,8 @@ def _initialize_state(state: dict):
     )
     state["computed_annotator_metrics"] = gr.State(value={})
     state["computed_overall_metrics"] = gr.State(value={})
+    state["default_annotator_cols"] = gr.State(value=[])
+    state["default_annotator_rows"] = gr.State(value=[])
     return state
 
 
