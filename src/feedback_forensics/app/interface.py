@@ -43,7 +43,7 @@ def _create_header():
             text_style = "opacity: 0.5"
             image = f'<img src="{image_path}" alt="Logo" width="330">'
             spacer = f'<span style="{text_style}"> | </span>'
-            text_powered_by = f'<span style="{text_style}">Powered by the <a href="https://github.com/rdnfn/icai" style="opacity: 0.9; color: white;">Inverse Constitutional AI</a> (ICAI) pipeline</span>'
+            text_powered_by = f'<span style="{text_style}">Powered by the <a href="https://github.com/rdnfn/icai" style="opacity: 0.9; color: var(--body-text-color);">Inverse Constitutional AI</a> (ICAI) pipeline</span>'
             text_version = (
                 f'<span style="{text_style}">v{VERSION} (Alpha Preview)</span>'
             )
@@ -234,7 +234,7 @@ def generate():
 
         state = _initialize_state(state)
 
-        _force_dark_theme(demo)
+        # _force_dark_theme(demo)
         _create_header()
         _create_getting_started_section()
         _create_configuration_panel(inp, state)

@@ -28,8 +28,6 @@ def generate_dataframes(
             votes_dict
         )
 
-    print(f"overall_metrics: {overall_metrics}")
-
     overall_df = pd.DataFrame(overall_metrics)
     overall_df.insert(0, "Metric", overall_df.index)  # insert metric name as col
     overall_metrics_df = gr.Dataframe(overall_df)
@@ -108,11 +106,10 @@ def get_annotator_table_df(
         return display_values
 
     def get_display_value(values):
-        print(f"values: {values}")
         display_values = []
-        for i, row in enumerate(values):
+        for row in values:
             display_row = []
-            for j, col in enumerate(row):
+            for col in row:
                 if isinstance(col, float):
                     display_row.append(f"{col:.2f}")
                 else:
