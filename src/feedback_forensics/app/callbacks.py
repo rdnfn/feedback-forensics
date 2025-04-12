@@ -127,6 +127,9 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         sort_by = data[out["sort_by_dropdown"]]
         sort_ascending = data[out["sort_order_dropdown"]] == "Ascending"
 
+        print(f"sort_ascending: {sort_ascending}")
+        print(f"Sort order dropdown: {data[out['sort_order_dropdown']]}")
+
         if len(datasets) == 0:
             gr.Warning(
                 "No datasets selected. Please select at least one dataset to run analysis on.",
@@ -623,10 +626,15 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 interactive=True,
             )
 
+        print(f"config: {config}")
+
         if "sort_order" in config:
-            data[out["sort_order_dropdown"]] = config["sort_order"]
+            print(f"sort_order: {config['sort_order']}")
+            # Consistently capitalize the first letter of sort_order
+            capitalized_sort_order = config["sort_order"].lower().capitalize()
+            data[out["sort_order_dropdown"]] = capitalized_sort_order
             return_dict[out["sort_order_dropdown"]] = gr.Dropdown(
-                value=config["sort_order"],
+                value=capitalized_sort_order,
                 interactive=True,
             )
 

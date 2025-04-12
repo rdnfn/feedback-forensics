@@ -89,7 +89,7 @@ def get_url_with_query_params(
         url += f"&sort_by={make_str_url_ready(sort_by)}"
 
     if sort_order is not None:
-        url += f"&sort_order={make_str_url_ready(sort_order)}"
+        url += f"&sort_order={sort_order}"
 
     return url
 
