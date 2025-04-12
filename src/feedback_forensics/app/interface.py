@@ -184,7 +184,7 @@ def _create_configuration_panel(inp: dict, state: dict):
                 inp["load_btn"] = gr.Button("Run analysis", variant="secondary")
 
 
-def _create_results_panel(out: dict):
+def _create_results_panel(inp: dict, out: dict):
 
     _add_title_row("Results")
     with gr.Column(scale=1, variant="panel"):
@@ -208,19 +208,19 @@ def _create_results_panel(out: dict):
         with gr.Group():
             # Add control dropdowns for the annotator table
             with gr.Row():
-                out["metric_name_dropdown"] = gr.Dropdown(
+                inp["metric_name_dropdown"] = gr.Dropdown(
                     label="Metric",
                     choices=list(METRIC_COL_OPTIONS.keys()),
                     value="strength",
                     interactive=True,
                 )
-                out["sort_by_dropdown"] = gr.Dropdown(
+                inp["sort_by_dropdown"] = gr.Dropdown(
                     label="Sort by",
                     choices=["(First dataset)"],
                     value="(First dataset)",
                     interactive=True,
                 )
-                out["sort_order_dropdown"] = gr.Dropdown(
+                inp["sort_order_dropdown"] = gr.Dropdown(
                     label="Sort order",
                     choices=["Descending", "Ascending"],
                     value="Descending",
@@ -268,7 +268,7 @@ def generate():
         _create_header()
         _create_getting_started_section()
         _create_configuration_panel(inp, state)
-        _create_results_panel(out)
+        _create_results_panel(inp, out)
 
         with gr.Row():
             gr.HTML(f"<center>Feedback Forensics app v{VERSION}</center>")

@@ -123,9 +123,9 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         cache = data[state["cache"]]
         split_col = data[inp["split_col_dropdown"]]
         selected_vals = data[inp["split_col_selected_vals_dropdown"]]
-        metric_name = data[out["metric_name_dropdown"]]
-        sort_by = data[out["sort_by_dropdown"]]
-        sort_ascending = data[out["sort_order_dropdown"]] == "Ascending"
+        metric_name = data[inp["metric_name_dropdown"]]
+        sort_by = data[inp["sort_by_dropdown"]]
+        sort_ascending = data[inp["sort_order_dropdown"]] == "Ascending"
 
         print(f"sort_ascending: {sort_ascending}")
         print(f"Sort order dropdown: {data[out['sort_order_dropdown']]}")
@@ -279,11 +279,11 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             state["default_annotator_cols"]: default_annotator_cols,
             state["default_annotator_rows"]: default_annotator_rows,
             state["votes_dicts"]: votes_dicts,
-            out["metric_name_dropdown"]: gr.Dropdown(
+            inp["metric_name_dropdown"]: gr.Dropdown(
                 value=metric_name,
                 interactive=True,
             ),
-            out["sort_by_dropdown"]: gr.Dropdown(
+            inp["sort_by_dropdown"]: gr.Dropdown(
                 choices=sort_by_choices, value=sort_by
             ),
             state["computed_annotator_metrics"]: annotator_metrics,
@@ -291,14 +291,14 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             state["default_annotator_cols"]: default_annotator_cols,
             state["default_annotator_rows"]: default_annotator_rows,
             state["votes_dicts"]: votes_dicts,
-            out["metric_name_dropdown"]: gr.Dropdown(
+            inp["metric_name_dropdown"]: gr.Dropdown(
                 value=metric_name,
                 interactive=True,
             ),
-            out["sort_by_dropdown"]: gr.Dropdown(
+            inp["sort_by_dropdown"]: gr.Dropdown(
                 choices=sort_by_choices, value=sort_by
             ),
-            out["sort_order_dropdown"]: gr.Dropdown(
+            inp["sort_order_dropdown"]: gr.Dropdown(
                 value="Descending" if not sort_ascending else "Ascending"
             ),
         }
@@ -612,16 +612,16 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
         # Handle metric, sort_by, and sort_order parameters
         if "metric" in config:
-            data[out["metric_name_dropdown"]] = config["metric"]
-            return_dict[out["metric_name_dropdown"]] = gr.Dropdown(
+            data[inp["metric_name_dropdown"]] = config["metric"]
+            return_dict[inp["metric_name_dropdown"]] = gr.Dropdown(
                 value=config["metric"],
                 interactive=True,
             )
 
         if "sort_by" in config:
-            data[out["sort_by_dropdown"]] = config["sort_by"]
+            data[inp["sort_by_dropdown"]] = config["sort_by"]
             # We'll update choices after loading data
-            return_dict[out["sort_by_dropdown"]] = gr.Dropdown(
+            return_dict[inp["sort_by_dropdown"]] = gr.Dropdown(
                 value=config["sort_by"],
                 interactive=True,
             )
@@ -632,8 +632,8 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             print(f"sort_order: {config['sort_order']}")
             # Consistently capitalize the first letter of sort_order
             capitalized_sort_order = config["sort_order"].lower().capitalize()
-            data[out["sort_order_dropdown"]] = capitalized_sort_order
-            return_dict[out["sort_order_dropdown"]] = gr.Dropdown(
+            data[inp["sort_order_dropdown"]] = capitalized_sort_order
+            return_dict[inp["sort_order_dropdown"]] = gr.Dropdown(
                 value=capitalized_sort_order,
                 interactive=True,
             )
@@ -716,9 +716,9 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         """Update the annotator table based on dropdown selections."""
         annotator_metrics = data[state["computed_annotator_metrics"]]
         overall_metrics = data[state["computed_overall_metrics"]]
-        metric_name = data[out["metric_name_dropdown"]]
-        sort_by = data[out["sort_by_dropdown"]]
-        sort_ascending = data[out["sort_order_dropdown"]] == "Ascending"
+        metric_name = data[inp["metric_name_dropdown"]]
+        sort_by = data[inp["sort_by_dropdown"]]
+        sort_ascending = data[inp["sort_order_dropdown"]] == "Ascending"
 
         # Generate the table with the new parameters
         tables = feedback_forensics.app.plotting.generate_dataframes(
@@ -735,10 +735,13 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         }
 
     def _get_url_share_link(data):
+        """Get the URL share link based on the current state of the app."""
+
+        # Extract the current state of the app based on the data dictionary
         annotator_metrics = data[state["computed_annotator_metrics"]]
-        metric_name = data[out["metric_name_dropdown"]]
-        sort_by = data[out["sort_by_dropdown"]]
-        sort_ascending = data[out["sort_order_dropdown"]] == "Ascending"
+        metric_name = data[inp["metric_name_dropdown"]]
+        sort_by = data[inp["sort_by_dropdown"]]
+        sort_ascending = data[inp["sort_order_dropdown"]] == "Ascending"
         default_sort_by = list(annotator_metrics.keys())[0]
         default_sort_ascending = False
 
@@ -756,7 +759,9 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             ),
         }
 
-        # Only add annotator rows and cols if they exist in the state
+        # See if the selected annotator rows and columns
+        # are different from the default annotator rows and columnså
+        # Only add to URL if they are different
         annotator_rows = _get_annotator_df_col_names(
             data[inp["annotator_rows_dropdown"]],
             data[state["votes_dicts"]],
@@ -797,9 +802,9 @@ def attach_callbacks(
         inp["annotator_cols_dropdown"],
         state["app_url"],
         state["cache"],
-        out["metric_name_dropdown"],
-        out["sort_by_dropdown"],
-        out["sort_order_dropdown"],
+        inp["metric_name_dropdown"],
+        inp["sort_by_dropdown"],
+        inp["sort_order_dropdown"],
         state["computed_annotator_metrics"],
         state["computed_overall_metrics"],
         state["default_annotator_cols"],
@@ -829,9 +834,9 @@ def attach_callbacks(
         out["annotator_table"],
         state["cache"],
         inp["load_btn"],
-        out["sort_by_dropdown"],
-        out["sort_order_dropdown"],
-        out["metric_name_dropdown"],
+        inp["sort_by_dropdown"],
+        inp["sort_order_dropdown"],
+        inp["metric_name_dropdown"],
         state["computed_annotator_metrics"],
         state["computed_overall_metrics"],
         state["default_annotator_cols"],
@@ -841,7 +846,7 @@ def attach_callbacks(
 
     annotation_table_outputs = [
         out["annotator_table"],
-        out["sort_by_dropdown"],
+        inp["sort_by_dropdown"],
         out["share_link"],
     ]
 
@@ -868,19 +873,19 @@ def attach_callbacks(
     )
 
     # Update annotator table when metric type, sort by, or sort order is changed
-    out["metric_name_dropdown"].change(
+    inp["metric_name_dropdown"].change(
         callbacks["update_annotator_table"],
         inputs=all_inputs,
         outputs=annotation_table_outputs,
     )
 
-    out["sort_by_dropdown"].change(
+    inp["sort_by_dropdown"].change(
         callbacks["update_annotator_table"],
         inputs=all_inputs,
         outputs=annotation_table_outputs,
     )
 
-    out["sort_order_dropdown"].change(
+    inp["sort_order_dropdown"].change(
         callbacks["update_annotator_table"],
         inputs=all_inputs,
         outputs=annotation_table_outputs,
