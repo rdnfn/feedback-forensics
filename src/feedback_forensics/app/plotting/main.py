@@ -77,6 +77,7 @@ def get_annotator_table_df(
     max_value = shown_df.select_dtypes(include=[np.number]).max().max()
     # get min numerical value in the dataframe (ignoring non-numeric values)
     min_value = shown_df.select_dtypes(include=[np.number]).min().min()
+    cmap = mpl.colormaps[color_scale]
 
     # sort by
     if sort_by is None:
@@ -87,18 +88,11 @@ def get_annotator_table_df(
     shown_values = shown_df.to_numpy()
 
     def get_styling(values):
-        print(f"values: {values}")
-        cmap = mpl.colormaps[color_scale]
         display_values = []
-        for i, row in enumerate(values):
+        for row in values:
             display_row = []
-            for j, col in enumerate(row):
+            for col in row:
                 if isinstance(col, float):
-                    val = col * 100
-                    # Use the berlin colormap for the background
-                    # Normalize the value relative to neutral_value
-                    # If val > neutral_value, scale from neutral to 100
-                    # If val < neutral_value, scale from 0 to neutral
                     color_hex = matplotlib.colors.rgb2hex(
                         cmap(
                             0.5
