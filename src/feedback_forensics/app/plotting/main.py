@@ -10,7 +10,7 @@ from feedback_forensics.app.plotting.table import create_fig_with_tables
 from feedback_forensics.app.plotting.table import get_table_contents_from_metrics
 
 
-def generate_dataframe(
+def generate_dataframes(
     votes_dicts: dict[str, dict],
 ):
 
@@ -28,14 +28,21 @@ def generate_dataframe(
             votes_dict
         )
 
-    overall_metrics_df = pd.DataFrame(overall_metrics)
+    print(f"overall_metrics: {overall_metrics}")
 
-    table_df = get_table_df(metrics)
+    overall_df = pd.DataFrame(overall_metrics)
+    overall_df.insert(0, "Metric", overall_df.index)  # insert metric name as col
+    overall_metrics_df = gr.Dataframe(overall_df)
 
-    return table_df
+    annotator_table_df = get_annotator_table_df(metrics)
+
+    return {
+        "overall_metrics": overall_metrics_df,
+        "annotator": annotator_table_df,
+    }
 
 
-def get_table_df(
+def get_annotator_table_df(
     metrics: dict[str, dict],
     sort_by: str | None = None,
     sort_ascending: bool = False,

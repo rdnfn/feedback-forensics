@@ -181,7 +181,7 @@ def _create_configuration_panel(inp: dict, state: dict):
 def _create_results_panel(out: dict):
 
     _add_title_row("Results")
-    with gr.Row(variant="panel"):
+    with gr.Column(scale=1, variant="panel"):
         with gr.Group():
             out["share_link"] = gr.Textbox(
                 label="🔗 Share link",
@@ -196,9 +196,17 @@ def _create_results_panel(out: dict):
                     METRICS_DESCRIPTION,
                     container=True,
                 )
-            out["plot"] = gr.Dataframe(
-                value=pd.DataFrame(), headers=["No data available"]
-            )
+
+        gr.Markdown("### Overall metrics")
+        out["overall_metrics_table"] = gr.Dataframe(
+            value=pd.DataFrame(),
+            headers=["No data loaded"],
+        )
+        gr.Markdown("### Annotation metrics")
+        out["annotator_table"] = gr.Dataframe(
+            value=pd.DataFrame(),
+            headers=["No data loaded"],
+        )
 
 
 def _force_dark_theme(block):

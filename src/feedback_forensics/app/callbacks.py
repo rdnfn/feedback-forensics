@@ -127,9 +127,12 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 "No datasets selected. Please select at least one dataset to run analysis on.",
             )
             return {
-                out["plot"]: gr.Dataframe(
+                out["overall_metrics_table"]: gr.Dataframe(
                     value=pd.DataFrame(), headers=["No data available"]
-                )
+                ),
+                out["annotator_table"]: gr.Dataframe(
+                    value=pd.DataFrame(), headers=["No data available"]
+                ),
             }
         gr.Info(f"Loading data for {datasets}...", duration=3)
 
@@ -218,11 +221,9 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             for votes_dict in votes_dicts.values():
                 votes_dict["shown_annotator_rows"] = annotator_rows
 
-        gr_df = feedback_forensics.app.plotting.generate_dataframe(
+        tables = feedback_forensics.app.plotting.generate_dataframes(
             votes_dicts=votes_dicts,
         )
-
-        plot = gr_df
 
         url_kwargs = {
             "datasets": datasets,
@@ -238,7 +239,8 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             url_kwargs["annotator_cols"] = data[inp["annotator_cols_dropdown"]]
 
         return {
-            out["plot"]: plot,
+            out["overall_metrics_table"]: tables["overall_metrics"],
+            out["annotator_table"]: tables["annotator"],
             state["cache"]: cache,
             out["share_link"]: get_url_with_query_params(**url_kwargs),
         }
@@ -666,7 +668,8 @@ def attach_callbacks(
         inp["annotator_rows_dropdown"],
         inp["annotator_cols_dropdown"],
         out["share_link"],
-        out["plot"],
+        out["overall_metrics_table"],
+        out["annotator_table"],
         state["cache"],
         inp["load_btn"],
     ]
