@@ -128,7 +128,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         sort_ascending = data[inp["sort_order_dropdown"]] == "Ascending"
 
         print(f"sort_ascending: {sort_ascending}")
-        print(f"Sort order dropdown: {data[out['sort_order_dropdown']]}")
+        print(f"Sort order dropdown: {data[inp['sort_order_dropdown']]}")
 
         if len(datasets) == 0:
             gr.Warning(
