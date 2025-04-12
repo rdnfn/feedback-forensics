@@ -272,7 +272,14 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             out["overall_metrics_table"]: tables["overall_metrics"],
             out["annotator_table"]: tables["annotator"],
             state["cache"]: cache,
-            out["share_link"]: get_url_with_query_params(**url_kwargs),
+            state["computed_overall_metrics"]: overall_metrics,
+            state["default_annotator_cols"]: default_annotator_cols,
+            state["default_annotator_rows"]: default_annotator_rows,
+            state["votes_dicts"]: votes_dicts,
+            out["metric_name_dropdown"]: gr.Dropdown(
+                value=metric_name,
+                interactive=True,
+            ),
             out["sort_by_dropdown"]: gr.Dropdown(
                 choices=sort_by_choices, value=sort_by
             ),
@@ -714,10 +721,19 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             sort_ascending=sort_ascending,
         )
 
+        return {
+            out["annotator_table"]: tables["annotator"],
+            out["share_link"]: _get_url_share_link(data),
+        }
+
+    def _get_url_share_link(data):
+        annotator_metrics = data[state["computed_annotator_metrics"]]
+        metric_name = data[out["metric_name_dropdown"]]
+        sort_by = data[out["sort_by_dropdown"]]
+        sort_ascending = data[out["sort_order_dropdown"]] == "Ascending"
         default_sort_by = list(annotator_metrics.keys())[0]
         default_sort_ascending = False
 
-        # Update the share link when metric parameters change
         url_kwargs = {
             "datasets": data[inp["active_datasets_dropdown"]],
             "col": data[inp["split_col_dropdown"]],
@@ -748,10 +764,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         if sorted(annotator_cols) != sorted(default_annotator_cols):
             url_kwargs["annotator_cols"] = data[inp["annotator_cols_dropdown"]]
 
-        return {
-            out["annotator_table"]: tables["annotator"],
-            out["share_link"]: get_url_with_query_params(**url_kwargs),
-        }
+        return get_url_with_query_params(**url_kwargs)
 
     return {
         "load_data": load_data,
