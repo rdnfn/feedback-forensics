@@ -280,6 +280,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             state["computed_overall_metrics"]: overall_metrics,
             state["default_annotator_cols"]: default_annotator_cols,
             state["default_annotator_rows"]: default_annotator_rows,
+            state["votes_dicts"]: votes_dicts,
             out["metric_name_dropdown"]: gr.Dropdown(
                 value=metric_name,
                 interactive=True,
@@ -732,31 +733,20 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         }
 
         # Only add annotator rows and cols if they exist in the state
-        if (
-            inp["annotator_rows_dropdown"] in data
-            and data[inp["annotator_rows_dropdown"]]
-        ):
-            url_kwargs["annotator_rows"] = data[inp["annotator_rows_dropdown"]]
-        if (
-            inp["annotator_cols_dropdown"] in data
-            and data[inp["annotator_cols_dropdown"]]
-        ):
-            url_kwargs["annotator_cols"] = data[inp["annotator_cols_dropdown"]]
-
-        inp_annotator_cols = data[inp["annotator_cols_dropdown"]]
-        inp_annotator_rows = data[inp["annotator_rows_dropdown"]]
-        default_annotator_cols = data[state["default_annotator_cols"]]
+        annotator_rows = _get_annotator_df_col_names(
+            data[inp["annotator_rows_dropdown"]],
+            data[state["votes_dicts"]],
+        )
+        annotator_cols = _get_annotator_df_col_names(
+            data[inp["annotator_cols_dropdown"]],
+            data[state["votes_dicts"]],
+        )
         default_annotator_rows = data[state["default_annotator_rows"]]
-        if sorted(default_annotator_cols) != sorted(inp_annotator_cols):
-            print(
-                f"Updating annotator cols: {default_annotator_cols} -> {inp_annotator_cols}"
-            )
-            url_kwargs["annotator_cols"] = inp_annotator_cols
-        if sorted(default_annotator_rows) != sorted(inp_annotator_rows):
-            print(
-                f"Updating annotator rows: {default_annotator_rows} -> {inp_annotator_rows}"
-            )
-            url_kwargs["annotator_rows"] = inp_annotator_rows
+        default_annotator_cols = data[state["default_annotator_cols"]]
+        if sorted(annotator_rows) != sorted(default_annotator_rows):
+            url_kwargs["annotator_rows"] = data[inp["annotator_rows_dropdown"]]
+        if sorted(annotator_cols) != sorted(default_annotator_cols):
+            url_kwargs["annotator_cols"] = data[inp["annotator_cols_dropdown"]]
 
         return {
             out["annotator_table"]: tables["annotator"],
@@ -793,6 +783,7 @@ def attach_callbacks(
         state["computed_overall_metrics"],
         state["default_annotator_cols"],
         state["default_annotator_rows"],
+        state["votes_dicts"],
     }
 
     dataset_selection_outputs = [
@@ -824,6 +815,7 @@ def attach_callbacks(
         state["computed_overall_metrics"],
         state["default_annotator_cols"],
         state["default_annotator_rows"],
+        state["votes_dicts"],
     ]
 
     annotation_table_outputs = [
