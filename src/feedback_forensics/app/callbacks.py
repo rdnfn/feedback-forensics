@@ -32,6 +32,8 @@ from feedback_forensics.app.url_parser import (
     transfer_url_list_to_nonurl_list,
 )
 
+from feedback_forensics.app.metrics import DEFAULT_METRIC_NAME
+
 
 def split_votes_dicts(
     votes_dicts: dict[str, dict],
@@ -221,8 +223,31 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             for votes_dict in votes_dicts.values():
                 votes_dict["shown_annotator_rows"] = annotator_rows
 
+        # compute metrics for each dataset
+        overall_metrics = {}
+        annotator_metrics = {}
+        for dataset_name, votes_dict in votes_dicts.items():
+            overall_metrics[dataset_name] = (
+                feedback_forensics.app.metrics.get_overall_metrics(
+                    votes_dict["df"],
+                    ref_annotator_col=votes_dict["reference_annotator_col"],
+                )
+            )
+            annotator_metrics[dataset_name] = (
+                feedback_forensics.app.metrics.compute_metrics(votes_dict)
+            )
+
+        metric_name = DEFAULT_METRIC_NAME
+        sort_by_choices = list(votes_dicts.keys())
+        sort_by = sort_by_choices[0]
+        sort_ascending = False
+
         tables = feedback_forensics.app.plotting.generate_dataframes(
-            votes_dicts=votes_dicts,
+            annotator_metrics=annotator_metrics,
+            overall_metrics=overall_metrics,
+            metric_name=metric_name,
+            sort_by=sort_by,
+            sort_ascending=sort_ascending,
         )
 
         url_kwargs = {
@@ -243,6 +268,21 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             out["annotator_table"]: tables["annotator"],
             state["cache"]: cache,
             out["share_link"]: get_url_with_query_params(**url_kwargs),
+            out["sort_by_dropdown"]: gr.Dropdown(
+                choices=sort_by_choices, value=sort_by
+            ),
+            state["computed_annotator_metrics"]: annotator_metrics,
+            state["computed_overall_metrics"]: overall_metrics,
+            out["metric_name_dropdown"]: gr.Dropdown(
+                value=metric_name,
+                interactive=True,
+            ),
+            out["sort_by_dropdown"]: gr.Dropdown(
+                choices=sort_by_choices, value=sort_by
+            ),
+            out["sort_order_dropdown"]: gr.Dropdown(
+                value="Descending" if not sort_ascending else "Ascending"
+            ),
         }
 
     def _get_columns_in_dataset(dataset_name, data) -> str:
@@ -626,11 +666,33 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         return_dict = {**return_dict, **annotator_return_dict}
         return return_dict
 
+    def update_annotator_table(data):
+        """Update the annotator table based on dropdown selections."""
+        annotator_metrics = data[state["computed_annotator_metrics"]]
+        overall_metrics = data[state["computed_overall_metrics"]]
+        metric_name = data[out["metric_name_dropdown"]]
+        sort_by = data[out["sort_by_dropdown"]]
+        sort_ascending = data[out["sort_order_dropdown"]] == "Ascending"
+
+        # Generate the table with the new parameters
+        tables = feedback_forensics.app.plotting.generate_dataframes(
+            annotator_metrics=annotator_metrics,
+            overall_metrics=overall_metrics,
+            metric_name=metric_name,
+            sort_by=sort_by,
+            sort_ascending=sort_ascending,
+        )
+
+        return {
+            out["annotator_table"]: tables["annotator"],
+        }
+
     return {
         "load_data": load_data,
         "load_from_query_params": load_from_query_params,
         "update_single_dataset_menus": update_single_dataset_menus,
         "update_col_split_value_dropdown": update_col_split_value_dropdown,
+        "update_annotator_table": update_annotator_table,
     }
 
 
@@ -648,6 +710,11 @@ def attach_callbacks(
         inp["annotator_cols_dropdown"],
         state["app_url"],
         state["cache"],
+        out["metric_name_dropdown"],
+        out["sort_by_dropdown"],
+        out["sort_order_dropdown"],
+        state["computed_annotator_metrics"],
+        state["computed_overall_metrics"],
     }
 
     dataset_selection_outputs = [
@@ -672,6 +739,16 @@ def attach_callbacks(
         out["annotator_table"],
         state["cache"],
         inp["load_btn"],
+        out["sort_by_dropdown"],
+        out["sort_order_dropdown"],
+        out["metric_name_dropdown"],
+        state["computed_annotator_metrics"],
+        state["computed_overall_metrics"],
+    ]
+
+    annotation_table_outputs = [
+        out["annotator_table"],
+        out["sort_by_dropdown"],
     ]
 
     # reload data when load button is clicked
@@ -694,6 +771,25 @@ def attach_callbacks(
         callbacks["update_col_split_value_dropdown"],
         inputs=all_inputs,
         outputs=dataset_selection_outputs,
+    )
+
+    # Update annotator table when metric type, sort by, or sort order is changed
+    out["metric_name_dropdown"].change(
+        callbacks["update_annotator_table"],
+        inputs=all_inputs,
+        outputs=annotation_table_outputs,
+    )
+
+    out["sort_by_dropdown"].change(
+        callbacks["update_annotator_table"],
+        inputs=all_inputs,
+        outputs=annotation_table_outputs,
+    )
+
+    out["sort_order_dropdown"].change(
+        callbacks["update_annotator_table"],
+        inputs=all_inputs,
+        outputs=annotation_table_outputs,
     )
 
     # finally add callbacks that run on start of app

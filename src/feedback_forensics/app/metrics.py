@@ -171,6 +171,8 @@ def compute_metrics(votes_dict: dict) -> dict:
     }
 
 
+DEFAULT_METRIC_NAME = "strength"
+
 METRIC_COL_OPTIONS = {
     "agreement": {
         "name": "Agreement",
@@ -197,16 +199,16 @@ METRIC_COL_OPTIONS = {
         "short": "kappa",
         "descr": "Cohen's kappa: measures agreement beyond chance, 2 * (accuracy - 0.5).",
     },
-    "strength_base": {
-        "name": "Principle strength on full dataset",
-        "short": "(all)",
-        "descr": "Principle strength on all datapoints (not just selected subset)",
-    },
-    "strength_diff": {
-        "name": "Principle strength difference (full vs subset)",
-        "short": "(diff)",
-        "descr": "Absolute principle strength difference to votes on entire dataset",
-    },
+    # "strength_base": {
+    #    "name": "Principle strength on full dataset",
+    #    "short": "(all)",
+    #    "descr": "Principle strength on all datapoints (not just selected subset)",
+    # },
+    # "strength_diff": {
+    #    "name": "Principle strength difference (full vs subset)",
+    #    "short": "(diff)",
+    #    "descr": "Absolute principle strength difference to votes on entire dataset",
+    # },
 }
 
 

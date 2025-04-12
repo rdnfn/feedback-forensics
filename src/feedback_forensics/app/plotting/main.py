@@ -11,28 +11,23 @@ from feedback_forensics.app.plotting.table import get_table_contents_from_metric
 
 
 def generate_dataframes(
-    votes_dicts: dict[str, dict],
+    annotator_metrics: dict[str, dict],
+    overall_metrics: dict[str, dict],
+    metric_name: str = "strength",
+    sort_by: str = None,
+    sort_ascending: bool = False,
 ):
-
-    # compute metrics for each dataset
-    overall_metrics = {}
-    metrics = {}
-    for dataset_name, votes_dict in votes_dicts.items():
-        overall_metrics[dataset_name] = (
-            feedback_forensics.app.metrics.get_overall_metrics(
-                votes_dict["df"],
-                ref_annotator_col=votes_dict["reference_annotator_col"],
-            )
-        )
-        metrics[dataset_name] = feedback_forensics.app.metrics.compute_metrics(
-            votes_dict
-        )
 
     overall_df = pd.DataFrame(overall_metrics)
     overall_df.insert(0, "Metric", overall_df.index)  # insert metric name as col
     overall_metrics_df = gr.Dataframe(overall_df)
 
-    annotator_table_df = get_annotator_table_df(metrics)
+    annotator_table_df = get_annotator_table_df(
+        annotator_metrics,
+        metric_name=metric_name,
+        sort_by=sort_by,
+        sort_ascending=sort_ascending,
+    )
 
     return {
         "overall_metrics": overall_metrics_df,
@@ -41,25 +36,26 @@ def generate_dataframes(
 
 
 def get_annotator_table_df(
-    metrics: dict[str, dict],
-    sort_by: str | None = None,
+    annotator_metrics: dict[str, dict],
+    metric_name: str = "strength",
+    sort_by: str = None,
     sort_ascending: bool = False,
     color_scale: str = "berlin",
     neutral_value: float = 0.0,
 ) -> pd.DataFrame:
 
-    initial_dataset = list(metrics.keys())[0]
-    metric = "strength"
+    initial_dataset = list(annotator_metrics.keys())[0]
+    metric = metric_name  # Use the provided metric_name instead of hardcoded "strength"
     metric_columns = {
         dataset_name: list(dataset_dict["metrics"][metric]["by_annotator"].values())
-        for dataset_name, dataset_dict in metrics.items()
+        for dataset_name, dataset_dict in annotator_metrics.items()
     }
     annotator_keys = list(
-        metrics[initial_dataset]["metrics"][metric]["by_annotator"].keys()
+        annotator_metrics[initial_dataset]["metrics"][metric]["by_annotator"].keys()
     )
 
     # sanity check
-    for dataset_name, dataset_dict in metrics.items():
+    for dataset_name, dataset_dict in annotator_metrics.items():
         assert (
             list(dataset_dict["metrics"][metric]["by_annotator"].keys())
             == annotator_keys

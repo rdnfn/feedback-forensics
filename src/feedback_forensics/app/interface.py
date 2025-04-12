@@ -19,6 +19,7 @@ from feedback_forensics.app.info_texts import (
 
 from feedback_forensics.app.styling import CUSTOM_CSS, THEME
 from feedback_forensics.app.utils import get_gradio_image_path
+from feedback_forensics.app.metrics import METRIC_COL_OPTIONS
 
 
 def _add_title_row(title: str):
@@ -103,6 +104,8 @@ def _initialize_state(state: dict):
     state["avail_datasets"] = gr.State(
         value={dataset.name: dataset for dataset in available_datasets}
     )
+    state["computed_annotator_metrics"] = gr.State(value={})
+    state["computed_overall_metrics"] = gr.State(value={})
     return state
 
 
@@ -203,6 +206,28 @@ def _create_results_panel(out: dict):
             headers=["No data loaded"],
         )
         gr.Markdown("### Annotation metrics")
+
+        # Add control dropdowns for the annotator table
+        with gr.Row():
+            out["metric_name_dropdown"] = gr.Dropdown(
+                label="Metric",
+                choices=list(METRIC_COL_OPTIONS.keys()),
+                value="strength",
+                interactive=True,
+            )
+            out["sort_by_dropdown"] = gr.Dropdown(
+                label="Sort by",
+                choices=["(First dataset)"],
+                value="(First dataset)",
+                interactive=True,
+            )
+            out["sort_order_dropdown"] = gr.Dropdown(
+                label="Sort order",
+                choices=["Descending", "Ascending"],
+                value="Descending",
+                interactive=True,
+            )
+
         out["annotator_table"] = gr.Dataframe(
             value=pd.DataFrame(),
             headers=["No data loaded"],
