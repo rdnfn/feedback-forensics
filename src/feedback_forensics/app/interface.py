@@ -196,7 +196,9 @@ def _create_results_panel(out: dict):
                     METRICS_DESCRIPTION,
                     container=True,
                 )
-            out["plot"] = gr.Plot()
+            out["plot"] = gr.Dataframe(
+                value=pd.DataFrame(), headers=["No data available"]
+            )
 
 
 def _force_dark_theme(block):

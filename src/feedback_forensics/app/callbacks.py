@@ -126,7 +126,11 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             gr.Warning(
                 "No datasets selected. Please select at least one dataset to run analysis on.",
             )
-            return {out["plot"]: gr.Plot()}
+            return {
+                out["plot"]: gr.Dataframe(
+                    value=pd.DataFrame(), headers=["No data available"]
+                )
+            }
         gr.Info(f"Loading data for {datasets}...", duration=3)
 
         votes_dicts = {}
@@ -214,11 +218,11 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             for votes_dict in votes_dicts.values():
                 votes_dict["shown_annotator_rows"] = annotator_rows
 
-        fig = feedback_forensics.app.plotting.generate_plot(
+        gr_df = feedback_forensics.app.plotting.generate_dataframe(
             votes_dicts=votes_dicts,
         )
 
-        plot = gr.Plot(fig)
+        plot = gr_df
 
         url_kwargs = {
             "datasets": datasets,
