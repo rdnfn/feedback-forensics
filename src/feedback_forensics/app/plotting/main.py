@@ -110,7 +110,8 @@ def get_annotator_table_df(
                     )
                     # Apply the color with opacity
                     display_row.append(
-                        f"background-color: color-mix(in srgb, {color_to_use} {opacity * 100}%, var(--body-background-fill)); color: var(--body-text-color);"
+                        f"background-color: rgba({int(color_to_use[1:3], 16)}, {int(color_to_use[3:5], 16)}, {int(color_to_use[5:7], 16)}, {opacity}); color: var(--body-text-color);"
+                        # f"background-color: color-mix(in srgb, {color_to_use} {opacity * 100}%, var(--body-background-fill)); color: var(--body-text-color);" # alternative with no line alternating color
                     )
                 else:
                     display_row.append("")
