@@ -40,7 +40,7 @@ def _create_header():
 
     with gr.Row(variant="default"):
         with gr.Column(scale=4, min_width="300px"):
-            link_style = "opacity: 0.9; color: white; text-decoration: none; background-color: #404040; padding: 4px"
+            link_style = "opacity: 0.9; color: var(--body-text-color); text-decoration: none; background-color: var(--button-secondary-background-fill); padding: 4px"
             text_style = "opacity: 0.5"
             image = f'<img src="{image_path}" alt="Logo" width="330">'
             spacer = f'<span style="{text_style}"> | </span>'
