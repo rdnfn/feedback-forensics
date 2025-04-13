@@ -41,7 +41,6 @@ def get_overall_table_df(overall_metrics: dict[str, dict]) -> gr.Dataframe:
         for i, row in enumerate(values):
             display_row = []
             row_type = row_types[i]
-            print(row_type)
 
             for col in row:
                 # check if value is a string (indicating metric name)

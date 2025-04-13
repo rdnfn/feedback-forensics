@@ -252,23 +252,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             sort_ascending=sort_ascending,
         )
 
-        url_kwargs = {
-            "datasets": datasets,
-            "col": data[inp["split_col_dropdown"]],
-            "col_vals": data[inp["split_col_selected_vals_dropdown"]],
-            "base_url": data[state["app_url"]],
-            "metric": metric_name,
-            "sort_by": sort_by,
-            "sort_order": "Ascending" if sort_ascending else "Descending",
-        }
-
-        # only add annotator rows and cols if they are not the default
-        if sorted(annotator_rows) != sorted(default_annotator_rows):
-            url_kwargs["annotator_rows"] = data[inp["annotator_rows_dropdown"]]
-        if sorted(annotator_cols) != sorted(default_annotator_cols):
-            url_kwargs["annotator_cols"] = data[inp["annotator_cols_dropdown"]]
-
-        return {
+        return_dict = {
             out["overall_metrics_table"]: tables["overall_metrics"],
             out["annotator_table"]: tables["annotator"],
             state["cache"]: cache,
@@ -299,6 +283,20 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 value="Descending" if not sort_ascending else "Ascending"
             ),
         }
+
+        for key in [
+            state["computed_annotator_metrics"],
+            state["computed_overall_metrics"],
+            state["default_annotator_cols"],
+            state["default_annotator_rows"],
+            state["votes_dicts"],
+        ]:
+            data[key] = return_dict[key]
+
+        # generate share link based on fully updated data
+        return_dict[out["share_link"]] = _get_url_share_link(data)
+
+        return return_dict
 
     def _get_columns_in_dataset(dataset_name, data) -> str:
         dataset_config = data[state["avail_datasets"]][dataset_name]
@@ -736,7 +734,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         metric_name = data[inp["metric_name_dropdown"]]
         sort_by = data[inp["sort_by_dropdown"]]
         sort_ascending = data[inp["sort_order_dropdown"]] == "Ascending"
-        default_sort_by = list(annotator_metrics.keys())[0]
+        default_sort_by = "Max diff"
         default_sort_ascending = False
 
         url_kwargs = {
