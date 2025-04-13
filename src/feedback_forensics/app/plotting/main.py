@@ -1,8 +1,6 @@
 import pandas as pd
-from loguru import logger
 import gradio as gr
 import matplotlib as mpl
-import matplotlib.colors
 import numpy as np
 
 
@@ -67,11 +65,9 @@ def get_annotator_table_df(
             **metric_columns,
         }
     )
-    # get max numerical value in the dataframe (ignoring non-numeric values)
+    # get max and min numerical value in the dataframe (ignoring non-numeric values)
     max_value = shown_df.select_dtypes(include=[np.number]).max().max()
-    # get min numerical value in the dataframe (ignoring non-numeric values)
     min_value = shown_df.select_dtypes(include=[np.number]).min().min()
-    cmap = mpl.colormaps[color_scale]
 
     # sort by
     if sort_by is None:
@@ -83,6 +79,8 @@ def get_annotator_table_df(
 
     def get_styling(values):
         display_values = []
+        positive_color = "#9eb0ff"  # matplotlib.colors.rgb2hex(cmap(0.0))
+        negative_color = "#ffadad"  # matplotlib.colors.rgb2hex(cmap(1.0))
         for row in values:
             display_row = []
             for col in row:
@@ -102,9 +100,18 @@ def get_annotator_table_df(
                         else:
                             normalized_val = 0.5
 
-                    normalized_val = -1 * normalized_val + 1  # invert the color scale
-                    color_hex = matplotlib.colors.rgb2hex(cmap(normalized_val))
-                    display_row.append(f"background-color: {color_hex}; color: white;")
+                    # Calculate opacity based on normalized value (0 to 1)
+                    opacity = abs(
+                        normalized_val * 2 - 1
+                    )  # Convert 0.5-centered scale to 0-1 scale
+                    # Determine which color to use (positive or negative)
+                    color_to_use = (
+                        positive_color if normalized_val > 0.5 else negative_color
+                    )
+                    # Apply the color with opacity
+                    display_row.append(
+                        f"background-color: color-mix(in srgb, {color_to_use} {opacity * 100}%, var(--body-background-fill)); color: var(--body-text-color);"
+                    )
                 else:
                     display_row.append("")
             display_values.append(display_row)
