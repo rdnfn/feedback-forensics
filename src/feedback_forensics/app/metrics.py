@@ -354,7 +354,7 @@ def get_overall_metrics(votes_df: pd.DataFrame, ref_annotator_col: str) -> dict:
     proportion_longer_text_preferred = num_longer_text_preferred / num_votes
 
     return {
-        "Number of preference pairs": num_votes,
+        "Number of preference pairs": int(num_votes),
         "Prop selecting text_a": num_text_a_preferred / num_votes,
         "Avg len text_a (chars)": average_length_text_a,
         "Avg len text_b (chars)": average_length_text_b,

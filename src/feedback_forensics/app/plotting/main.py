@@ -1,6 +1,5 @@
 import pandas as pd
 import gradio as gr
-import matplotlib as mpl
 import numpy as np
 
 
@@ -29,8 +28,47 @@ def generate_dataframes(
 def get_overall_table_df(overall_metrics: dict[str, dict]) -> gr.Dataframe:
     overall_df = pd.DataFrame(overall_metrics)
     overall_df.insert(0, "Metric", overall_df.index)  # insert metric name as col
-    overall_metrics_df = gr.Dataframe(overall_df)
-    return overall_metrics_df
+
+    # In this table, each row has the same type (e.g. int or float)
+    example_dict = overall_metrics[list(overall_metrics.keys())[0]]
+    row_types = [type(value) for value in example_dict.values()]
+
+    # Convert DataFrame to numpy array for styling
+    shown_values = overall_df.to_numpy()
+
+    def get_display_value(values):
+        display_values = []
+        for i, row in enumerate(values):
+            display_row = []
+            row_type = row_types[i]
+            print(row_type)
+
+            for col in row:
+                # check if value is a string (indicating metric name)
+                if not isinstance(col, str):
+                    if row_type == int:
+                        display_row.append(f"{int(col)}")
+                    elif row_type == np.float64:
+                        if abs(col) >= 100:
+                            display_row.append(f"{col:.1f}")
+                        else:
+                            display_row.append(f"{col:.2f}")
+                else:
+                    display_row.append(col)
+            display_values.append(display_row)
+        return display_values
+
+    display_value = get_display_value(shown_values)
+
+    value = {
+        "data": shown_values,
+        "headers": overall_df.columns.tolist(),
+        "metadata": {
+            "display_value": display_value,
+        },
+    }
+
+    return gr.Dataframe(value, interactive=False)
 
 
 def get_annotator_table_df(
