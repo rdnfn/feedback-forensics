@@ -5,10 +5,6 @@ import matplotlib as mpl
 import matplotlib.colors
 import numpy as np
 
-import feedback_forensics.app.metrics
-from feedback_forensics.app.plotting.table import create_fig_with_tables
-from feedback_forensics.app.plotting.table import get_table_contents_from_metrics
-
 
 def generate_dataframes(
     annotator_metrics: dict[str, dict],
@@ -17,10 +13,7 @@ def generate_dataframes(
     sort_by: str = None,
     sort_ascending: bool = False,
 ):
-
-    overall_df = pd.DataFrame(overall_metrics)
-    overall_df.insert(0, "Metric", overall_df.index)  # insert metric name as col
-    overall_metrics_df = gr.Dataframe(overall_df)
+    overall_metrics_df = get_overall_table_df(overall_metrics)
 
     annotator_table_df = get_annotator_table_df(
         annotator_metrics,
@@ -33,6 +26,13 @@ def generate_dataframes(
         "overall_metrics": overall_metrics_df,
         "annotator": annotator_table_df,
     }
+
+
+def get_overall_table_df(overall_metrics: dict[str, dict]) -> gr.Dataframe:
+    overall_df = pd.DataFrame(overall_metrics)
+    overall_df.insert(0, "Metric", overall_df.index)  # insert metric name as col
+    overall_metrics_df = gr.Dataframe(overall_df)
+    return overall_metrics_df
 
 
 def get_annotator_table_df(
@@ -87,14 +87,23 @@ def get_annotator_table_df(
             display_row = []
             for col in row:
                 if isinstance(col, float):
-                    color_hex = matplotlib.colors.rgb2hex(
-                        cmap(
-                            0.5
-                            + 0.5 * (col - neutral_value) / (max_value - neutral_value)
-                            if col > neutral_value
-                            else 0.5 * (col - min_value) / (neutral_value - min_value)
-                        )
-                    )
+                    if col > neutral_value:
+                        denominator = max_value - neutral_value
+                        if denominator != 0:
+                            normalized_val = (
+                                (col - neutral_value) / denominator
+                            ) * 0.5 + 0.5
+                        else:
+                            normalized_val = 0.5
+                    else:
+                        denominator = neutral_value - min_value
+                        if denominator != 0:
+                            normalized_val = ((col - min_value) / denominator) * 0.5
+                        else:
+                            normalized_val = 0.5
+
+                    normalized_val = -1 * normalized_val + 1  # invert the color scale
+                    color_hex = matplotlib.colors.rgb2hex(cmap(normalized_val))
                     display_row.append(f"background-color: {color_hex}; color: white;")
                 else:
                     display_row.append("")
