@@ -240,7 +240,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 feedback_forensics.app.metrics.compute_metrics(votes_dict)
             )
 
-        sort_by_choices = list(votes_dicts.keys())
+        sort_by_choices = ["Max diff"] + list(votes_dicts.keys())
         if sort_by not in sort_by_choices and sort_by_choices:
             sort_by = sort_by_choices[0]
 

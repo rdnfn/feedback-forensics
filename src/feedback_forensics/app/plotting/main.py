@@ -90,6 +90,8 @@ def get_annotator_table_df(
         annotator_metrics[initial_dataset]["metrics"][metric]["by_annotator"].keys()
     )
 
+    headers = ["Annotator"] + list(metric_columns.keys())
+
     # sanity check
     for dataset_name, dataset_dict in annotator_metrics.items():
         assert (
@@ -103,6 +105,14 @@ def get_annotator_table_df(
             **metric_columns,
         }
     )
+    if len(metric_columns) > 1:
+        shown_df["Max diff"] = abs(
+            shown_df.iloc[:, 1:].max(axis=1) - shown_df.iloc[:, 1:].min(axis=1)
+        )
+        headers.append("Max diff")
+    else:
+        sort_by = list(metric_columns.keys())[0]
+
     # get max and min numerical value in the dataframe (ignoring non-numeric values)
     max_value = shown_df.select_dtypes(include=[np.number]).max().max()
     min_value = shown_df.select_dtypes(include=[np.number]).min().min()
@@ -173,7 +183,7 @@ def get_annotator_table_df(
 
     value = {
         "data": shown_values,
-        "headers": ["Annotator"] + list(metric_columns.keys()),
+        "headers": headers,
         "metadata": {
             "styling": styling,
             "display_value": display_value,

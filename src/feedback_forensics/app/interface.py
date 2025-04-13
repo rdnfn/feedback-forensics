@@ -216,8 +216,8 @@ def _create_results_panel(inp: dict, out: dict):
                 )
                 inp["sort_by_dropdown"] = gr.Dropdown(
                     label="Sort by",
-                    choices=["(First dataset)"],
-                    value="(First dataset)",
+                    choices=None,
+                    value=None,
                     interactive=True,
                 )
                 inp["sort_order_dropdown"] = gr.Dropdown(
