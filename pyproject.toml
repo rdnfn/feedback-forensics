@@ -25,7 +25,6 @@ dependencies = [
   "loguru",
   "hydra-core",
   "pandas",
-  "matplotlib",
   "datasets", # To fetch huggingface datasets
   "wandb",
   "alpaca-eval",
@@ -33,7 +32,6 @@ dependencies = [
   "jupyter",
   "ipywidgets", # IProgress in jupyter notebooks
   "gradio",
-  "plotly",
   "ijson",
 ]
 

@@ -109,16 +109,9 @@ MULTIPREF = BuiltinDataset(
 )
 
 LLAMA4_ARENA = BuiltinDataset(
-    name="🦙 Llama 4 arena",
-    path=DATA_DIR / "llama4_arena_original_data.json",
-    description="Original data of Llama-4-Maverick-03-26-Experimental arena results, without tie votes.",
-    source="https://huggingface.co/spaces/lmarena-ai/Llama-4-Maverick-03-26-Experimental_battles/tree/main/data",
-)
-
-LLAMA4_ARENA_VS_PUBLIC = BuiltinDataset(
-    name="🦙 Llama 4 combined",
-    path=DATA_DIR / "llama4_arena_vs_public_version.json",
-    description="Llama-4-Maverick-03-26-Experimental arena responses vs public weights version of Llama-4-Maverick. Public weights responses generated for prompts of the *Llama 4 arena* dataset that are single-turn (source below). Responses by public weights version generated using Lambda via [OpenRouter](https://openrouter.ai/meta-llama/llama-4-maverick) with temperature 0.0. To make length comparible, only uses subset of prompts where public weights version did not stop for length reasons. Does not contain human preferences, just preferences corresponding to each model.",
+    name="🏟️ Arena (special)",
+    path=DATA_DIR / "arena_llama4.json",
+    description="Llama-4-Maverick-03-26-Experimental arena results, combined with public weights version of Llama-4-Maverick.",
     source="https://huggingface.co/spaces/lmarena-ai/Llama-4-Maverick-03-26-Experimental_battles/tree/main/data",
 )
 
@@ -132,7 +125,6 @@ _BUILTIN_DATASETS = [
     OLMO2_0325,
     MULTIPREF,
     LLAMA4_ARENA,
-    LLAMA4_ARENA_VS_PUBLIC,
 ]
 _available_datasets = []
 

@@ -171,6 +171,8 @@ def compute_metrics(votes_dict: dict) -> dict:
     }
 
 
+DEFAULT_METRIC_NAME = "strength"
+
 METRIC_COL_OPTIONS = {
     "agreement": {
         "name": "Agreement",
@@ -197,16 +199,16 @@ METRIC_COL_OPTIONS = {
         "short": "kappa",
         "descr": "Cohen's kappa: measures agreement beyond chance, 2 * (accuracy - 0.5).",
     },
-    "strength_base": {
-        "name": "Principle strength on full dataset",
-        "short": "(all)",
-        "descr": "Principle strength on all datapoints (not just selected subset)",
-    },
-    "strength_diff": {
-        "name": "Principle strength difference (full vs subset)",
-        "short": "(diff)",
-        "descr": "Absolute principle strength difference to votes on entire dataset",
-    },
+    # "strength_base": {
+    #    "name": "Principle strength on full dataset",
+    #    "short": "(all)",
+    #    "descr": "Principle strength on all datapoints (not just selected subset)",
+    # },
+    # "strength_diff": {
+    #    "name": "Principle strength difference (full vs subset)",
+    #    "short": "(diff)",
+    #    "descr": "Absolute principle strength difference to votes on entire dataset",
+    # },
 }
 
 
@@ -352,7 +354,7 @@ def get_overall_metrics(votes_df: pd.DataFrame, ref_annotator_col: str) -> dict:
     proportion_longer_text_preferred = num_longer_text_preferred / num_votes
 
     return {
-        "Number of preference pairs": num_votes,
+        "Number of preference pairs": int(num_votes),
         "Prop selecting text_a": num_text_a_preferred / num_votes,
         "Avg len text_a (chars)": average_length_text_a,
         "Avg len text_b (chars)": average_length_text_b,

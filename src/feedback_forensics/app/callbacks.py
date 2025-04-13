@@ -32,6 +32,8 @@ from feedback_forensics.app.url_parser import (
     transfer_url_list_to_nonurl_list,
 )
 
+from feedback_forensics.app.metrics import DEFAULT_METRIC_NAME
+
 
 def split_votes_dicts(
     votes_dicts: dict[str, dict],
@@ -121,12 +123,22 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         cache = data[state["cache"]]
         split_col = data[inp["split_col_dropdown"]]
         selected_vals = data[inp["split_col_selected_vals_dropdown"]]
+        metric_name = data[inp["metric_name_dropdown"]]
+        sort_by = data[inp["sort_by_dropdown"]]
+        sort_ascending = data[inp["sort_order_dropdown"]] == "Ascending"
 
         if len(datasets) == 0:
             gr.Warning(
                 "No datasets selected. Please select at least one dataset to run analysis on.",
             )
-            return {out["plot"]: gr.Plot()}
+            return {
+                out["overall_metrics_table"]: gr.Dataframe(
+                    value=pd.DataFrame(), headers=["No data available"]
+                ),
+                out["annotator_table"]: gr.Dataframe(
+                    value=pd.DataFrame(), headers=["No data available"]
+                ),
+            }
         gr.Info(f"Loading data for {datasets}...", duration=3)
 
         votes_dicts = {}
@@ -214,30 +226,77 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             for votes_dict in votes_dicts.values():
                 votes_dict["shown_annotator_rows"] = annotator_rows
 
-        fig = feedback_forensics.app.plotting.generate_plot(
-            votes_dicts=votes_dicts,
+        # compute metrics for each dataset
+        overall_metrics = {}
+        annotator_metrics = {}
+        for dataset_name, votes_dict in votes_dicts.items():
+            overall_metrics[dataset_name] = (
+                feedback_forensics.app.metrics.get_overall_metrics(
+                    votes_dict["df"],
+                    ref_annotator_col=votes_dict["reference_annotator_col"],
+                )
+            )
+            annotator_metrics[dataset_name] = (
+                feedback_forensics.app.metrics.compute_metrics(votes_dict)
+            )
+
+        sort_by_choices = ["Max diff"] + list(votes_dicts.keys())
+        if sort_by not in sort_by_choices and sort_by_choices:
+            sort_by = sort_by_choices[0]
+
+        tables = feedback_forensics.app.plotting.generate_dataframes(
+            annotator_metrics=annotator_metrics,
+            overall_metrics=overall_metrics,
+            metric_name=metric_name,
+            sort_by=sort_by,
+            sort_ascending=sort_ascending,
         )
 
-        plot = gr.Plot(fig)
-
-        url_kwargs = {
-            "datasets": datasets,
-            "col": data[inp["split_col_dropdown"]],
-            "col_vals": data[inp["split_col_selected_vals_dropdown"]],
-            "base_url": data[state["app_url"]],
-        }
-
-        # only add annotator rows and cols if they are not the default
-        if sorted(annotator_rows) != sorted(default_annotator_rows):
-            url_kwargs["annotator_rows"] = data[inp["annotator_rows_dropdown"]]
-        if sorted(annotator_cols) != sorted(default_annotator_cols):
-            url_kwargs["annotator_cols"] = data[inp["annotator_cols_dropdown"]]
-
-        return {
-            out["plot"]: plot,
+        return_dict = {
+            out["overall_metrics_table"]: tables["overall_metrics"],
+            out["annotator_table"]: tables["annotator"],
             state["cache"]: cache,
-            out["share_link"]: get_url_with_query_params(**url_kwargs),
+            state["computed_overall_metrics"]: overall_metrics,
+            state["default_annotator_cols"]: default_annotator_cols,
+            state["default_annotator_rows"]: default_annotator_rows,
+            state["votes_dicts"]: votes_dicts,
+            inp["metric_name_dropdown"]: gr.Dropdown(
+                value=metric_name,
+                interactive=True,
+            ),
+            inp["sort_by_dropdown"]: gr.Dropdown(
+                choices=sort_by_choices, value=sort_by
+            ),
+            state["computed_annotator_metrics"]: annotator_metrics,
+            state["computed_overall_metrics"]: overall_metrics,
+            state["default_annotator_cols"]: default_annotator_cols,
+            state["default_annotator_rows"]: default_annotator_rows,
+            state["votes_dicts"]: votes_dicts,
+            inp["metric_name_dropdown"]: gr.Dropdown(
+                value=metric_name,
+                interactive=True,
+            ),
+            inp["sort_by_dropdown"]: gr.Dropdown(
+                choices=sort_by_choices, value=sort_by
+            ),
+            inp["sort_order_dropdown"]: gr.Dropdown(
+                value="Descending" if not sort_ascending else "Ascending"
+            ),
         }
+
+        # generate share link based on updated app state data
+        for key in [
+            state["computed_annotator_metrics"],
+            state["computed_overall_metrics"],
+            state["default_annotator_cols"],
+            state["default_annotator_rows"],
+            state["votes_dicts"],
+        ]:
+            data[key] = return_dict[key]
+
+        return_dict[out["share_link"]] = _get_url_share_link_from_app_state(data)
+
+        return return_dict
 
     def _get_columns_in_dataset(dataset_name, data) -> str:
         dataset_config = data[state["avail_datasets"]][dataset_name]
@@ -546,6 +605,31 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                         interactive=True,
                     )
 
+        # Handle metric, sort_by, and sort_order parameters
+        if "metric" in config:
+            data[inp["metric_name_dropdown"]] = config["metric"]
+            return_dict[inp["metric_name_dropdown"]] = gr.Dropdown(
+                value=config["metric"],
+                interactive=True,
+            )
+
+        if "sort_by" in config:
+            data[inp["sort_by_dropdown"]] = config["sort_by"]
+            # We'll update choices after loading data
+            return_dict[inp["sort_by_dropdown"]] = gr.Dropdown(
+                value=config["sort_by"],
+                interactive=True,
+            )
+
+        if "sort_order" in config:
+            # Consistently capitalize the first letter of sort_order
+            capitalized_sort_order = config["sort_order"].lower().capitalize()
+            data[inp["sort_order_dropdown"]] = capitalized_sort_order
+            return_dict[inp["sort_order_dropdown"]] = gr.Dropdown(
+                value=capitalized_sort_order,
+                interactive=True,
+            )
+
         if "col" not in config:
             # update split col dropdowns even if no column is selected
             split_col_interface_dict = update_single_dataset_menus(data)
@@ -620,11 +704,79 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         return_dict = {**return_dict, **annotator_return_dict}
         return return_dict
 
+    def update_annotator_table(data):
+        """Update the annotator table based on dropdown selections."""
+        annotator_metrics = data[state["computed_annotator_metrics"]]
+        overall_metrics = data[state["computed_overall_metrics"]]
+        metric_name = data[inp["metric_name_dropdown"]]
+        sort_by = data[inp["sort_by_dropdown"]]
+        sort_ascending = data[inp["sort_order_dropdown"]] == "Ascending"
+
+        # Generate the table with the new parameters
+        tables = feedback_forensics.app.plotting.generate_dataframes(
+            annotator_metrics=annotator_metrics,
+            overall_metrics=overall_metrics,
+            metric_name=metric_name,
+            sort_by=sort_by,
+            sort_ascending=sort_ascending,
+        )
+
+        return {
+            out["annotator_table"]: tables["annotator"],
+            out["share_link"]: _get_url_share_link_from_app_state(data),
+        }
+
+    def _get_url_share_link_from_app_state(data):
+        """Get the URL share link based on the current state of the app."""
+
+        # Extract the current state of the app based on the data dictionary
+        annotator_metrics = data[state["computed_annotator_metrics"]]
+        metric_name = data[inp["metric_name_dropdown"]]
+        sort_by = data[inp["sort_by_dropdown"]]
+        sort_ascending = data[inp["sort_order_dropdown"]] == "Ascending"
+        default_sort_by = "Max diff"
+        default_sort_ascending = False
+
+        url_kwargs = {
+            "datasets": data[inp["active_datasets_dropdown"]],
+            "col": data[inp["split_col_dropdown"]],
+            "col_vals": data[inp["split_col_selected_vals_dropdown"]],
+            "base_url": data[state["app_url"]],
+            "metric": None if metric_name == DEFAULT_METRIC_NAME else metric_name,
+            "sort_by": None if sort_by == default_sort_by else sort_by,
+            "sort_order": (
+                None
+                if sort_ascending == default_sort_ascending
+                else "Ascending" if sort_ascending else "Descending"
+            ),
+        }
+
+        # See if the selected annotator rows and columns
+        # are different from the default annotator rows and columnså
+        # Only add to URL if they are different
+        annotator_rows = _get_annotator_df_col_names(
+            data[inp["annotator_rows_dropdown"]],
+            data[state["votes_dicts"]],
+        )
+        annotator_cols = _get_annotator_df_col_names(
+            data[inp["annotator_cols_dropdown"]],
+            data[state["votes_dicts"]],
+        )
+        default_annotator_rows = data[state["default_annotator_rows"]]
+        default_annotator_cols = data[state["default_annotator_cols"]]
+        if sorted(annotator_rows) != sorted(default_annotator_rows):
+            url_kwargs["annotator_rows"] = data[inp["annotator_rows_dropdown"]]
+        if sorted(annotator_cols) != sorted(default_annotator_cols):
+            url_kwargs["annotator_cols"] = data[inp["annotator_cols_dropdown"]]
+
+        return get_url_with_query_params(**url_kwargs)
+
     return {
         "load_data": load_data,
         "load_from_query_params": load_from_query_params,
         "update_single_dataset_menus": update_single_dataset_menus,
         "update_col_split_value_dropdown": update_col_split_value_dropdown,
+        "update_annotator_table": update_annotator_table,
     }
 
 
@@ -642,6 +794,14 @@ def attach_callbacks(
         inp["annotator_cols_dropdown"],
         state["app_url"],
         state["cache"],
+        inp["metric_name_dropdown"],
+        inp["sort_by_dropdown"],
+        inp["sort_order_dropdown"],
+        state["computed_annotator_metrics"],
+        state["computed_overall_metrics"],
+        state["default_annotator_cols"],
+        state["default_annotator_rows"],
+        state["votes_dicts"],
     }
 
     dataset_selection_outputs = [
@@ -662,9 +822,24 @@ def attach_callbacks(
         inp["annotator_rows_dropdown"],
         inp["annotator_cols_dropdown"],
         out["share_link"],
-        out["plot"],
+        out["overall_metrics_table"],
+        out["annotator_table"],
         state["cache"],
         inp["load_btn"],
+        inp["sort_by_dropdown"],
+        inp["sort_order_dropdown"],
+        inp["metric_name_dropdown"],
+        state["computed_annotator_metrics"],
+        state["computed_overall_metrics"],
+        state["default_annotator_cols"],
+        state["default_annotator_rows"],
+        state["votes_dicts"],
+    ]
+
+    annotation_table_outputs = [
+        out["annotator_table"],
+        inp["sort_by_dropdown"],
+        out["share_link"],
     ]
 
     # reload data when load button is clicked
@@ -687,6 +862,25 @@ def attach_callbacks(
         callbacks["update_col_split_value_dropdown"],
         inputs=all_inputs,
         outputs=dataset_selection_outputs,
+    )
+
+    # Update annotator table when metric type, sort by, or sort order is changed
+    inp["metric_name_dropdown"].change(
+        callbacks["update_annotator_table"],
+        inputs=all_inputs,
+        outputs=annotation_table_outputs,
+    )
+
+    inp["sort_by_dropdown"].change(
+        callbacks["update_annotator_table"],
+        inputs=all_inputs,
+        outputs=annotation_table_outputs,
+    )
+
+    inp["sort_order_dropdown"].change(
+        callbacks["update_annotator_table"],
+        inputs=all_inputs,
+        outputs=annotation_table_outputs,
     )
 
     # finally add callbacks that run on start of app

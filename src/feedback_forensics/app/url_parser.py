@@ -39,6 +39,12 @@ def get_config_from_query_params(request: gr.Request) -> dict:
         config["annotator_rows"] = load_str_list(params["ann_rows"])
     if "ann_cols" in params:
         config["annotator_cols"] = load_str_list(params["ann_cols"])
+    if "metric" in params:
+        config["metric"] = params["metric"]
+    if "sort_by" in params:
+        config["sort_by"] = params["sort_by"]
+    if "sort_order" in params:
+        config["sort_order"] = params["sort_order"]
     return config
 
 
@@ -53,6 +59,9 @@ def get_url_with_query_params(
     base_url: str,
     annotator_rows: list[str] = None,
     annotator_cols: list[str] = None,
+    metric: str = None,
+    sort_by: str = None,
+    sort_order: str = None,
 ) -> str:
     available_datasets = get_available_datasets()
     datasets_url_names = [
@@ -72,6 +81,15 @@ def get_url_with_query_params(
     if annotator_cols is not None and len(annotator_cols) > 0:
         url_ready_annotator_cols = [make_str_url_ready(val) for val in annotator_cols]
         url += f"&ann_cols={','.join(url_ready_annotator_cols)}"
+
+    if metric is not None:
+        url += f"&metric={make_str_url_ready(metric)}"
+
+    if sort_by is not None:
+        url += f"&sort_by={make_str_url_ready(sort_by)}"
+
+    if sort_order is not None:
+        url += f"&sort_order={sort_order}"
 
     return url
 

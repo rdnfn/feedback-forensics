@@ -19,6 +19,7 @@ from feedback_forensics.app.info_texts import (
 
 from feedback_forensics.app.styling import CUSTOM_CSS, THEME
 from feedback_forensics.app.utils import get_gradio_image_path
+from feedback_forensics.app.metrics import METRIC_COL_OPTIONS
 
 
 def _add_title_row(title: str):
@@ -39,11 +40,11 @@ def _create_header():
 
     with gr.Row(variant="default"):
         with gr.Column(scale=4, min_width="300px"):
-            link_style = "opacity: 0.9; color: white; text-decoration: none; background-color: #404040; padding: 4px"
+            link_style = "opacity: 0.9; color: var(--body-text-color); text-decoration: none; background-color: var(--button-secondary-background-fill); padding: 4px"
             text_style = "opacity: 0.5"
             image = f'<img src="{image_path}" alt="Logo" width="330">'
             spacer = f'<span style="{text_style}"> | </span>'
-            text_powered_by = f'<span style="{text_style}">Powered by the <a href="https://github.com/rdnfn/icai" style="opacity: 0.9; color: white;">Inverse Constitutional AI</a> (ICAI) pipeline</span>'
+            text_powered_by = f'<span style="{text_style}">Powered by the <a href="https://github.com/rdnfn/icai" style="opacity: 0.9; color: var(--body-text-color);">Inverse Constitutional AI</a> (ICAI) pipeline</span>'
             text_version = (
                 f'<span style="{text_style}">v{VERSION} (Alpha Preview)</span>'
             )
@@ -103,6 +104,11 @@ def _initialize_state(state: dict):
     state["avail_datasets"] = gr.State(
         value={dataset.name: dataset for dataset in available_datasets}
     )
+    state["computed_annotator_metrics"] = gr.State(value={})
+    state["computed_overall_metrics"] = gr.State(value={})
+    state["default_annotator_cols"] = gr.State(value=[])
+    state["default_annotator_rows"] = gr.State(value=[])
+    state["votes_dicts"] = gr.State(value={})
     return state
 
 
@@ -178,10 +184,10 @@ def _create_configuration_panel(inp: dict, state: dict):
                 inp["load_btn"] = gr.Button("Run analysis", variant="secondary")
 
 
-def _create_results_panel(out: dict):
+def _create_results_panel(inp: dict, out: dict):
 
     _add_title_row("Results")
-    with gr.Row(variant="panel"):
+    with gr.Column(scale=1, variant="panel"):
         with gr.Group():
             out["share_link"] = gr.Textbox(
                 label="🔗 Share link",
@@ -191,12 +197,46 @@ def _create_results_panel(out: dict):
                 interactive=True,
                 show_label=True,
             )
+
+        gr.Markdown("### Overall metrics")
+        out["overall_metrics_table"] = gr.Dataframe(
+            value=pd.DataFrame(),
+            headers=["No data loaded"],
+        )
+        gr.Markdown("### Annotation metrics")
+
+        with gr.Group():
+            # Add control dropdowns for the annotator table
+            with gr.Row():
+                inp["metric_name_dropdown"] = gr.Dropdown(
+                    label="Metric",
+                    choices=list(METRIC_COL_OPTIONS.keys()),
+                    value="strength",
+                    interactive=True,
+                )
+                inp["sort_by_dropdown"] = gr.Dropdown(
+                    label="Sort by",
+                    choices=None,
+                    value=None,
+                    interactive=True,
+                )
+                inp["sort_order_dropdown"] = gr.Dropdown(
+                    label="Sort order",
+                    choices=["Descending", "Ascending"],
+                    value="Descending",
+                    interactive=True,
+                )
+
             with gr.Accordion("ℹ️ Metrics explanation", open=False):
                 out["metrics_info"] = gr.Markdown(
                     METRICS_DESCRIPTION,
                     container=True,
                 )
-            out["plot"] = gr.Plot()
+
+            out["annotator_table"] = gr.Dataframe(
+                value=pd.DataFrame(),
+                headers=["No data loaded"],
+            )
 
 
 def _force_dark_theme(block):
@@ -224,11 +264,11 @@ def generate():
 
         state = _initialize_state(state)
 
-        _force_dark_theme(demo)
+        # _force_dark_theme(demo)
         _create_header()
         _create_getting_started_section()
         _create_configuration_panel(inp, state)
-        _create_results_panel(out)
+        _create_results_panel(inp, out)
 
         with gr.Row():
             gr.HTML(f"<center>Feedback Forensics app v{VERSION}</center>")
