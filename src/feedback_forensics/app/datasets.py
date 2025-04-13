@@ -118,7 +118,7 @@ LLAMA4_ARENA = BuiltinDataset(
 LLAMA4_ARENA_VS_PUBLIC = BuiltinDataset(
     name="🦙 Llama 4 combined",
     path=DATA_DIR / "llama4_arena_vs_public_version.json",
-    description="Llama-4-Maverick-03-26-Experimental arena responses vs public version. Public version of Llama-4-Maverick generated using Lambda via OpenRouter. Generated for subset of prompts that are single-turn. Does not contain human preferences, just preferences corresponding to each model.",
+    description="Llama-4-Maverick-03-26-Experimental arena responses vs public weights version of Llama-4-Maverick. Public weights responses generated for prompts of the *Llama 4 arena* dataset that are single-turn (source below). Responses by public weights version generated using Lambda via [OpenRouter](https://openrouter.ai/meta-llama/llama-4-maverick) with temperature 0.0. To make length comparible, only uses subset of prompts where public weights version did not stop for length reasons. Does not contain human preferences, just preferences corresponding to each model.",
     source="https://huggingface.co/spaces/lmarena-ai/Llama-4-Maverick-03-26-Experimental_battles/tree/main/data",
 )
 

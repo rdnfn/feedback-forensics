@@ -114,10 +114,10 @@ def compute_metrics(votes_dict: dict) -> dict:
 
     # check that ref annotator col only contains "text_a" or "text_b"
     if not all(votes_df[ref_annotator_col].isin(["text_a", "text_b"])):
-        values = ", ".join(list(votes_df[ref_annotator_col].unique()))
-        gr.Warning(
-            f"Reference annotator column '{ref_annotator_col}' contains values other than 'text_a' or 'text_b'(Values: {values}). Metrics will be computed on the subset of votes where the reference annotator is 'text_a' or 'text_b'."
-        )
+        values = ", ".join([str(v) for v in list(votes_df[ref_annotator_col].unique())])
+        # gr.Warning(
+        #    f"Reference annotator column '{ref_annotator_col}' contains values other than 'text_a' or 'text_b'(Values: {values}). Metrics will be computed on the subset of votes where the reference annotator is 'text_a' or 'text_b'."
+        # )
         votes_df = votes_df[votes_df[ref_annotator_col].isin(["text_a", "text_b"])]
 
     annotator_names = [
@@ -301,9 +301,20 @@ def get_overall_metrics(votes_df: pd.DataFrame, ref_annotator_col: str) -> dict:
     """
 
     # assert that comparison_id is unique
-    assert votes_df["comparison_id"].nunique() == len(
-        votes_df
-    ), "comparison_id is not unique"
+    comparison_id_counts = votes_df["comparison_id"].value_counts()
+    # TODO: ensure that all comparison_ids are unique
+    # even if two models produce the same output for the same prompt
+    # this should not happen
+    non_unique_comparison_ids = comparison_id_counts[comparison_id_counts > 1]
+    if len(non_unique_comparison_ids) > 0:
+        logger.warning(
+            f"Comparison_id is not unique. non-unique values:\n{non_unique_comparison_ids}"
+        )
+        # limiting to unique comparison_ids, always only leaving in the first occurrence
+        votes_df = votes_df.drop_duplicates(subset=["comparison_id"])
+        logger.warning(
+            f"Limiting to unique comparison_ids, always only leaving in the first occurrence. Num of comparisons removed: {non_unique_comparison_ids.sum() - len(non_unique_comparison_ids)}"
+        )
 
     # limit to votes where ref_annotator_col is "text_a" or "text_b"
     votes_df = votes_df[votes_df[ref_annotator_col].isin(["text_a", "text_b"])]
@@ -342,10 +353,10 @@ def get_overall_metrics(votes_df: pd.DataFrame, ref_annotator_col: str) -> dict:
 
     return {
         "Number of preference pairs": num_votes,
-        "Prop preferring text_a": num_text_a_preferred / num_votes,
+        "Prop selecting text_a": num_text_a_preferred / num_votes,
         "Avg len text_a (chars)": average_length_text_a,
         "Avg len text_b (chars)": average_length_text_b,
-        "Avg len pref. text (chars)": average_length_preferred_text,
-        "Avg len rej. text (chars)": average_length_rejected_text,
-        "Prop preferring longer text": proportion_longer_text_preferred,
+        "Avg len selected text (chars)": average_length_preferred_text,
+        "Avg len rejected text (chars)": average_length_rejected_text,
+        "Prop selecting longer text": proportion_longer_text_preferred,
     }
