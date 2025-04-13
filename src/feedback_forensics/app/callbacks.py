@@ -284,6 +284,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             ),
         }
 
+        # generate share link based on updated app state data
         for key in [
             state["computed_annotator_metrics"],
             state["computed_overall_metrics"],
@@ -293,8 +294,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         ]:
             data[key] = return_dict[key]
 
-        # generate share link based on fully updated data
-        return_dict[out["share_link"]] = _get_url_share_link(data)
+        return_dict[out["share_link"]] = _get_url_share_link_from_app_state(data)
 
         return return_dict
 
@@ -723,10 +723,10 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
         return {
             out["annotator_table"]: tables["annotator"],
-            out["share_link"]: _get_url_share_link(data),
+            out["share_link"]: _get_url_share_link_from_app_state(data),
         }
 
-    def _get_url_share_link(data):
+    def _get_url_share_link_from_app_state(data):
         """Get the URL share link based on the current state of the app."""
 
         # Extract the current state of the app based on the data dictionary
