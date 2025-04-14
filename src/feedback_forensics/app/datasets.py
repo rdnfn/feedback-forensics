@@ -101,6 +101,20 @@ OLMO2_0325 = BuiltinDataset(
     source="https://huggingface.co/datasets/allenai/olmo-2-0325-32b-preference-mix",
 )
 
+MULTIPREF = BuiltinDataset(
+    name="🔄 MultiPref",
+    path=DATA_DIR / "multipref_10k_v3.json",
+    description="10k preference pairs annotated by 4 human annotators, as well as GPT-4-based AI annotators.",
+    source="https://huggingface.co/datasets/allenai/multipref",
+)
+
+LLAMA4_ARENA = BuiltinDataset(
+    name="🏟️ Arena (special)",
+    path=DATA_DIR / "arena_llama4.json",
+    description="Llama-4-Maverick-03-26-Experimental arena results, combined with public weights version of Llama-4-Maverick.",
+    source="https://huggingface.co/spaces/lmarena-ai/Llama-4-Maverick-03-26-Experimental_battles/tree/main/data",
+)
+
 # List of all built-in datasets
 _BUILTIN_DATASETS = [
     ARENA_V2,
@@ -109,6 +123,8 @@ _BUILTIN_DATASETS = [
     ANTHROPIC_HELPFUL,
     ANTHROPIC_HARMLESS,
     OLMO2_0325,
+    MULTIPREF,
+    LLAMA4_ARENA,
 ]
 _available_datasets = []
 

@@ -178,3 +178,7 @@ exp/
 
 forensics-data/
 icai-tmp-data/
+secrets.toml
+
+data/input
+data/output

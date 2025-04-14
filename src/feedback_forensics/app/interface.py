@@ -1,13 +1,11 @@
 import gradio as gr
 import pandas as pd
-import json
 
 from feedback_forensics.app.callbacks import generate_callbacks, attach_callbacks
 from feedback_forensics.app.constants import (
     NONE_SELECTED_VALUE,
     VERSION,
-    ALLOW_LOCAL_RESULTS,
-    DEFAULT_DATASET_PATH,
+    PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS,
 )
 from feedback_forensics.app.datasets import (
     get_available_datasets,
@@ -18,12 +16,13 @@ from feedback_forensics.app.info_texts import (
     get_datasets_description,
     METRICS_DESCRIPTION,
 )
-from feedback_forensics.app.metrics import METRIC_COL_OPTIONS
+
 from feedback_forensics.app.styling import CUSTOM_CSS, THEME
 from feedback_forensics.app.utils import get_gradio_image_path
+from feedback_forensics.app.metrics import METRIC_COL_OPTIONS
 
 
-def add_title_row(title: str):
+def _add_title_row(title: str):
     """Add a title row to the interface.
 
     Args:
@@ -33,7 +32,7 @@ def add_title_row(title: str):
         gr.Markdown(f"## {title}")
 
 
-def create_header():
+def _create_header():
     """Create the app header with logo and links."""
     image_path = get_gradio_image_path("feedback_forensics_logo.png")
     link_button_variant = "secondary"
@@ -41,11 +40,11 @@ def create_header():
 
     with gr.Row(variant="default"):
         with gr.Column(scale=4, min_width="300px"):
-            link_style = "opacity: 0.9; color: white; text-decoration: none; background-color: #404040; padding: 4px"
+            link_style = "opacity: 0.9; color: var(--body-text-color); text-decoration: none; background-color: var(--button-secondary-background-fill); padding: 4px"
             text_style = "opacity: 0.5"
             image = f'<img src="{image_path}" alt="Logo" width="330">'
             spacer = f'<span style="{text_style}"> | </span>'
-            text_powered_by = f'<span style="{text_style}">Powered by the <a href="https://github.com/rdnfn/icai" style="opacity: 0.9; color: white;">Inverse Constitutional AI</a> (ICAI) pipeline</span>'
+            text_powered_by = f'<span style="{text_style}">Powered by the <a href="https://github.com/rdnfn/icai" style="opacity: 0.9; color: var(--body-text-color);">Inverse Constitutional AI</a> (ICAI) pipeline</span>'
             text_version = (
                 f'<span style="{text_style}">v{VERSION} (Alpha Preview)</span>'
             )
@@ -70,7 +69,7 @@ def create_header():
             )
 
 
-def create_getting_started_section():
+def _create_getting_started_section():
     button_size = "sm"
     with gr.Accordion("👋 Getting started: pre-configured examples", open=True):
         with gr.Row(equal_height=True):
@@ -92,11 +91,9 @@ def create_getting_started_section():
             )
 
 
-def create_data_loader(inp: dict, state: dict):
-    """Create the data loader section of the interface."""
-    # Get the current list of available datasets
+def _initialize_state(state: dict):
+    """Initialize the state of the app."""
     available_datasets = get_available_datasets()
-
     state["app_url"] = gr.State(value="")
     state["datapath"] = gr.State(value="")
     state["df"] = gr.State(value=pd.DataFrame())
@@ -107,10 +104,18 @@ def create_data_loader(inp: dict, state: dict):
     state["avail_datasets"] = gr.State(
         value={dataset.name: dataset for dataset in available_datasets}
     )
+    state["computed_annotator_metrics"] = gr.State(value={})
+    state["computed_overall_metrics"] = gr.State(value={})
+    state["default_annotator_cols"] = gr.State(value=[])
+    state["default_annotator_rows"] = gr.State(value=[])
+    state["votes_dicts"] = gr.State(value={})
+    return state
 
-    create_getting_started_section()
 
-    add_title_row("Configuration")
+def _create_configuration_panel(inp: dict, state: dict):
+    """Create the configuration panel of the interface."""
+
+    _add_title_row("Configuration")
 
     with gr.Row(variant="panel", render=True):
         with gr.Column():
@@ -132,6 +137,13 @@ def create_data_loader(inp: dict, state: dict):
                         get_datasets_description(datasets),
                         container=True,
                     )
+
+                # single dataset configuration
+                inp["split_col_non_available_md"] = gr.Markdown(
+                    value="<div style='opacity: 0.6'><i>Some configuration options (grouping by column, selecting annotators) are only available when selecting a single dataset. Select a single dataset to use these features.</i></div>",
+                    visible=True,
+                    container=True,
+                )
                 inp["split_col_dropdown"] = gr.Dropdown(
                     label="🗃️ Group dataset by column",
                     info="Create separate results for data subsets grouped by this column's values. If no column is selected, entire original dataset will be analyzed. ",
@@ -149,147 +161,33 @@ def create_data_loader(inp: dict, state: dict):
                     interactive=False,
                     visible=False,
                 )
-                inp["split_col_non_available_md"] = gr.Markdown(
-                    value="<div style='opacity: 0.6'><i>Grouping dataset by the values of a column is only available when selecting a single dataset. Select a single dataset to use this feature.</i></div>",
-                    visible=True,
-                    container=True,
+                inp["advanced_settings_accordion"] = gr.Accordion(
+                    "🔧 Advanced settings", open=False
                 )
+                with inp["advanced_settings_accordion"]:
+                    inp["annotator_cols_dropdown"] = gr.Dropdown(
+                        label="👥→ Annotator columns",
+                        info="Select the annotators to be included as a column in the results table. By default only a single (ground-truth) annotator is included.",
+                        choices=None,
+                        value=None,
+                        multiselect=True,
+                    )
+                    inp["annotator_rows_dropdown"] = gr.Dropdown(
+                        label="👥↓ Annotator rows",
+                        info=f'Select the annotators to be included as a row in the results table. By default only objective-following AI annotators are included (named as "{PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS} \<OBJECTIVE\>").',
+                        choices=None,
+                        value=None,
+                        multiselect=True,
+                    )
+
+                # final button to run analysis
                 inp["load_btn"] = gr.Button("Run analysis", variant="secondary")
 
-    # TODO: remove old dataset selection panel (including from callbacks etc.)
-    with gr.Row(variant="panel", render=False):
-        with gr.Column(scale=3):
-            with gr.Accordion("Select dataset to analyze"):
-                inp["dataset_btns"] = {}
-                for dataset in available_datasets:
-                    inp["dataset_btns"][dataset.name] = gr.Button(
-                        dataset.name, variant="secondary"
-                    )
 
-        with gr.Column(scale=3):
-            with gr.Accordion("Add your own dataset", visible=ALLOW_LOCAL_RESULTS):
-                with gr.Group():
-                    inp["datapath"] = gr.Textbox(
-                        label="💾 Path",
-                        value=DEFAULT_DATASET_PATH,
-                    )
-                    # inp["load_btn"] = gr.Button("Load")
+def _create_results_panel(inp: dict, out: dict):
 
-    # TODO: remove old config panel (including from callbacks etc.)
-    inp["config"] = gr.Row(visible=True, variant="panel", render=False)
-    with inp["config"]:
-        with gr.Column(
-            scale=3,
-        ):
-            inp["simple_config_dropdown_placeholder"] = gr.Markdown(
-                "*No simple dataset configuration available. Load different dataset or use advanced config.*",
-                container=True,
-            )
-            inp["simple_config_dropdown"] = gr.Dropdown(
-                label="🔧 Data subset to analyze",
-                # info='Show principles\' performance reconstructing ("explaining") the selected feedback subset. *Example interpretation: If the principle "Select the more concise response" reconstructs GPT-4 wins well, GPT-4 may be more concise than other models in this dataset.*',
-                visible=False,
-            )
-        with gr.Column(
-            scale=3,
-        ):
-            with gr.Accordion(label="⚙️ Advanced config", open=False, visible=True):
-                gr.Markdown(
-                    "Advanced configuration options that enable filtering the dataset and changing other visibility settings. If available, settings to the left of this menu will automatically set these advanced options. Set advanced options here manually to override."
-                )
-                with gr.Group():
-                    # button to disable efficient
-                    inp["show_individual_prefs_dropdown"] = gr.Dropdown(
-                        label="🗂️ Show individual preferences (slow)",
-                        info="Whether to show individual preference examples. May slow down the app.",
-                        choices=[False, True],
-                        value=False,
-                        interactive=True,
-                    )
-
-                    inp["plot_col_name_dropdown"] = gr.Dropdown(
-                        label="Show plot across values of column",
-                        choices=[NONE_SELECTED_VALUE],
-                        value=NONE_SELECTED_VALUE,
-                        interactive=False,
-                    )
-                    inp["plot_col_value_dropdown"] = gr.Dropdown(
-                        label="Values to show (if none selected, all values are shown)",
-                        choices=[NONE_SELECTED_VALUE],
-                        value=NONE_SELECTED_VALUE,
-                        interactive=True,
-                        multiselect=True,
-                    )
-
-                    inp["pref_order_dropdown"] = gr.Dropdown(
-                        label="📊 Order of reconstructed preferences",
-                        choices=[
-                            "By reconstruction success",
-                            "Original (random) order",
-                        ],
-                        value="By reconstruction success",
-                        interactive=True,
-                    )
-                    metric_choices = [
-                        (
-                            f"{metric['name']}",
-                            key,
-                        )
-                        for key, metric in METRIC_COL_OPTIONS.items()
-                    ]
-                    inp["metrics_dropdown"] = gr.Dropdown(
-                        multiselect=True,
-                        label="📈 Metrics to show",
-                        choices=metric_choices,
-                        value=["perf", "relevance", "acc"],
-                        interactive=True,
-                    )
-
-                inp["filter_accordion"] = gr.Accordion(
-                    label="🎚️ Filter 1", open=False, visible=True
-                )
-                with inp["filter_accordion"]:
-                    inp["filter_col_dropdown"] = gr.Dropdown(
-                        label="Filter by column",
-                        choices=[NONE_SELECTED_VALUE],
-                        value=NONE_SELECTED_VALUE,
-                        interactive=False,
-                    )
-                    # add equal sign between filter_dropdown and filter_text
-
-                    inp["filter_value_dropdown"] = gr.Dropdown(
-                        label="equal to",
-                        choices=[NONE_SELECTED_VALUE],
-                        value=NONE_SELECTED_VALUE,
-                        interactive=False,
-                    )
-                inp["filter_accordion_2"] = gr.Accordion(
-                    label="🎚️ Filter 2", open=False, visible=True
-                )
-                with inp["filter_accordion_2"]:
-                    inp["filter_col_dropdown_2"] = gr.Dropdown(
-                        label="Filter by column",
-                        choices=[NONE_SELECTED_VALUE],
-                        value=NONE_SELECTED_VALUE,
-                        interactive=False,
-                    )
-                    # add equal sign between filter_dropdown and filter_text
-
-                    inp["filter_value_dropdown_2"] = gr.Dropdown(
-                        label="equal to",
-                        choices=[NONE_SELECTED_VALUE],
-                        value=NONE_SELECTED_VALUE,
-                        interactive=False,
-                    )
-
-    # TODO: remove old dataset description panel (including from callbacks etc.)
-    with gr.Row(variant="panel", render=False):
-        with gr.Accordion("ℹ️ Dataset description", open=True):
-            inp["dataset_info"] = gr.Markdown("*No dataset loaded*", container=True)
-
-
-def create_principle_view(out: dict):
-    with gr.Row(variant="panel"):
+    _add_title_row("Results")
+    with gr.Column(scale=1, variant="panel"):
         with gr.Group():
             out["share_link"] = gr.Textbox(
                 label="🔗 Share link",
@@ -299,15 +197,49 @@ def create_principle_view(out: dict):
                 interactive=True,
                 show_label=True,
             )
+
+        gr.Markdown("### Overall metrics")
+        out["overall_metrics_table"] = gr.Dataframe(
+            value=pd.DataFrame(),
+            headers=["No data loaded"],
+        )
+        gr.Markdown("### Annotation metrics")
+
+        with gr.Group():
+            # Add control dropdowns for the annotator table
+            with gr.Row():
+                inp["metric_name_dropdown"] = gr.Dropdown(
+                    label="Metric",
+                    choices=list(METRIC_COL_OPTIONS.keys()),
+                    value="strength",
+                    interactive=True,
+                )
+                inp["sort_by_dropdown"] = gr.Dropdown(
+                    label="Sort by",
+                    choices=None,
+                    value=None,
+                    interactive=True,
+                )
+                inp["sort_order_dropdown"] = gr.Dropdown(
+                    label="Sort order",
+                    choices=["Descending", "Ascending"],
+                    value="Descending",
+                    interactive=True,
+                )
+
             with gr.Accordion("ℹ️ Metrics explanation", open=False):
                 out["metrics_info"] = gr.Markdown(
                     METRICS_DESCRIPTION,
                     container=True,
                 )
-            out["plot"] = gr.Plot()
+
+            out["annotator_table"] = gr.Dataframe(
+                value=pd.DataFrame(),
+                headers=["No data loaded"],
+            )
 
 
-def force_dark_theme(block):
+def _force_dark_theme(block):
     block.load(
         None,
         None,
@@ -330,13 +262,13 @@ def generate():
 
     with gr.Blocks(theme=THEME, css=CUSTOM_CSS) as demo:
 
-        force_dark_theme(demo)
+        state = _initialize_state(state)
 
-        create_header()
-        create_data_loader(inp, state)
-
-        add_title_row("Results")
-        create_principle_view(out)
+        # _force_dark_theme(demo)
+        _create_header()
+        _create_getting_started_section()
+        _create_configuration_panel(inp, state)
+        _create_results_panel(inp, out)
 
         with gr.Row():
             gr.HTML(f"<center>Feedback Forensics app v{VERSION}</center>")

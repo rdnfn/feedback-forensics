@@ -35,6 +35,16 @@ def get_config_from_query_params(request: gr.Request) -> dict:
         config["col"] = params["col"]
     if "col_vals" in params:
         config["col_vals"] = load_str_list(params["col_vals"])
+    if "ann_rows" in params:
+        config["annotator_rows"] = load_str_list(params["ann_rows"])
+    if "ann_cols" in params:
+        config["annotator_cols"] = load_str_list(params["ann_cols"])
+    if "metric" in params:
+        config["metric"] = params["metric"]
+    if "sort_by" in params:
+        config["sort_by"] = params["sort_by"]
+    if "sort_order" in params:
+        config["sort_order"] = params["sort_order"]
     return config
 
 
@@ -43,7 +53,15 @@ def load_str_list(str_list: str) -> list[str]:
 
 
 def get_url_with_query_params(
-    datasets: list[str], col: str | None, col_vals: list[str], base_url: str
+    datasets: list[str],
+    col: str | None,
+    col_vals: list[str],
+    base_url: str,
+    annotator_rows: list[str] = None,
+    annotator_cols: list[str] = None,
+    metric: str = None,
+    sort_by: str = None,
+    sort_order: str = None,
 ) -> str:
     available_datasets = get_available_datasets()
     datasets_url_names = [
@@ -55,6 +73,23 @@ def get_url_with_query_params(
         if col_vals is not None and col_vals != [NONE_SELECTED_VALUE]:
             url_ready_col_vals = [make_str_url_ready(val) for val in col_vals]
             url += f"&col_vals={','.join(url_ready_col_vals)}"
+
+    if annotator_rows is not None and len(annotator_rows) > 0:
+        url_ready_annotator_rows = [make_str_url_ready(val) for val in annotator_rows]
+        url += f"&ann_rows={','.join(url_ready_annotator_rows)}"
+
+    if annotator_cols is not None and len(annotator_cols) > 0:
+        url_ready_annotator_cols = [make_str_url_ready(val) for val in annotator_cols]
+        url += f"&ann_cols={','.join(url_ready_annotator_cols)}"
+
+    if metric is not None:
+        url += f"&metric={make_str_url_ready(metric)}"
+
+    if sort_by is not None:
+        url += f"&sort_by={make_str_url_ready(sort_by)}"
+
+    if sort_order is not None:
+        url += f"&sort_order={sort_order}"
 
     return url
 
