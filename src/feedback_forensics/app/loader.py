@@ -69,14 +69,38 @@ def get_votes_dict_from_annotated_pairs_json(results_path: pathlib.Path) -> dict
     # load json file
     json_data = load_json_file(results_path)
 
+    # check format version
+    format_version = json_data.get("metadata", {}).get("version", "1.0")
+    major_version = format_version.split(".")[0]
+    is_format_v2 = major_version == "2"
+    logger.info(f"Annotated pairs format version: {format_version}")
+
     # create dataframe from comparisons
     comparisons_data = []
     for comparison in json_data["comparisons"]:
-        row_data = {
-            "comparison_id": comparison["id"],
-            "text_a": comparison["text_a"],
-            "text_b": comparison["text_b"],
-        }
+        # Handle responses based on format version
+        if is_format_v2:
+            # Format 2.0: responses are dictionaries with multiple fields
+            response_a = comparison["response_a"]
+            response_b = comparison["response_b"]
+
+            row_data = {
+                "comparison_id": comparison["id"],
+            }
+
+            # Add all response fields as key_a and key_b in the dataframe
+            for key, value in response_a.items():
+                row_data[f"{key}_a"] = value
+
+            for key, value in response_b.items():
+                row_data[f"{key}_b"] = value
+        else:
+            # Format 1.0: responses are strings
+            row_data = {
+                "comparison_id": comparison["id"],
+                "text_a": comparison["text_a"],
+                "text_b": comparison["text_b"],
+            }
 
         # Add prompt if it exists
         if comparison.get("prompt"):
@@ -85,7 +109,12 @@ def get_votes_dict_from_annotated_pairs_json(results_path: pathlib.Path) -> dict
         # Add annotations
         for annotator_id, annotation in comparison.get("annotations", {}).items():
             if "pref" in annotation:
-                row_data[annotator_id] = annotation["pref"]
+                # Convert "a"/"b" format to "text_a"/"text_b" format
+                pref_value = annotation["pref"]
+                if is_format_v2 and pref_value in ["a", "b"]:
+                    row_data[annotator_id] = f"text_{pref_value}"
+                else:
+                    row_data[annotator_id] = pref_value
             else:
                 logger.warning(
                     f"No preference found for annotator {annotator_id} in comparison {comparison['id']}, (annotation: '{annotation}')"
