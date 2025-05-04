@@ -371,7 +371,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 interactive=True,
             ),
             inp["reference_models_dropdown"]: gr.Dropdown(
-                choices=get_available_models(base_votes_dict["df"]),
+                choices=sorted(get_available_models(base_votes_dict["df"])),
                 value=[],
                 interactive=True,
             ),
@@ -562,7 +562,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                     data[inp["reference_models_dropdown"]] = reference_models
                     annotator_return_dict[inp["reference_models_dropdown"]] = (
                         gr.Dropdown(
-                            choices=available_models,
+                            choices=sorted(available_models),
                             value=reference_models,
                             interactive=True,
                         )
