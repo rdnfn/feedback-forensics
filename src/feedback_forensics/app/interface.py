@@ -179,6 +179,13 @@ def _create_configuration_panel(inp: dict, state: dict):
                         value=None,
                         multiselect=True,
                     )
+                    inp["reference_models_dropdown"] = gr.Dropdown(
+                        label="🔍 Reference models for model annotators",
+                        info="Select which models should be used as references for model-identity annotators. If none are selected, all models will be used as references.",
+                        choices=None,
+                        value=None,
+                        multiselect=True,
+                    )
 
                 # final button to run analysis
                 inp["load_btn"] = gr.Button("Run analysis", variant="secondary")

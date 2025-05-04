@@ -9,7 +9,10 @@ from loguru import logger
 
 from feedback_forensics.app.loader import add_virtual_annotators, get_votes_dict
 import feedback_forensics.app.plotting
-from feedback_forensics.app.dataset_utils import get_annotators_by_type
+from feedback_forensics.app.dataset_utils import (
+    get_annotators_by_type,
+    get_available_models,
+)
 from feedback_forensics.app.utils import (
     get_csv_columns,
     load_json_file,
@@ -154,7 +157,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 base_votes_dict,
                 cache=cache,
                 dataset_cache_key=results_dir,
-                reference_models=[],
+                reference_models=data[inp["reference_models_dropdown"]],
                 target_models=[],
             )
 
@@ -412,7 +415,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             base_votes_dict,
             cache=data[state["cache"]],
             dataset_cache_key=results_dir,
-            reference_models=[],
+            reference_models=data[inp["reference_models_dropdown"]],
             target_models=[],
         )
 
@@ -435,6 +438,11 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             inp["annotator_rows_dropdown"]: gr.Dropdown(
                 choices=avail_annotator_names,
                 value=avail_principle_annotator_names,
+                interactive=True,
+            ),
+            inp["reference_models_dropdown"]: gr.Dropdown(
+                choices=get_available_models(base_votes_dict["df"]),
+                value=[],
                 interactive=True,
             ),
         }
@@ -847,6 +855,7 @@ def attach_callbacks(
         inp["split_col_selected_vals_dropdown"],
         inp["annotator_rows_dropdown"],
         inp["annotator_cols_dropdown"],
+        inp["reference_models_dropdown"],
         state["app_url"],
         state["cache"],
         inp["metric_name_dropdown"],
@@ -866,6 +875,7 @@ def attach_callbacks(
         inp["advanced_settings_accordion"],
         inp["annotator_rows_dropdown"],
         inp["annotator_cols_dropdown"],
+        inp["reference_models_dropdown"],
         inp["load_btn"],
     ]
 
@@ -876,6 +886,7 @@ def attach_callbacks(
         inp["advanced_settings_accordion"],
         inp["annotator_rows_dropdown"],
         inp["annotator_cols_dropdown"],
+        inp["reference_models_dropdown"],
         out["share_link"],
         out["overall_metrics_table"],
         out["annotator_table"],
