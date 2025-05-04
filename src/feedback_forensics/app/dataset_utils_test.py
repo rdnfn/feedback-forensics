@@ -82,3 +82,45 @@ def test_add_annotators_to_votes_dict():
     assert "existing_annotator" in result["annotator_metadata"]
     assert result["annotator_metadata"]["new_annotator1"]["variant"] == "test_new"
     assert result["df"]["new_annotator1"].iloc[0] == "text_b"
+
+
+def test_get_annotators_by_type():
+    """Test get_annotators_by_type functionality."""
+    votes_dict = {
+        "annotator_metadata": {
+            "annotator1": {
+                "variant": "type1",
+                "annotator_visible_name": "Type 1 Annotator",
+            },
+            "annotator2": {
+                "variant": "type2",
+                "annotator_visible_name": "Type 2 Annotator",
+            },
+            "annotator3": {
+                "variant": "type1",
+                "annotator_visible_name": "Another Type 1",
+            },
+            "annotator4": {
+                "variant": "type3",
+                # No visible name for this one
+            },
+        }
+    }
+
+    annotator_types = get_annotators_by_type(votes_dict)
+
+    assert "annotator1" in annotator_types["type1"]["column_ids"]
+    assert "annotator3" in annotator_types["type1"]["column_ids"]
+    assert "Type 1 Annotator" in annotator_types["type1"]["visible_names"]
+    assert "Another Type 1" in annotator_types["type1"]["visible_names"]
+
+    assert len(annotator_types["type2"]["column_ids"]) == 1
+    assert len(annotator_types["type2"]["visible_names"]) == 1
+    assert annotator_types["type2"]["column_ids"][0] == "annotator2"
+    assert annotator_types["type2"]["visible_names"][0] == "Type 2 Annotator"
+
+    assert "annotator4" in annotator_types["type3"]["column_ids"]
+    assert "annotator4" in annotator_types["type3"]["visible_names"]
+
+    assert annotator_types["non_existent_type"]["column_ids"] == []
+    assert annotator_types["non_existent_type"]["visible_names"] == []

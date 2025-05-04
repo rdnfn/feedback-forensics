@@ -378,12 +378,13 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             target_models=[],
         )
 
-        _, avail_principle_annotator_names = get_annotators_by_type(
-            votes_dict, PRINCIPLE_ANNOTATOR_TYPE
-        )
-        _, avail_model_annotator_names = get_annotators_by_type(
-            votes_dict, MODEL_IDENTITY_ANNOTATOR_TYPE
-        )
+        annotator_types = get_annotators_by_type(votes_dict)
+        avail_principle_annotator_names = annotator_types[PRINCIPLE_ANNOTATOR_TYPE][
+            "visible_names"
+        ]
+        avail_model_annotator_names = annotator_types[MODEL_IDENTITY_ANNOTATOR_TYPE][
+            "visible_names"
+        ]
 
         avail_annotator_names = (
             avail_datacol_annotator_names
@@ -607,15 +608,16 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                     target_models=[],
                 )
 
-                _, avail_principle_annotator_names = get_annotators_by_type(
-                    votes_dict, PRINCIPLE_ANNOTATOR_TYPE
-                )
+                annotator_types = get_annotators_by_type(votes_dict)
+                avail_principle_annotator_names = annotator_types[PRINCIPLE_ANNOTATOR_TYPE][
+                    "visible_names"
+                ]
+                avail_model_annotator_names = annotator_types[
+                    MODEL_IDENTITY_ANNOTATOR_TYPE
+                ]["visible_names"]
+
                 avail_datacol_annotator_names = _get_datacol_annotator_names(
                     config["datasets"][0], data
-                )
-
-                _, avail_model_annotator_names = get_annotators_by_type(
-                    votes_dict, MODEL_IDENTITY_ANNOTATOR_TYPE
                 )
 
                 all_available_annotators = (

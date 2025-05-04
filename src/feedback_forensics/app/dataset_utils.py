@@ -1,6 +1,7 @@
 """Utilities for working with datasets."""
 
 import time
+from collections import defaultdict
 from typing import Any, Dict, List, Tuple
 
 import pandas as pd
@@ -54,28 +55,29 @@ def add_annotators_to_votes_dict(
 
 
 def get_annotators_by_type(
-    votes_dict: Dict[str, Any], variant_type: str
-) -> Tuple[List[str], List[str]]:
+    votes_dict: Dict[str, Any]
+) -> Dict[str, Dict[str, List[str]]]:
     """
-    Extract annotators of a specific type from a votes_dict.
+    Extract all annotators grouped by their type from a votes_dict.
 
     Args:
         votes_dict: Dictionary containing annotator metadata
-        variant_type: The type of annotator to extract
 
     Returns:
-        Tuple of (column_ids, visible_names) for annotators matching the specified type
+        Dictionary mapping variant types to dictionaries with "column_ids" and "visible_names" keys
+        Automatically handles missing keys with empty lists using defaultdict
     """
-    column_ids = []
-    visible_names = []
+    result = defaultdict(lambda: {"column_ids": [], "visible_names": []})
 
     for col, metadata in votes_dict["annotator_metadata"].items():
-        if metadata.get("variant") == variant_type:
-            column_ids.append(col)
-            if "annotator_visible_name" in metadata:
-                visible_names.append(metadata["annotator_visible_name"])
-            else:
-                # Use column ID as visible name if no visible name is available
-                visible_names.append(col)
+        variant = metadata.get("variant", "unknown")
 
-    return column_ids, visible_names
+        result[variant]["column_ids"].append(col)
+
+        if "annotator_visible_name" in metadata:
+            result[variant]["visible_names"].append(metadata["annotator_visible_name"])
+        else:
+            # Use column ID as visible name if no visible name is available
+            result[variant]["visible_names"].append(col)
+
+    return result
