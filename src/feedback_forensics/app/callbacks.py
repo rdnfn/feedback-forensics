@@ -356,35 +356,18 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         )
 
         annotator_types = get_annotators_by_type(votes_dict)
-        avail_principle_annotator_names = annotator_types[PRINCIPLE_ANNOTATOR_TYPE][
-            "visible_names"
-        ]
-        avail_model_annotator_names = annotator_types[MODEL_IDENTITY_ANNOTATOR_TYPE][
-            "visible_names"
-        ]
-
-        avail_datacol_annotator_names = []
+        all_annotator_names = []
         for variant, annotators in annotator_types.items():
-            if (
-                variant != PRINCIPLE_ANNOTATOR_TYPE
-                and variant != MODEL_IDENTITY_ANNOTATOR_TYPE
-            ):
-                avail_datacol_annotator_names.extend(annotators["visible_names"])
-
-        avail_annotator_names = (
-            avail_datacol_annotator_names
-            + avail_principle_annotator_names
-            + avail_model_annotator_names
-        )
+            all_annotator_names.extend(annotators["visible_names"])
         return {
             inp["annotator_cols_dropdown"]: gr.Dropdown(
-                choices=avail_annotator_names,
+                choices=all_annotator_names,
                 value=[DEFAULT_ANNOTATOR_NAME],
                 interactive=True,
             ),
             inp["annotator_rows_dropdown"]: gr.Dropdown(
-                choices=avail_annotator_names,
-                value=avail_principle_annotator_names,
+                choices=all_annotator_names,
+                value=annotator_types[PRINCIPLE_ANNOTATOR_TYPE]["visible_names"],
                 interactive=True,
             ),
             inp["reference_models_dropdown"]: gr.Dropdown(
@@ -594,29 +577,9 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 )
 
                 annotator_types = get_annotators_by_type(votes_dict)
-                avail_principle_annotator_names = annotator_types[
-                    PRINCIPLE_ANNOTATOR_TYPE
-                ]["visible_names"]
-                avail_model_annotator_names = annotator_types[
-                    MODEL_IDENTITY_ANNOTATOR_TYPE
-                ]["visible_names"]
-
-                # Collect all other annotator types as datacol annotators
-                avail_datacol_annotator_names = []
+                all_available_annotators = []
                 for variant, annotators in annotator_types.items():
-                    if (
-                        variant != PRINCIPLE_ANNOTATOR_TYPE
-                        and variant != MODEL_IDENTITY_ANNOTATOR_TYPE
-                    ):
-                        avail_datacol_annotator_names.extend(
-                            annotators["visible_names"]
-                        )
-
-                all_available_annotators = (
-                    avail_principle_annotator_names
-                    + avail_datacol_annotator_names
-                    + avail_model_annotator_names
-                )
+                    all_available_annotators.extend(annotators["visible_names"])
 
                 # If annotator rows are specified in the URL
                 if "annotator_rows" in config:
