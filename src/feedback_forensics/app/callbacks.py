@@ -590,20 +590,59 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 value=config["datasets"],
             )
 
-            # Get available annotators for the selected dataset
-            if "annotator_rows" in config or "annotator_cols" in config:
-                # First load the dataset to get access to model annotators. May take seconds, but
-                # is necessary to get the model list. Caching ensures we only pay this cost once.
+            # Only load the dataset when necessary (annotators or reference models are specified)
+            need_to_load_dataset = (
+                "annotator_rows" in config
+                or "annotator_cols" in config
+                or "reference_models" in config
+            )
+            base_votes_dict = None
+            reference_models = []
+
+            if need_to_load_dataset:
+                # Load the dataset to get access to model data
+                # May take seconds, but is necessary. Caching ensures we only pay this cost once.
                 dataset_config = data[state["avail_datasets"]][config["datasets"][0]]
                 results_dir = pathlib.Path(dataset_config.path)
-                base_votes_dict = get_votes_dict(results_dir, cache=data[state["cache"]])
+                base_votes_dict = get_votes_dict(
+                    results_dir, cache=data[state["cache"]]
+                )
 
-                # Generate model annotators to make them available for URL translation
+                if "reference_models" in config:
+                    available_models = get_available_models(base_votes_dict["df"])
+
+                    # Use URL parser utility to translate URL-encoded model names to their original form
+                    url_reference_models = config["reference_models"]
+                    reference_models = transfer_url_list_to_nonurl_list(
+                        url_list=url_reference_models,
+                        nonurl_list=list(available_models),
+                    )
+
+                    logger.debug(
+                        f"URL reference models: {url_reference_models} -> {reference_models}"
+                    )
+
+                    if len(reference_models) != len(url_reference_models):
+                        gr.Warning(
+                            f"URL problem: not all reference models in URL ({url_reference_models}) could be found in the dataset. "
+                            f"Using only available models: {reference_models}.",
+                            duration=15,
+                        )
+
+                    data[inp["reference_models_dropdown"]] = reference_models
+                    annotator_return_dict[inp["reference_models_dropdown"]] = (
+                        gr.Dropdown(
+                            choices=available_models,
+                            value=reference_models,
+                            interactive=True,
+                        )
+                    )
+
                 votes_dict = add_virtual_annotators(
                     base_votes_dict,
                     cache=data[state["cache"]],
                     dataset_cache_key=results_dir,
-                    reference_models=[],
+                    reference_models=reference_models,
                     target_models=[],
                 )
 
@@ -812,6 +851,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 if sort_ascending == default_sort_ascending
                 else "Ascending" if sort_ascending else "Descending"
             ),
+            "reference_models": data[inp["reference_models_dropdown"]],
         }
 
         # See if the selected annotator rows and columns
