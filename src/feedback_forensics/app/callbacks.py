@@ -361,12 +361,12 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             all_annotator_names.extend(annotators["visible_names"])
         return {
             inp["annotator_cols_dropdown"]: gr.Dropdown(
-                choices=all_annotator_names,
+                choices=sorted(all_annotator_names),
                 value=[DEFAULT_ANNOTATOR_NAME],
                 interactive=True,
             ),
             inp["annotator_rows_dropdown"]: gr.Dropdown(
-                choices=all_annotator_names,
+                choices=sorted(all_annotator_names),
                 value=annotator_types[PRINCIPLE_ANNOTATOR_TYPE]["visible_names"],
                 interactive=True,
             ),
@@ -598,7 +598,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                         )
                     data[inp["annotator_rows_dropdown"]] = annotator_rows
                     annotator_return_dict[inp["annotator_rows_dropdown"]] = gr.Dropdown(
-                        choices=all_available_annotators,
+                        choices=sorted(all_available_annotators),
                         value=annotator_rows,
                         interactive=True,
                     )
@@ -620,7 +620,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                         )
                     data[inp["annotator_cols_dropdown"]] = annotator_cols
                     annotator_return_dict[inp["annotator_cols_dropdown"]] = gr.Dropdown(
-                        choices=all_available_annotators,
+                        choices=sorted(all_available_annotators),
                         value=annotator_cols,
                         interactive=True,
                     )
