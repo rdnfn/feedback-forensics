@@ -1,7 +1,7 @@
 import pathlib
-import json
 import ast
 import time
+import msgspec.json as mjson
 import pandas as pd
 from loguru import logger
 from inverse_cai.data.annotated_pairs_format import hash_string
@@ -14,7 +14,8 @@ from feedback_forensics.app.constants import (
 
 def load_json_file(path: str):
     with open(path, "r") as f:
-        content = json.load(f)
+        # Use msgspec to load the JSON file, faster than standard json
+        content = mjson.decode(f.read())
 
     return content
 
