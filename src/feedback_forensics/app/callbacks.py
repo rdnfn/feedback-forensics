@@ -335,37 +335,14 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             ]
         return avail_cols
 
-    def _get_datacol_annotator_names(dataset_name, data) -> str:
-        """Get the annotator names from csv file without loading full dataset."""
-        dataset_config = data[state["avail_datasets"]][dataset_name]
-        if dataset_config.path.is_dir():
-            datacol_path = dataset_config.path / "results" / "000_train_data.csv"
-            datacol_annotator_names = get_csv_columns(datacol_path)
-        elif dataset_config.path.is_file() and dataset_config.path.suffix == ".json":
-            all_annotators = get_value_from_json(
-                dataset_config.path,
-                "annotators",
-            )
-            datacol_annotator_names = [
-                annotator["name"] if "name" in annotator else annotator["description"]
-                for annotator in all_annotators.values()
-                if annotator["type"] != "principle"
-            ]
-        else:
-            raise ValueError(
-                f"Dataset {dataset_name} is not a directory or a json file. Please check the dataset path."
-            )
-        return sorted(datacol_annotator_names)
-
     def _get_default_annotator_cols_config(data) -> str:
         """Get the default annotator cols config.
 
         This sets the annotator columns to the default, and the rows to all principle annotators
         """
         datasets = data[inp["active_datasets_dropdown"]]
-        avail_datacol_annotator_names = _get_datacol_annotator_names(datasets[0], data)
 
-        # Load the full dataset (needed to extract all models and principle annotators),
+        # Load the full dataset (needed to extract annotator names)
         # which may take a few seconds. Caching ensures this cost is paid only once.
         dataset_config = data[state["avail_datasets"]][datasets[0]]
         results_dir = pathlib.Path(dataset_config.path)
@@ -385,6 +362,14 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         avail_model_annotator_names = annotator_types[MODEL_IDENTITY_ANNOTATOR_TYPE][
             "visible_names"
         ]
+
+        avail_datacol_annotator_names = []
+        for variant, annotators in annotator_types.items():
+            if (
+                variant != PRINCIPLE_ANNOTATOR_TYPE
+                and variant != MODEL_IDENTITY_ANNOTATOR_TYPE
+            ):
+                avail_datacol_annotator_names.extend(annotators["visible_names"])
 
         avail_annotator_names = (
             avail_datacol_annotator_names
@@ -609,16 +594,23 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 )
 
                 annotator_types = get_annotators_by_type(votes_dict)
-                avail_principle_annotator_names = annotator_types[PRINCIPLE_ANNOTATOR_TYPE][
-                    "visible_names"
-                ]
+                avail_principle_annotator_names = annotator_types[
+                    PRINCIPLE_ANNOTATOR_TYPE
+                ]["visible_names"]
                 avail_model_annotator_names = annotator_types[
                     MODEL_IDENTITY_ANNOTATOR_TYPE
                 ]["visible_names"]
 
-                avail_datacol_annotator_names = _get_datacol_annotator_names(
-                    config["datasets"][0], data
-                )
+                # Collect all other annotator types as datacol annotators
+                avail_datacol_annotator_names = []
+                for variant, annotators in annotator_types.items():
+                    if (
+                        variant != PRINCIPLE_ANNOTATOR_TYPE
+                        and variant != MODEL_IDENTITY_ANNOTATOR_TYPE
+                    ):
+                        avail_datacol_annotator_names.extend(
+                            annotators["visible_names"]
+                        )
 
                 all_available_annotators = (
                     avail_principle_annotator_names
