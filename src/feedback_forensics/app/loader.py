@@ -10,6 +10,10 @@ from feedback_forensics.app.constants import (
     DEFAULT_ANNOTATOR_HASH,
     PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS,
 )
+from feedback_forensics.app.dataset_utils import (
+    add_annotators_to_votes_dict,
+)
+from feedback_forensics.app.model_annotators import generate_model_identity_annotators
 
 
 def load_json_file(path: str):
@@ -65,6 +69,70 @@ def get_votes_dict(results_path: pathlib.Path, cache: dict) -> dict:
             cache["votes_dict"] = {}
         cache["votes_dict"][results_path] = votes_dict
         return votes_dict
+
+
+def add_virtual_annotators(
+    votes_dict: dict,
+    cache: dict,
+    dataset_cache_key: pathlib.Path,
+    reference_models: list,
+    target_models: list,
+) -> dict:
+    """
+    Add virtual model annotators to a votes dictionary.
+
+    Args:
+        votes_dict: Base votes dictionary to add the annotators to
+        cache: Cache dictionary to store and retrieve model annotators
+        dataset_cache_key: Key used for caching (typically the results path)
+        reference_models: List of model names to use as reference models. Empty list means all.
+        target_models: List of model names to use as target models. Empty list means all.
+
+    Returns:
+        A votes dictionary with model annotators added
+    """
+    ref_models_tuple = tuple(sorted(reference_models))
+    target_models_tuple = tuple(sorted(target_models))
+    model_annotator_cache_key = (ref_models_tuple, target_models_tuple)
+
+    cache["model_annotators"] = cache.get("model_annotators", {})
+    cache["model_annotators"][dataset_cache_key] = cache["model_annotators"].get(
+        dataset_cache_key, {}
+    )
+    if model_annotator_cache_key not in cache["model_annotators"][dataset_cache_key]:
+        logger.debug(
+            f"Cache miss for model annotators, generating for {ref_models_tuple} and {target_models_tuple}"
+        )
+        start_time = time.time()
+
+        df = votes_dict["df"]
+        model_metadata, df_with_annotators = generate_model_identity_annotators(
+            df, target_models=target_models, reference_models=reference_models
+        )
+
+        cache["model_annotators"][dataset_cache_key][model_annotator_cache_key] = (
+            model_metadata,
+            df_with_annotators,
+        )
+
+        gen_time = time.time() - start_time
+        logger.debug(f"Model annotators generated in {gen_time:.2f} seconds")
+
+    model_metadata, df_with_annotators = cache["model_annotators"][dataset_cache_key][
+        model_annotator_cache_key
+    ]
+
+    start_time = time.time()
+    votes_dict_with_annotators = add_annotators_to_votes_dict(
+        votes_dict, model_metadata, df_with_annotators
+    )
+    combine_time = time.time() - start_time
+
+    logger.debug(
+        f"Combined base data with model annotators in {combine_time:.2f} seconds"
+    )
+
+    return votes_dict_with_annotators
 
 
 def get_votes_dict_from_annotated_pairs_json(results_path: pathlib.Path) -> dict:

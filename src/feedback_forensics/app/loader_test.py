@@ -13,6 +13,7 @@ from feedback_forensics.app.loader import (
     get_votes_dict,
     create_votes_dict_from_icai_log_files,
     get_votes_dict_from_annotated_pairs_json,
+    add_virtual_annotators,
 )
 from feedback_forensics.app.constants import DEFAULT_ANNOTATOR_HASH, hash_string
 
@@ -481,3 +482,41 @@ class TestLoader:
         assert df.loc[1, "d36860d4"] == "text_b"
         assert df.loc[1, "2f45a6d0"] == "text_b"
         assert df.loc[1, "435cef52"] == "text_a"
+
+    def test_model_annotators(self, setup_annotated_pairs_json_v2):
+        """Test adding model annotators to votes dict."""
+        json_file = setup_annotated_pairs_json_v2
+        cache = {}
+
+        base_votes_dict = get_votes_dict(json_file, cache)
+
+        # Add virtual annotators
+        reference_models = []
+        target_models = []
+        votes_dict_with_annotators = add_virtual_annotators(
+            base_votes_dict, cache, json_file, reference_models, target_models
+        )
+
+        # Check for model annotators in metadata
+        annotator_metadata = votes_dict_with_annotators["annotator_metadata"]
+
+        # Find model annotator keys
+        model_annotator_keys = [
+            key
+            for key, meta in annotator_metadata.items()
+            if meta.get("variant") == "model_identity"
+        ]
+
+        assert len(model_annotator_keys) >= 2
+
+        # Check model annotator columns in dataframe
+        df = votes_dict_with_annotators["df"]
+        for key in model_annotator_keys:
+            assert key in df.columns
+
+        # Check that model annotators have correct metadata format
+        for key in model_annotator_keys:
+            meta = annotator_metadata[key]
+            assert "model_id" in meta
+            assert "annotator_visible_name" in meta
+            assert meta["annotator_visible_name"].startswith("Model: ")

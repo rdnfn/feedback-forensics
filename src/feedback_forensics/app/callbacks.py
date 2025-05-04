@@ -7,7 +7,7 @@ import pandas as pd
 
 from loguru import logger
 
-from feedback_forensics.app.loader import get_votes_dict
+from feedback_forensics.app.loader import add_virtual_annotators, get_votes_dict
 import feedback_forensics.app.plotting
 from feedback_forensics.app.utils import (
     get_csv_columns,
@@ -147,7 +147,14 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             path = dataset_config.path
             # check results dir inside the path
             results_dir = pathlib.Path(path)
-            votes_dict = get_votes_dict(results_dir, cache=cache)
+            base_votes_dict = get_votes_dict(results_dir, cache=cache)
+            votes_dict = add_virtual_annotators(
+                base_votes_dict,
+                cache=cache,
+                dataset_cache_key=results_dir,
+                reference_models=[],
+                target_models=[],
+            )
 
             votes_dicts[dataset] = votes_dict
 

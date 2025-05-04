@@ -8,6 +8,7 @@ import pandas as pd
 import ijson
 from loguru import logger
 import time
+from itertools import islice
 import re
 
 
@@ -223,3 +224,12 @@ def get_value_from_json(file_path: str | Path, key_path: str) -> any:
     except Exception as e:
         logger.error(f"Error accessing JSON file: {e}")
         return None
+
+
+def iter_to_trunc_str(iter, max_items):
+    """Convert an iterable to a string with maximum item count."""
+    lst = list(islice(iter, max_items + 1))
+    result = ", ".join(lst[:max_items])
+    if len(lst) > max_items:
+        result += ", ..."
+    return result
