@@ -51,3 +51,31 @@ def add_annotators_to_votes_dict(
         f"Added {len(annotator_metadata)} virtual annotators to the dataset in {elapsed_time:.2f} seconds"
     )
     return result
+
+
+def get_annotators_by_type(
+    votes_dict: Dict[str, Any], variant_type: str
+) -> Tuple[List[str], List[str]]:
+    """
+    Extract annotators of a specific type from a votes_dict.
+
+    Args:
+        votes_dict: Dictionary containing annotator metadata
+        variant_type: The type of annotator to extract
+
+    Returns:
+        Tuple of (column_ids, visible_names) for annotators matching the specified type
+    """
+    column_ids = []
+    visible_names = []
+
+    for col, metadata in votes_dict["annotator_metadata"].items():
+        if metadata.get("variant") == variant_type:
+            column_ids.append(col)
+            if "annotator_visible_name" in metadata:
+                visible_names.append(metadata["annotator_visible_name"])
+            else:
+                # Use column ID as visible name if no visible name is available
+                visible_names.append(col)
+
+    return column_ids, visible_names

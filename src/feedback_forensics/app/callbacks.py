@@ -9,6 +9,7 @@ from loguru import logger
 
 from feedback_forensics.app.loader import add_virtual_annotators, get_votes_dict
 import feedback_forensics.app.plotting
+from feedback_forensics.app.dataset_utils import get_annotators_by_type
 from feedback_forensics.app.utils import (
     get_csv_columns,
     load_json_file,
@@ -18,6 +19,7 @@ from feedback_forensics.app.constants import (
     NONE_SELECTED_VALUE,
     APP_BASE_URL,
     DEFAULT_ANNOTATOR_NAME,
+    MODEL_IDENTITY_ANNOTATOR_TYPE,
     PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS,
 )
 from feedback_forensics.app.datasets import (
@@ -397,8 +399,32 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             datasets[0], data
         )
         avail_datacol_annotator_names = _get_datacol_annotator_names(datasets[0], data)
+
+        # Load the full dataset (needed to extract all models), which may take a few seconds.
+        # Caching ensures this cost is paid only once.
+        # Previously, we used partial loading (still used by _get_principle_annotator_names
+        # and _get_datacol_annotator_names) to postpone this cost until after configuration,
+        # but full loading now makes those optimizations unnecessary.
+        dataset_config = data[state["avail_datasets"]][datasets[0]]
+        results_dir = pathlib.Path(dataset_config.path)
+        base_votes_dict = get_votes_dict(results_dir, cache=data[state["cache"]])
+        votes_dict = add_virtual_annotators(
+            base_votes_dict,
+            cache=data[state["cache"]],
+            dataset_cache_key=results_dir,
+            reference_models=[],
+            target_models=[],
+        )
+
+        # Get model annotator visible names using the utility function
+        _, avail_model_annotator_names = get_annotators_by_type(
+            votes_dict, MODEL_IDENTITY_ANNOTATOR_TYPE
+        )
+
         avail_annotator_names = (
-            avail_datacol_annotator_names + avail_principle_annotator_names
+            avail_datacol_annotator_names
+            + avail_principle_annotator_names
+            + avail_model_annotator_names
         )
         return {
             inp["annotator_cols_dropdown"]: gr.Dropdown(
@@ -558,14 +584,36 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
             # Get available annotators for the selected dataset
             if "annotator_rows" in config or "annotator_cols" in config:
+                # First load the dataset to get access to model annotators. May take seconds, but
+                # is necessary to get the model list. Caching ensures we only pay this cost once.
+                dataset_config = data[state["avail_datasets"]][config["datasets"][0]]
+                results_dir = pathlib.Path(dataset_config.path)
+                base_votes_dict = get_votes_dict(results_dir, cache=data[state["cache"]])
+
+                # Generate model annotators to make them available for URL translation
+                votes_dict = add_virtual_annotators(
+                    base_votes_dict,
+                    cache=data[state["cache"]],
+                    dataset_cache_key=results_dir,
+                    reference_models=[],
+                    target_models=[],
+                )
+
                 avail_principle_annotator_names = _get_principle_annotator_names(
                     config["datasets"][0], data
                 )
                 avail_datacol_annotator_names = _get_datacol_annotator_names(
                     config["datasets"][0], data
                 )
+
+                _, avail_model_annotator_names = get_annotators_by_type(
+                    votes_dict, MODEL_IDENTITY_ANNOTATOR_TYPE
+                )
+
                 all_available_annotators = (
-                    avail_principle_annotator_names + avail_datacol_annotator_names
+                    avail_principle_annotator_names
+                    + avail_datacol_annotator_names
+                    + avail_model_annotator_names
                 )
 
                 # If annotator rows are specified in the URL
