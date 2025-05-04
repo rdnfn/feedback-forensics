@@ -32,7 +32,6 @@ dependencies = [
   "jupyter",
   "ipywidgets", # IProgress in jupyter notebooks
   "gradio",
-  "ijson",
   "msgspec",
 ]
 

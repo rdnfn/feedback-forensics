@@ -5,6 +5,7 @@ import msgspec.json as mjson
 import pandas as pd
 from loguru import logger
 from inverse_cai.data.annotated_pairs_format import hash_string
+from feedback_forensics.app.utils import get_csv_columns
 from feedback_forensics.app.constants import (
     DEFAULT_ANNOTATOR_NAME,
     DEFAULT_ANNOTATOR_HASH,
@@ -244,11 +245,16 @@ def get_votes_dict_from_annotated_pairs_json(results_path: pathlib.Path) -> dict
     # Add weight column
     full_df["weight"] = 1
 
+    available_metadata_keys = json_data.get("metadata", {}).get(
+        "available_metadata_keys_per_comparison", []
+    )
+
     return {
         "df": full_df,
         "shown_annotator_rows": principle_annotator_cols,
         "annotator_metadata": annotator_metadata,
         "reference_annotator_col": DEFAULT_ANNOTATOR_HASH,
+        "available_metadata_keys": available_metadata_keys,
     }
 
 
@@ -381,9 +387,12 @@ def create_votes_dict_from_icai_log_files(results_dir: pathlib.Path) -> list[dic
         columns={DEFAULT_ANNOTATOR_NAME: DEFAULT_ANNOTATOR_HASH}, inplace=True
     )
 
+    available_metadata_keys = get_csv_columns(results_dir / "000_train_data.csv")
+
     return {
         "df": full_df,
         "shown_annotator_rows": principle_annotator_cols,
         "annotator_metadata": annotator_metadata,
         "reference_annotator_col": DEFAULT_ANNOTATOR_HASH,
+        "available_metadata_keys": available_metadata_keys,
     }

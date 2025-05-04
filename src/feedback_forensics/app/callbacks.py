@@ -16,7 +16,6 @@ from feedback_forensics.app.data.dataset_utils import (
 from feedback_forensics.app.utils import (
     get_csv_columns,
     load_json_file,
-    get_value_from_json,
 )
 from feedback_forensics.app.constants import (
     NONE_SELECTED_VALUE,
@@ -313,21 +312,9 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
     def _get_columns_in_dataset(dataset_name, data) -> str:
         dataset_config = data[state["avail_datasets"]][dataset_name]
-
-        # check if dataset is dir or json
-        if dataset_config.path.is_dir():
-            avail_cols = get_csv_columns(
-                dataset_config.path / "results" / "000_train_data.csv",
-            )
-        elif dataset_config.path.is_file() and dataset_config.path.suffix == ".json":
-            avail_cols = get_value_from_json(
-                dataset_config.path,
-                "metadata.available_metadata_keys_per_comparison",
-            )
-        else:
-            raise ValueError(
-                f"Dataset {dataset_name} is not a directory or a json file. Please check the dataset path."
-            )
+        results_dir = pathlib.Path(dataset_config.path)
+        base_votes_dict = get_votes_dict(results_dir, cache=data[state["cache"]])
+        avail_cols = base_votes_dict["available_metadata_keys"]
 
         if dataset_config.filterable_columns:
             avail_cols = [
