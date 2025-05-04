@@ -7,7 +7,7 @@ from feedback_forensics.app.constants import (
     VERSION,
     PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS,
 )
-from feedback_forensics.app.datasets import (
+from feedback_forensics.app.data.datasets import (
     get_available_datasets,
     get_default_dataset_names,
     get_available_datasets_names,

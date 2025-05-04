@@ -5,7 +5,7 @@ from loguru import logger
 import pathlib
 import re
 from feedback_forensics.app.constants import NONE_SELECTED_VALUE, DEFAULT_DATASET_NAMES
-from feedback_forensics.app.data_fetcher import load_icai_data, DATA_DIR
+from feedback_forensics.app.data.fetcher import load_icai_data, DATA_DIR
 
 
 @dataclass

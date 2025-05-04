@@ -10,7 +10,7 @@ from feedback_forensics.app.constants import (
     DEFAULT_ANNOTATOR_HASH,
     PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS,
 )
-from feedback_forensics.app.dataset_utils import (
+from feedback_forensics.app.data.dataset_utils import (
     add_annotators_to_votes_dict,
 )
 from feedback_forensics.app.model_annotators import generate_model_identity_annotators

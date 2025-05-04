@@ -2,7 +2,7 @@
 
 import pandas as pd
 
-from feedback_forensics.app.dataset_utils import (
+from feedback_forensics.app.data.dataset_utils import (
     add_annotators_to_votes_dict,
     get_annotators_by_type,
     get_available_models,

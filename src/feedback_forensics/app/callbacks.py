@@ -7,9 +7,9 @@ import pandas as pd
 
 from loguru import logger
 
-from feedback_forensics.app.loader import add_virtual_annotators, get_votes_dict
+from feedback_forensics.app.data.loader import add_virtual_annotators, get_votes_dict
 import feedback_forensics.app.plotting
-from feedback_forensics.app.dataset_utils import (
+from feedback_forensics.app.data.dataset_utils import (
     get_annotators_by_type,
     get_available_models,
 )
@@ -26,7 +26,7 @@ from feedback_forensics.app.constants import (
     PRINCIPLE_ANNOTATOR_TYPE,
     PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS,
 )
-from feedback_forensics.app.datasets import (
+from feedback_forensics.app.data.datasets import (
     get_available_datasets_names,
     get_default_dataset_names,
 )

@@ -10,7 +10,7 @@ from feedback_forensics.app.constants import (
     MODEL_IDENTITY_ANNOTATOR_TYPE,
     PREFIX_MODEL_IDENTITY_ANNOTATORS,
 )
-from feedback_forensics.app.dataset_utils import get_available_models
+from feedback_forensics.app.data.dataset_utils import get_available_models
 from feedback_forensics.app.utils import iter_to_trunc_str
 
 
