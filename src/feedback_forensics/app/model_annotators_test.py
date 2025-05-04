@@ -65,3 +65,33 @@ def test_generate_model_identity_annotators_default_one_vs_all():
         assert df_result.iloc[0][gpt4_annotator_id] == "text_a"
         # In row 4, gpt4 is model_b, so should be preferred (text_b)
         assert df_result.iloc[4][gpt4_annotator_id] == "text_b"
+
+
+def test_generate_model_identity_annotators_with_specific_reference_models():
+    """Test generate_model_identity_annotators with specific reference models."""
+    df = create_test_dataframe()
+
+    # Use only 'claude' and 'llama' as reference models
+    reference_models = ["claude", "llama"]
+    metadata, df_result = generate_model_identity_annotators(df, [], reference_models)
+
+    cols = list(metadata.keys())
+
+    assert len(cols) == 4  # gpt4, claude, llama, mistral
+
+    # Verify the reference models in the metadata
+    for col in cols:
+        assert metadata[col]["variant"] == MODEL_IDENTITY_ANNOTATOR_TYPE
+        assert set(metadata[col]["reference_models"]) == set(reference_models)
+
+    # Check that gpt4's annotator works correctly
+    gpt4_annotator_id = hash_string("model_identity_gpt4_over_references")
+    if gpt4_annotator_id in cols:
+        # In row 0, gpt4 is model_a and claude is model_b (a reference), so should be preferred (text_a)
+        assert df_result.iloc[0][gpt4_annotator_id] == "text_a"
+        # In row 3, gpt4 is model_a and llama is model_b (a reference), so should be preferred (text_a)
+        assert df_result.iloc[3][gpt4_annotator_id] == "text_a"
+        # Rows where the comparison doesn't involve reference models should be "Not applicable"
+        assert (
+            df_result.iloc[4][gpt4_annotator_id] == "Not applicable"
+        )  # gpt4 vs mistral
