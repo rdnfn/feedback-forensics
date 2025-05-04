@@ -1,6 +1,7 @@
 import pathlib
 import json
 import ast
+import time
 import pandas as pd
 from loguru import logger
 from inverse_cai.data.annotated_pairs_format import hash_string
@@ -44,6 +45,8 @@ def get_votes_dict(results_path: pathlib.Path, cache: dict) -> dict:
     if "votes_dict" in cache and results_path in cache["votes_dict"]:
         return cache["votes_dict"][results_path]
     else:
+        logger.debug(f"Cache miss for {results_path}, loading data...")
+        start_time = time.time()
         # check if results_path is a directory and non empty
         if results_path.is_dir():
             if not any(results_path.iterdir()):
@@ -54,6 +57,8 @@ def get_votes_dict(results_path: pathlib.Path, cache: dict) -> dict:
             votes_dict = get_votes_dict_from_annotated_pairs_json(results_path)
         else:
             raise FileNotFoundError(f"Unsupported results directory: {results_path}")
+        load_time = time.time() - start_time
+        logger.debug(f"Full data load completed in {load_time:.2f} seconds")
 
         if "votes_dict" not in cache:
             cache["votes_dict"] = {}
