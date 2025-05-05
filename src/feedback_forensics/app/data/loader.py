@@ -281,7 +281,7 @@ def _check_for_nondefault_annotators(df: pd.DataFrame) -> dict:
         if col != DEFAULT_ANNOTATOR_NAME and df[col].isin(["text_a", "text_b"]).any():
             annotator_metadata[col] = {
                 "variant": "nondefault_annotation_column",
-                "annotator_visible_name": PREFIX_COL_ANNOTATOR + col,
+                "annotator_visible_name": PREFIX_COL_ANNOTATOR + str(col),
                 "annotator_in_row_name": col,
             }
 
