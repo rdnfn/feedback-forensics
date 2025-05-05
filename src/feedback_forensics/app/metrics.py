@@ -137,7 +137,6 @@ def compute_metrics(votes_dict: dict) -> dict:
         joint_categories = set(votes_df[annotator_col].cat.categories).union(
             set(votes_df[ref_annotator_col].cat.categories)
         )
-        logger.info(f"Joint categories: {joint_categories}")
         for col in [annotator_col, ref_annotator_col]:
             votes_df[col] = votes_df[col].cat.set_categories(
                 list(joint_categories), rename=False
