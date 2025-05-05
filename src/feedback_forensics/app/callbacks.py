@@ -7,20 +7,25 @@ import pandas as pd
 
 from loguru import logger
 
-from feedback_forensics.app.loader import get_votes_dict
+from feedback_forensics.app.data.loader import add_virtual_annotators, get_votes_dict
 import feedback_forensics.app.plotting
+from feedback_forensics.app.data.dataset_utils import (
+    get_annotators_by_type,
+    get_available_models,
+)
 from feedback_forensics.app.utils import (
     get_csv_columns,
     load_json_file,
-    get_value_from_json,
 )
 from feedback_forensics.app.constants import (
     NONE_SELECTED_VALUE,
     APP_BASE_URL,
-    DEFAULT_ANNOTATOR_NAME,
+    DEFAULT_ANNOTATOR_VISIBLE_NAME,
+    MODEL_IDENTITY_ANNOTATOR_TYPE,
+    PRINCIPLE_ANNOTATOR_TYPE,
     PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS,
 )
-from feedback_forensics.app.datasets import (
+from feedback_forensics.app.data.datasets import (
     get_available_datasets_names,
     get_default_dataset_names,
 )
@@ -147,7 +152,14 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             path = dataset_config.path
             # check results dir inside the path
             results_dir = pathlib.Path(path)
-            votes_dict = get_votes_dict(results_dir, cache=cache)
+            base_votes_dict = get_votes_dict(results_dir, cache=cache)
+            votes_dict = add_virtual_annotators(
+                base_votes_dict,
+                cache=cache,
+                dataset_cache_key=results_dir,
+                reference_models=data[inp["reference_models_dropdown"]],
+                target_models=[],
+            )
 
             votes_dicts[dataset] = votes_dict
 
@@ -300,21 +312,9 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
     def _get_columns_in_dataset(dataset_name, data) -> str:
         dataset_config = data[state["avail_datasets"]][dataset_name]
-
-        # check if dataset is dir or json
-        if dataset_config.path.is_dir():
-            avail_cols = get_csv_columns(
-                dataset_config.path / "results" / "000_train_data.csv",
-            )
-        elif dataset_config.path.is_file() and dataset_config.path.suffix == ".json":
-            avail_cols = get_value_from_json(
-                dataset_config.path,
-                "metadata.available_metadata_keys_per_comparison",
-            )
-        else:
-            raise ValueError(
-                f"Dataset {dataset_name} is not a directory or a json file. Please check the dataset path."
-            )
+        results_dir = pathlib.Path(dataset_config.path)
+        base_votes_dict = get_votes_dict(results_dir, cache=data[state["cache"]])
+        avail_cols = base_votes_dict["available_metadata_keys"]
 
         if dataset_config.filterable_columns:
             avail_cols = [
@@ -322,86 +322,44 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             ]
         return avail_cols
 
-    def _get_principle_annotator_names(dataset_name, data) -> str:
-        """Get principle-following annotators from json without loading full dataset."""
-
-        dataset_config = data[state["avail_datasets"]][dataset_name]
-        if dataset_config.path.is_dir():
-            principle_path = (
-                dataset_config.path
-                / "results"
-                / "030_distilled_principles_per_cluster.json"
-            )
-            annotator_names = list(load_json_file(principle_path).values())
-        elif dataset_config.path.is_file() and dataset_config.path.suffix == ".json":
-            all_annotators = get_value_from_json(
-                dataset_config.path,
-                "annotators",
-            )
-            principle_annotators = [
-                annotator
-                for annotator in all_annotators.values()
-                if annotator["type"] == "principle"
-            ]
-            annotator_names = [
-                annotator["description"] for annotator in principle_annotators
-            ]
-        else:
-            raise ValueError(
-                f"Dataset {dataset_name} is not a directory or a json file. Please check the dataset path."
-            )
-        annotator_names = [
-            PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS
-            + name.replace("Select the response that", "").strip(" .")
-            for name in annotator_names
-        ]
-
-        return sorted(annotator_names)
-
-    def _get_datacol_annotator_names(dataset_name, data) -> str:
-        """Get the annotator names from csv file without loading full dataset."""
-        dataset_config = data[state["avail_datasets"]][dataset_name]
-        if dataset_config.path.is_dir():
-            datacol_path = dataset_config.path / "results" / "000_train_data.csv"
-            datacol_annotator_names = get_csv_columns(datacol_path)
-        elif dataset_config.path.is_file() and dataset_config.path.suffix == ".json":
-            all_annotators = get_value_from_json(
-                dataset_config.path,
-                "annotators",
-            )
-            datacol_annotator_names = [
-                annotator["name"] if "name" in annotator else annotator["description"]
-                for annotator in all_annotators.values()
-                if annotator["type"] != "principle"
-            ]
-        else:
-            raise ValueError(
-                f"Dataset {dataset_name} is not a directory or a json file. Please check the dataset path."
-            )
-        return sorted(datacol_annotator_names)
-
     def _get_default_annotator_cols_config(data) -> str:
         """Get the default annotator cols config.
 
         This sets the annotator columns to the default, and the rows to all principle annotators
         """
         datasets = data[inp["active_datasets_dropdown"]]
-        avail_principle_annotator_names = _get_principle_annotator_names(
-            datasets[0], data
+
+        # Load the full dataset (needed to extract annotator names)
+        # which may take a few seconds. Caching ensures this cost is paid only once.
+        dataset_config = data[state["avail_datasets"]][datasets[0]]
+        results_dir = pathlib.Path(dataset_config.path)
+        base_votes_dict = get_votes_dict(results_dir, cache=data[state["cache"]])
+        votes_dict = add_virtual_annotators(
+            base_votes_dict,
+            cache=data[state["cache"]],
+            dataset_cache_key=results_dir,
+            reference_models=data[inp["reference_models_dropdown"]],
+            target_models=[],
         )
-        avail_datacol_annotator_names = _get_datacol_annotator_names(datasets[0], data)
-        avail_annotator_names = (
-            avail_datacol_annotator_names + avail_principle_annotator_names
-        )
+
+        annotator_types = get_annotators_by_type(votes_dict)
+        all_annotator_names = []
+        for variant, annotators in annotator_types.items():
+            all_annotator_names.extend(annotators["visible_names"])
         return {
             inp["annotator_cols_dropdown"]: gr.Dropdown(
-                choices=avail_annotator_names,
-                value=[DEFAULT_ANNOTATOR_NAME],
+                choices=sorted(all_annotator_names),
+                value=[DEFAULT_ANNOTATOR_VISIBLE_NAME],
                 interactive=True,
             ),
             inp["annotator_rows_dropdown"]: gr.Dropdown(
-                choices=avail_annotator_names,
-                value=avail_principle_annotator_names,
+                choices=sorted(all_annotator_names),
+                value=annotator_types[PRINCIPLE_ANNOTATOR_TYPE]["visible_names"],
+                interactive=True,
+            ),
+            inp["reference_models_dropdown"]: gr.Dropdown(
+                choices=sorted(get_available_models(base_votes_dict["df"])),
+                value=[],
                 interactive=True,
             ),
         }
@@ -549,17 +507,66 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 value=config["datasets"],
             )
 
-            # Get available annotators for the selected dataset
-            if "annotator_rows" in config or "annotator_cols" in config:
-                avail_principle_annotator_names = _get_principle_annotator_names(
-                    config["datasets"][0], data
+            # Only load the dataset when necessary (annotators or reference models are specified)
+            need_to_load_dataset = (
+                "annotator_rows" in config
+                or "annotator_cols" in config
+                or "reference_models" in config
+            )
+            base_votes_dict = None
+            reference_models = []
+
+            if need_to_load_dataset:
+                # Load the dataset to get access to model data
+                # May take seconds, but is necessary. Caching ensures we only pay this cost once.
+                dataset_config = data[state["avail_datasets"]][config["datasets"][0]]
+                results_dir = pathlib.Path(dataset_config.path)
+                base_votes_dict = get_votes_dict(
+                    results_dir, cache=data[state["cache"]]
                 )
-                avail_datacol_annotator_names = _get_datacol_annotator_names(
-                    config["datasets"][0], data
+
+                if "reference_models" in config:
+                    available_models = get_available_models(base_votes_dict["df"])
+
+                    # Use URL parser utility to translate URL-encoded model names to their original form
+                    url_reference_models = config["reference_models"]
+                    reference_models = transfer_url_list_to_nonurl_list(
+                        url_list=url_reference_models,
+                        nonurl_list=list(available_models),
+                    )
+
+                    logger.debug(
+                        f"URL reference models: {url_reference_models} -> {reference_models}"
+                    )
+
+                    if len(reference_models) != len(url_reference_models):
+                        gr.Warning(
+                            f"URL problem: not all reference models in URL ({url_reference_models}) could be found in the dataset. "
+                            f"Using only available models: {reference_models}.",
+                            duration=15,
+                        )
+
+                    data[inp["reference_models_dropdown"]] = reference_models
+                    annotator_return_dict[inp["reference_models_dropdown"]] = (
+                        gr.Dropdown(
+                            choices=sorted(available_models),
+                            value=reference_models,
+                            interactive=True,
+                        )
+                    )
+
+                votes_dict = add_virtual_annotators(
+                    base_votes_dict,
+                    cache=data[state["cache"]],
+                    dataset_cache_key=results_dir,
+                    reference_models=reference_models,
+                    target_models=[],
                 )
-                all_available_annotators = (
-                    avail_principle_annotator_names + avail_datacol_annotator_names
-                )
+
+                annotator_types = get_annotators_by_type(votes_dict)
+                all_available_annotators = []
+                for variant, annotators in annotator_types.items():
+                    all_available_annotators.extend(annotators["visible_names"])
 
                 # If annotator rows are specified in the URL
                 if "annotator_rows" in config:
@@ -578,7 +585,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                         )
                     data[inp["annotator_rows_dropdown"]] = annotator_rows
                     annotator_return_dict[inp["annotator_rows_dropdown"]] = gr.Dropdown(
-                        choices=all_available_annotators,
+                        choices=sorted(all_available_annotators),
                         value=annotator_rows,
                         interactive=True,
                     )
@@ -600,7 +607,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                         )
                     data[inp["annotator_cols_dropdown"]] = annotator_cols
                     annotator_return_dict[inp["annotator_cols_dropdown"]] = gr.Dropdown(
-                        choices=all_available_annotators,
+                        choices=sorted(all_available_annotators),
                         value=annotator_cols,
                         interactive=True,
                     )
@@ -749,6 +756,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 if sort_ascending == default_sort_ascending
                 else "Ascending" if sort_ascending else "Descending"
             ),
+            "reference_models": data[inp["reference_models_dropdown"]],
         }
 
         # See if the selected annotator rows and columns
@@ -792,6 +800,7 @@ def attach_callbacks(
         inp["split_col_selected_vals_dropdown"],
         inp["annotator_rows_dropdown"],
         inp["annotator_cols_dropdown"],
+        inp["reference_models_dropdown"],
         state["app_url"],
         state["cache"],
         inp["metric_name_dropdown"],
@@ -811,6 +820,7 @@ def attach_callbacks(
         inp["advanced_settings_accordion"],
         inp["annotator_rows_dropdown"],
         inp["annotator_cols_dropdown"],
+        inp["reference_models_dropdown"],
         inp["load_btn"],
     ]
 
@@ -821,6 +831,7 @@ def attach_callbacks(
         inp["advanced_settings_accordion"],
         inp["annotator_rows_dropdown"],
         inp["annotator_cols_dropdown"],
+        inp["reference_models_dropdown"],
         out["share_link"],
         out["overall_metrics_table"],
         out["annotator_table"],

@@ -7,7 +7,7 @@ from feedback_forensics.app.constants import (
     VERSION,
     PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS,
 )
-from feedback_forensics.app.datasets import (
+from feedback_forensics.app.data.datasets import (
     get_available_datasets,
     get_default_dataset_names,
     get_available_datasets_names,
@@ -175,6 +175,13 @@ def _create_configuration_panel(inp: dict, state: dict):
                     inp["annotator_rows_dropdown"] = gr.Dropdown(
                         label="👥↓ Annotator rows",
                         info=f'Select the annotators to be included as a row in the results table. By default only objective-following AI annotators are included (named as "{PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS} \<OBJECTIVE\>").',
+                        choices=None,
+                        value=None,
+                        multiselect=True,
+                    )
+                    inp["reference_models_dropdown"] = gr.Dropdown(
+                        label="🔍 Reference models for model annotators",
+                        info="Select which models should be used as references for model-identity annotators. If none are selected, all models will be used as references.",
                         choices=None,
                         value=None,
                         multiselect=True,

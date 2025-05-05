@@ -7,12 +7,13 @@ import pandas as pd
 import pytest
 from pathlib import Path
 
-from feedback_forensics.app.loader import (
+from feedback_forensics.app.data.loader import (
     load_json_file,
     convert_vote_to_string,
     get_votes_dict,
     create_votes_dict_from_icai_log_files,
     get_votes_dict_from_annotated_pairs_json,
+    add_virtual_annotators,
 )
 from feedback_forensics.app.constants import DEFAULT_ANNOTATOR_HASH, hash_string
 
@@ -123,6 +124,86 @@ class TestLoader:
 
         # Write JSON to file
         json_file = tmp_path / "annotated_pairs.json"
+        with open(json_file, "w", encoding="utf-8") as f:
+            json.dump(json_data, f)
+
+        return json_file
+
+    @pytest.fixture
+    def setup_annotated_pairs_json_v2(self, tmp_path):
+        """Set up a temporary JSON file with annotated pairs data for testing format v2.0."""
+        json_data = {
+            "metadata": {
+                "version": "2.0",
+                "description": "Annotated pairs dataset with annotations from ICAI",
+                "created_at": "2025-04-02T16:02:37Z",
+                "dataset_name": "ICAI Dataset - 2025-04-02_16-02-05",
+                "default_annotator": "d36860d4",
+            },
+            "annotators": {
+                "d36860d4": {
+                    "name": "Human",
+                    "description": "Human annotator from original dataset",
+                    "type": "human",
+                },
+                "2f45a6d0": {
+                    "description": "Select the response that evokes a sense of mystery.",
+                    "type": "principle",
+                },
+                "435cef52": {
+                    "description": "Select the response that features a more adventurous setting.",
+                    "type": "principle",
+                },
+            },
+            "comparisons": [
+                {
+                    "id": "2fbb184f",
+                    "prompt": "Write a story about a pet.",
+                    "response_a": {
+                        "text": "In the heart of a bustling city, a sleek black cat named Shadow prowled the moonlit rooftops, her eyes gleaming with curiosity and mischief. She discovered a hidden garden atop an old apartment building, where she danced under the stars, chasing fireflies that glowed like tiny lanterns. As dawn painted the sky in hues of orange and pink, Shadow found her way back home, carrying the secret of the garden in her heart.",
+                        "model": "Model X",
+                        "timestamp": "2025-04-01T12:00:00Z",
+                        "rating": 5,
+                    },
+                    "response_b": {
+                        "text": "Across the town, in a cozy neighborhood, a golden retriever named Buddy embarked on his daily adventure, tail wagging with uncontainable excitement. He found a lost toy under the bushes in the park, its colors faded and fabric worn, but to Buddy, it was a treasure untold. Returning home with his newfound prize, Buddy's joyful barks filled the air, reminding everyone in the house that happiness can be found in the simplest of things.",
+                        "model": "Model Y",
+                        "timestamp": "2025-04-01T12:05:00Z",
+                        "rating": 4,
+                    },
+                    "annotations": {
+                        "d36860d4": {"pref": "a"},
+                        "2f45a6d0": {"pref": "a"},
+                        "435cef52": {"pref": "a"},
+                    },
+                    "metadata": {"source": "test_source", "category": "fiction"},
+                },
+                {
+                    "id": "3a7c9e2d",
+                    "prompt": "Write a story about a pet.",
+                    "response_a": {
+                        "text": "In a quiet suburban backyard, a small rabbit named Hoppy nibbled on fresh carrots, his nose twitching with delight. The garden was his kingdom, filled with tall grass to hide in and flowers to admire. As the sun set, Hoppy would return to his cozy hutch, dreaming of tomorrow's adventures in his little paradise.",
+                        "model": "Model X",
+                        "timestamp": "2025-04-01T13:00:00Z",
+                        "rating": 4,
+                    },
+                    "response_b": {
+                        "text": "Deep in the forest, a wise old owl named Oliver perched high in an ancient oak tree, watching over the woodland creatures below. His keen eyes spotted a family of mice scurrying home, and he hooted softly, a gentle reminder that he was their silent guardian. As night fell, Oliver spread his wings and soared through the moonlit sky, a majestic shadow against the stars.",
+                        "model": "Model Y",
+                        "timestamp": "2025-04-01T13:05:00Z",
+                        "rating": 5,
+                    },
+                    "annotations": {
+                        "d36860d4": {"pref": "b"},
+                        "2f45a6d0": {"pref": "b"},
+                        "435cef52": {"pref": "a"},
+                    },
+                    "metadata": {"source": "test_source", "category": "fiction"},
+                },
+            ],
+        }
+
+        json_file = tmp_path / "annotated_pairs_v2.json"
         with open(json_file, "w", encoding="utf-8") as f:
             json.dump(json_data, f)
 
@@ -327,3 +408,115 @@ class TestLoader:
         assert df.loc[0, "category"] == "fiction"
         assert df.loc[1, "source"] == "test_source"
         assert df.loc[1, "category"] == "fiction"
+
+    def test_get_votes_dict_from_annotated_pairs_json_v2(
+        self, setup_annotated_pairs_json_v2
+    ):
+        """Test getting votes dict from annotated pairs JSON with format v2.0."""
+        json_file = setup_annotated_pairs_json_v2
+
+        # Get the votes dictionary
+        votes_dict = get_votes_dict_from_annotated_pairs_json(json_file)
+
+        # Basic validation
+        assert isinstance(votes_dict, dict)
+        assert "df" in votes_dict
+        assert "shown_annotator_rows" in votes_dict
+        assert "annotator_metadata" in votes_dict
+        assert "reference_annotator_col" in votes_dict
+
+        # Check DataFrame
+        df = votes_dict["df"]
+        assert isinstance(df, pd.DataFrame)
+        assert len(df) == 2  # 2 comparisons
+
+        # Check columns
+        assert "comparison_id" in df.columns
+        assert "text_a" in df.columns
+        assert "text_b" in df.columns
+        assert "model_a" in df.columns
+        assert "model_b" in df.columns
+        assert "prompt" in df.columns
+        assert "d36860d4" in df.columns  # default annotator
+        assert "2f45a6d0" in df.columns  # principle annotator
+        assert "435cef52" in df.columns  # principle annotator
+        assert "weight" in df.columns
+        assert "source" in df.columns
+        assert "category" in df.columns
+
+        # Check annotator metadata
+        annotator_metadata = votes_dict["annotator_metadata"]
+        assert "d36860d4" in annotator_metadata
+        assert annotator_metadata["d36860d4"]["variant"] == "default_annotator"
+        assert "2f45a6d0" in annotator_metadata
+        assert annotator_metadata["2f45a6d0"]["variant"] == "icai_principle"
+        assert "435cef52" in annotator_metadata
+        assert annotator_metadata["435cef52"]["variant"] == "icai_principle"
+
+        # Check shown annotator rows
+        shown_annotator_rows = votes_dict["shown_annotator_rows"]
+        assert "2f45a6d0" in shown_annotator_rows
+        assert "435cef52" in shown_annotator_rows
+
+        # Check all response fields are correctly transformed to key_a/key_b format
+        assert df.loc[0, "model_a"] == "Model X"
+        assert df.loc[0, "model_b"] == "Model Y"
+        assert df.loc[0, "text_a"].startswith("In the heart of a bustling city")
+        assert df.loc[0, "text_b"].startswith("Across the town")
+        assert df.loc[0, "timestamp_a"] == "2025-04-01T12:00:00Z"
+        assert df.loc[0, "timestamp_b"] == "2025-04-01T12:05:00Z"
+        assert df.loc[0, "rating_a"] == 5
+        assert df.loc[0, "rating_b"] == 4
+
+        assert df.loc[1, "model_a"] == "Model X"
+        assert df.loc[1, "model_b"] == "Model Y"
+        assert df.loc[1, "timestamp_a"] == "2025-04-01T13:00:00Z"
+        assert df.loc[1, "timestamp_b"] == "2025-04-01T13:05:00Z"
+        assert df.loc[1, "rating_a"] == 4
+        assert df.loc[1, "rating_b"] == 5
+
+        # Check annotations - a/b should be converted to text_a/text_b
+        assert df.loc[0, "d36860d4"] == "text_a"
+        assert df.loc[0, "2f45a6d0"] == "text_a"
+        assert df.loc[0, "435cef52"] == "text_a"
+        assert df.loc[1, "d36860d4"] == "text_b"
+        assert df.loc[1, "2f45a6d0"] == "text_b"
+        assert df.loc[1, "435cef52"] == "text_a"
+
+    def test_model_annotators(self, setup_annotated_pairs_json_v2):
+        """Test adding model annotators to votes dict."""
+        json_file = setup_annotated_pairs_json_v2
+        cache = {}
+
+        base_votes_dict = get_votes_dict(json_file, cache)
+
+        # Add virtual annotators
+        reference_models = []
+        target_models = []
+        votes_dict_with_annotators = add_virtual_annotators(
+            base_votes_dict, cache, json_file, reference_models, target_models
+        )
+
+        # Check for model annotators in metadata
+        annotator_metadata = votes_dict_with_annotators["annotator_metadata"]
+
+        # Find model annotator keys
+        model_annotator_keys = [
+            key
+            for key, meta in annotator_metadata.items()
+            if meta.get("variant") == "model_identity"
+        ]
+
+        assert len(model_annotator_keys) >= 2
+
+        # Check model annotator columns in dataframe
+        df = votes_dict_with_annotators["df"]
+        for key in model_annotator_keys:
+            assert key in df.columns
+
+        # Check that model annotators have correct metadata format
+        for key in model_annotator_keys:
+            meta = annotator_metadata[key]
+            assert "model_id" in meta
+            assert "annotator_visible_name" in meta
+            assert meta["annotator_visible_name"].startswith("Model: ")
