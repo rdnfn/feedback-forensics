@@ -7,6 +7,8 @@ from typing import Any, Dict, List, Tuple
 import pandas as pd
 from loguru import logger
 
+from feedback_forensics.app.constants import PREFIX_OTHER_ANNOTATOR_WITH_VARIANT
+
 
 def get_available_models(df: pd.DataFrame) -> list:
     """
@@ -77,7 +79,9 @@ def get_annotators_by_type(
         if "annotator_visible_name" in metadata:
             result[variant]["visible_names"].append(metadata["annotator_visible_name"])
         else:
-            # Use column ID as visible name if no visible name is available
-            result[variant]["visible_names"].append(col)
+            # Default visible name indicates variant and column ID
+            result[variant]["visible_names"].append(
+                PREFIX_OTHER_ANNOTATOR_WITH_VARIANT.format(variant=variant) + col
+            )
 
     return result

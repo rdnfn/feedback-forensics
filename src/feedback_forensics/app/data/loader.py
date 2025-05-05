@@ -9,6 +9,9 @@ from feedback_forensics.app.utils import get_csv_columns
 from feedback_forensics.app.constants import (
     DEFAULT_ANNOTATOR_NAME,
     DEFAULT_ANNOTATOR_HASH,
+    PREFIX_COL_ANNOTATOR,
+    PREFIX_DEFAULT_ANNOTATOR,
+    PREFIX_OTHER_ANNOTATOR,
     PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS,
 )
 from feedback_forensics.app.data.dataset_utils import (
@@ -217,7 +220,8 @@ def get_votes_dict_from_annotated_pairs_json(results_path: pathlib.Path) -> dict
         if annotator_id == json_data["metadata"].get("default_annotator"):
             annotator_metadata[annotator_id] = {
                 "variant": "default_annotator",
-                "annotator_visible_name": annotator_info.get("name", annotator_id),
+                "annotator_visible_name": PREFIX_DEFAULT_ANNOTATOR
+                + annotator_info.get("name", annotator_id),
                 "annotator_in_row_name": annotator_id,
                 "annotator_description": annotator_info.get("description", ""),
             }
@@ -242,7 +246,8 @@ def get_votes_dict_from_annotated_pairs_json(results_path: pathlib.Path) -> dict
         else:
             annotator_metadata[annotator_id] = {
                 "variant": "nondefault_annotator",
-                "annotator_visible_name": annotator_info.get("name", annotator_id),
+                "annotator_visible_name": PREFIX_OTHER_ANNOTATOR
+                + annotator_info.get("name", annotator_id),
                 "annotator_in_row_name": annotator_id,
                 "annotator_description": annotator_info.get("description", ""),
             }
@@ -276,7 +281,7 @@ def _check_for_nondefault_annotators(df: pd.DataFrame) -> dict:
         if col != DEFAULT_ANNOTATOR_NAME and df[col].isin(["text_a", "text_b"]).any():
             annotator_metadata[col] = {
                 "variant": "nondefault_annotation_column",
-                "annotator_visible_name": col,
+                "annotator_visible_name": PREFIX_COL_ANNOTATOR + col,
                 "annotator_in_row_name": col,
             }
 
@@ -315,7 +320,7 @@ def create_votes_dict_from_icai_log_files(results_dir: pathlib.Path) -> list[dic
     annotator_metadata = {}
     annotator_metadata[DEFAULT_ANNOTATOR_HASH] = {
         "variant": "default_annotator",
-        "annotator_visible_name": DEFAULT_ANNOTATOR_NAME,
+        "annotator_visible_name": PREFIX_DEFAULT_ANNOTATOR + DEFAULT_ANNOTATOR_NAME,
         "annotator_in_row_name": DEFAULT_ANNOTATOR_NAME,
     }
 

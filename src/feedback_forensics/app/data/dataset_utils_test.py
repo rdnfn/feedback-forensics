@@ -120,7 +120,7 @@ def test_get_annotators_by_type():
     assert annotator_types["type2"]["visible_names"][0] == "Type 2 Annotator"
 
     assert "annotator4" in annotator_types["type3"]["column_ids"]
-    assert "annotator4" in annotator_types["type3"]["visible_names"]
+    assert f"Other (type3): annotator4" in annotator_types["type3"]["visible_names"]
 
     assert annotator_types["non_existent_type"]["column_ids"] == []
     assert annotator_types["non_existent_type"]["visible_names"] == []
