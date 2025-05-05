@@ -209,6 +209,11 @@ def get_votes_dict_from_annotated_pairs_json(results_path: pathlib.Path) -> dict
     principle_annotator_cols = []
 
     for annotator_id, annotator_info in json_data["annotators"].items():
+
+        # make df column categorical
+        full_df[annotator_id] = full_df[annotator_id].astype("category")
+
+        # add annotator metadata
         if annotator_id == json_data["metadata"].get("default_annotator"):
             annotator_metadata[annotator_id] = {
                 "variant": "default_annotator",
@@ -376,6 +381,7 @@ def create_votes_dict_from_icai_log_files(results_dir: pathlib.Path) -> list[dic
 
         # ensure column is categorical
         full_df[column_name] = full_df[column_name].astype("category")
+
     # add a weight column
     full_df["weight"] = 1
 
@@ -386,6 +392,7 @@ def create_votes_dict_from_icai_log_files(results_dir: pathlib.Path) -> list[dic
     full_df.rename(
         columns={DEFAULT_ANNOTATOR_NAME: DEFAULT_ANNOTATOR_HASH}, inplace=True
     )
+    full_df[DEFAULT_ANNOTATOR_HASH] = full_df[DEFAULT_ANNOTATOR_HASH].astype("category")
 
     available_metadata_keys = get_csv_columns(results_dir / "000_train_data.csv")
 
