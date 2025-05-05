@@ -12,7 +12,7 @@ from feedback_forensics.app.constants import (
     DEFAULT_ANNOTATOR_VISIBLE_NAME,
     PREFIX_COL_ANNOTATOR,
     PREFIX_DEFAULT_ANNOTATOR,
-    PREFIX_OTHER_ANNOTATOR,
+    PREFIX_OTHER_ANNOTATOR_WITH_VARIANT,
     PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS,
 )
 from feedback_forensics.app.data.dataset_utils import (
@@ -245,9 +245,12 @@ def get_votes_dict_from_annotated_pairs_json(results_path: pathlib.Path) -> dict
 
             principle_annotator_cols.append(annotator_id)
         else:
+            variant = annotator_info.get("type", "unknown")
             annotator_metadata[annotator_id] = {
-                "variant": "nondefault_annotator",
-                "annotator_visible_name": PREFIX_OTHER_ANNOTATOR
+                "variant": variant,
+                "annotator_visible_name": PREFIX_OTHER_ANNOTATOR_WITH_VARIANT.format(
+                    variant=variant
+                )
                 + annotator_info.get("name", annotator_id),
                 "annotator_in_row_name": annotator_id,
                 "annotator_description": annotator_info.get("description", ""),
