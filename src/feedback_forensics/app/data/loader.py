@@ -7,8 +7,9 @@ from loguru import logger
 from inverse_cai.data.annotated_pairs_format import hash_string
 from feedback_forensics.app.utils import get_csv_columns
 from feedback_forensics.app.constants import (
-    DEFAULT_ANNOTATOR_NAME,
+    DEFAULT_ANNOTATOR_COL_NAME,
     DEFAULT_ANNOTATOR_HASH,
+    DEFAULT_ANNOTATOR_VISIBLE_NAME,
     PREFIX_COL_ANNOTATOR,
     PREFIX_DEFAULT_ANNOTATOR,
     PREFIX_OTHER_ANNOTATOR,
@@ -278,7 +279,10 @@ def _check_for_nondefault_annotators(df: pd.DataFrame) -> dict:
     annotator_metadata = {}
 
     for col in df.columns:
-        if col != DEFAULT_ANNOTATOR_NAME and df[col].isin(["text_a", "text_b"]).any():
+        if (
+            col != DEFAULT_ANNOTATOR_COL_NAME
+            and df[col].isin(["text_a", "text_b"]).any()
+        ):
             annotator_metadata[col] = {
                 "variant": "nondefault_annotation_column",
                 "annotator_visible_name": PREFIX_COL_ANNOTATOR + str(col),
@@ -320,8 +324,8 @@ def create_votes_dict_from_icai_log_files(results_dir: pathlib.Path) -> list[dic
     annotator_metadata = {}
     annotator_metadata[DEFAULT_ANNOTATOR_HASH] = {
         "variant": "default_annotator",
-        "annotator_visible_name": PREFIX_DEFAULT_ANNOTATOR + DEFAULT_ANNOTATOR_NAME,
-        "annotator_in_row_name": DEFAULT_ANNOTATOR_NAME,
+        "annotator_visible_name": DEFAULT_ANNOTATOR_VISIBLE_NAME,
+        "annotator_in_row_name": DEFAULT_ANNOTATOR_COL_NAME,
     }
 
     annotator_metadata.update(_check_for_nondefault_annotators(full_df))
@@ -354,7 +358,7 @@ def create_votes_dict_from_icai_log_files(results_dir: pathlib.Path) -> list[dic
         # Vectorized implementation instead of row-by-row apply
         # First check that all preferred_text values are either text_a or text_b
         assert (
-            full_df[DEFAULT_ANNOTATOR_NAME].isin(["text_a", "text_b"]).all()
+            full_df[DEFAULT_ANNOTATOR_COL_NAME].isin(["text_a", "text_b"]).all()
         ), "Tie or other votes currently not supported."
 
         # Create a Series for the rejected text (opposite of preferred_text)
@@ -365,7 +369,7 @@ def create_votes_dict_from_icai_log_files(results_dir: pathlib.Path) -> list[dic
                     if pt == "text_a"
                     else "text_a" if pt in ["text_a", "text_b"] else "Not applicable"
                 )
-                for pt in full_df[DEFAULT_ANNOTATOR_NAME]
+                for pt in full_df[DEFAULT_ANNOTATOR_COL_NAME]
             ],
             index=full_df.index,
         )
@@ -378,7 +382,7 @@ def create_votes_dict_from_icai_log_files(results_dir: pathlib.Path) -> list[dic
         result = pd.Series("Not applicable", index=full_df.index)
 
         # Set values based on conditions
-        result[agree_mask] = full_df.loc[agree_mask, DEFAULT_ANNOTATOR_NAME].values
+        result[agree_mask] = full_df.loc[agree_mask, DEFAULT_ANNOTATOR_COL_NAME].values
         result[disagree_mask] = rejected_text.loc[disagree_mask].values
 
         # Update the column
@@ -395,7 +399,7 @@ def create_votes_dict_from_icai_log_files(results_dir: pathlib.Path) -> list[dic
 
     # rename preferred_text to default_annotator_hash
     full_df.rename(
-        columns={DEFAULT_ANNOTATOR_NAME: DEFAULT_ANNOTATOR_HASH}, inplace=True
+        columns={DEFAULT_ANNOTATOR_COL_NAME: DEFAULT_ANNOTATOR_HASH}, inplace=True
     )
     full_df[DEFAULT_ANNOTATOR_HASH] = full_df[DEFAULT_ANNOTATOR_HASH].astype("category")
 

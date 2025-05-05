@@ -20,7 +20,7 @@ from feedback_forensics.app.utils import (
 from feedback_forensics.app.constants import (
     NONE_SELECTED_VALUE,
     APP_BASE_URL,
-    DEFAULT_ANNOTATOR_NAME,
+    DEFAULT_ANNOTATOR_VISIBLE_NAME,
     MODEL_IDENTITY_ANNOTATOR_TYPE,
     PRINCIPLE_ANNOTATOR_TYPE,
     PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS,
@@ -349,7 +349,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         return {
             inp["annotator_cols_dropdown"]: gr.Dropdown(
                 choices=sorted(all_annotator_names),
-                value=[DEFAULT_ANNOTATOR_NAME],
+                value=[DEFAULT_ANNOTATOR_VISIBLE_NAME],
                 interactive=True,
             ),
             inp["annotator_rows_dropdown"]: gr.Dropdown(
