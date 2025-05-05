@@ -103,6 +103,7 @@ def generate_model_identity_annotators(
         values.loc[valid_idx[b_preference_mask]] = "text_b"
 
         annotations_df[annotator_id] = values
+        annotations_df[annotator_id] = annotations_df[annotator_id].astype("category")
 
         annotation_count = a_preference_mask.sum() + b_preference_mask.sum()
         total_annotations += annotation_count
