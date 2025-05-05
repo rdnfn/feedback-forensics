@@ -135,6 +135,9 @@ def test_compute_metrics():
         }
     )
 
+    for col in ["preferred_text", "p1", "p2"]:
+        votes_df[col] = votes_df[col].astype("category")
+
     votes_dict = {
         "df": votes_df,
         "shown_annotator_rows": ["p1", "p2"],
