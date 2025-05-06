@@ -42,12 +42,15 @@ def convert_vote_to_string(vote: bool | None) -> str:
         raise ValueError(f"Completely invalid vote value: {vote}")
 
 
-def get_votes_dict(results_path: pathlib.Path, cache: dict) -> dict:
+def get_votes_dict(results_path: pathlib.Path, cache: dict | None = None) -> dict:
     """
     Get the votes dataframe for a given results directory.
     If the dataframe is already in the cache, return it.
     Otherwise, create it, add it to the cache, and return it.
     """
+
+    if cache is None:
+        cache = {}
 
     if not results_path.exists():
         raise FileNotFoundError(f"Results directory not found in path '{results_path}'")
@@ -78,7 +81,7 @@ def get_votes_dict(results_path: pathlib.Path, cache: dict) -> dict:
 
 def add_virtual_annotators(
     votes_dict: dict,
-    cache: dict,
+    cache: dict | None,
     dataset_cache_key: pathlib.Path,
     reference_models: list,
     target_models: list,
@@ -99,6 +102,9 @@ def add_virtual_annotators(
     ref_models_tuple = tuple(sorted(reference_models))
     target_models_tuple = tuple(sorted(target_models))
     model_annotator_cache_key = (ref_models_tuple, target_models_tuple)
+
+    if cache is None:
+        cache = {}
 
     cache["model_annotators"] = cache.get("model_annotators", {})
     cache["model_annotators"][dataset_cache_key] = cache["model_annotators"].get(
