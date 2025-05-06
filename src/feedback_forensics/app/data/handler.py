@@ -97,7 +97,7 @@ class DatasetHandler:
         self.cache = cache
         self.avail_datasets = avail_datasets
 
-        self._votes_dict = None
+        self._votes_dict = {}
         self.data_path = None
 
     @property
@@ -167,6 +167,20 @@ class DatasetHandler:
         """Load data from a given votes_dict."""
         self.votes_dict = votes_dict
 
+    def set_visible_annotator_rows(self, annotator_rows_visible_names: list[str]):
+        """Change the visible annotator rows for the votes_dict."""
+        if not annotator_rows_visible_names or len(annotator_rows_visible_names) == 0:
+            logger.warning(
+                "No annotator rows visible names provided. "
+                "Showing all annotator rows."
+            )
+            return
+
+        annotator_row_keys = _get_annotator_df_col_names(
+            annotator_rows_visible_names, self.votes_dict
+        )
+        self._votes_dict["shown_annotator_rows"] = annotator_row_keys
+
     def compute_metrics(self, data: pd.DataFrame):
         """Compute metrics from a given dataset."""
         pass
@@ -226,6 +240,11 @@ class MultiDatasetHandler:
     def get_handler(self, name: str):
         """Get the dataset handler for a given dataset name."""
         return self._handlers[name]
+
+    def set_visible_annotator_rows(self, annotator_rows_visible_names: list[str]):
+        """Change the visible annotator rows for all dataset handlers."""
+        for handler in self._handlers.values():
+            handler.set_visible_annotator_rows(annotator_rows_visible_names)
 
 
 def split_dataset_by_col(
