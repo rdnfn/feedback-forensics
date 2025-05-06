@@ -38,7 +38,7 @@ from feedback_forensics.app.url_parser import (
 )
 from feedback_forensics.app.data.handler import (
     DatasetHandler,
-    split_dataset_by_col,
+    _get_annotator_df_col_names,
 )
 
 from feedback_forensics.app.metrics import DEFAULT_METRIC_NAME
@@ -81,7 +81,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
         # checking if splitting by column is requested
         if split_col != NONE_SELECTED_VALUE and split_col is not None:
-            if len(multi_dataset_handler.handlers) > 1:
+            if len(dataset_handler.handlers) > 1:
                 raise gr.Error(
                     "Only one votes_df is supported when splitting by column"
                 )
@@ -103,6 +103,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         dataset_handler.set_annotator_cols(annotator_cols_visible_names)
 
         # compute metrics for each dataset
+        votes_dicts = dataset_handler.votes_dicts
         overall_metrics = {}
         annotator_metrics = {}
         for dataset_name, votes_dict in votes_dicts.items():
@@ -134,8 +135,12 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             state["cache"]: cache,
             state["computed_overall_metrics"]: overall_metrics,
             state["computed_annotator_metrics"]: annotator_metrics,
-            state["default_annotator_cols"]: first_handler.default_annotator_cols,
-            state["default_annotator_rows"]: first_handler.default_annotator_rows,
+            state[
+                "default_annotator_cols"
+            ]: dataset_handler.first_handler.default_annotator_cols,
+            state[
+                "default_annotator_rows"
+            ]: dataset_handler.first_handler.default_annotator_rows,
             state["votes_dicts"]: votes_dicts,
             inp["metric_name_dropdown"]: gr.Dropdown(
                 value=metric_name,

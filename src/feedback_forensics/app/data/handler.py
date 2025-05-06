@@ -7,6 +7,7 @@ for loading data from different sources and computing metrics.
 
 import copy
 import pandas as pd
+from pathlib import Path
 from loguru import logger
 
 from feedback_forensics.app.data.loader import add_virtual_annotators, get_votes_dict
@@ -37,7 +38,7 @@ def _get_annotator_df_col_names(
         for dataset_name, visible_to_col in visible_to_cols.items():
             if annotator_name not in visible_to_col:
                 logger.warning(
-                    f"Annotator '{annotator_name}' (visible name) not found in dataset '{dataset_name}'. Skipping this annotator."
+                    f"Annotator '{annotator_name}' (visible name) not found in dataset '{dataset_name}'. Skipping this annotator. Available annotators: {list(visible_to_col.keys())}"
                 )
                 # remove annotator from annotator_visible_names
                 updated_annotator_visible_names.remove(annotator_name)
@@ -160,26 +161,22 @@ class SingleDatasetHandler:
             target_models=[],
         )
 
-        self.votes_dict = votes_dict
+        self._votes_dict = votes_dict
         logger.info(f"Loaded data from path: {dataset_path}")
 
     def load_from_votes_dict(self, votes_dict: dict):
         """Load data from a given votes_dict."""
-        self.votes_dict = votes_dict
+        self._votes_dict = votes_dict
 
-    def set_visible_annotator_rows(self, annotator_rows_visible_names: list[str]):
+    def set_visible_annotator_rows(self, annotator_rows_keys: list[str]):
         """Change the visible annotator rows for the votes_dict."""
-        if not annotator_rows_visible_names or len(annotator_rows_visible_names) == 0:
+        if not annotator_rows_keys or len(annotator_rows_keys) == 0:
             logger.warning(
-                "No annotator rows visible names provided. "
-                "Showing all annotator rows."
+                "No annotator rows keys provided. " "Showing all annotator rows."
             )
             return
 
-        annotator_row_keys = _get_annotator_df_col_names(
-            annotator_rows_visible_names, self.votes_dict
-        )
-        self._votes_dict["shown_annotator_rows"] = annotator_row_keys
+        self._votes_dict["shown_annotator_rows"] = annotator_rows_keys
 
     def compute_metrics(self, data: pd.DataFrame):
         """Compute metrics from a given dataset."""
@@ -215,36 +212,56 @@ class DatasetHandler:
         """Check if the dataset handler is a single dataset."""
         return len(self._handlers) == 1
 
+    @property
+    def votes_dicts(self):
+        """Get the votes_dicts for all dataset handlers."""
+        return {name: handler.votes_dict for name, handler in self._handlers.items()}
+
+    def add_handler(self, name: str, handler: SingleDatasetHandler):
+        """Add a dataset handler."""
+        assert (
+            name not in self._handlers
+        ), f"Dataset {name} already loaded or using duplicate name"
+        self._handlers[name] = handler
+
     def reset_handlers(self):
         """Reset the dataset handlers."""
         self._handlers = {}
 
     def add_data_from_name(self, name: str):
         """Load data from a given dataset name."""
-        assert (
-            name not in self._handlers
-        ), f"Dataset {name} already loaded or using duplicate name"
 
-        self._handlers[name] = DatasetHandler(
+        handler = SingleDatasetHandler(
             cache=self.cache, avail_datasets=self.avail_datasets
         )
-        self._handlers[name].load_data_from_name(name)
+        handler.load_data_from_name(name)
+        self.add_handler(name, handler)
 
     def load_data_from_names(self, names: list[str]):
         """Load data from a given list of dataset names."""
         for name in names:
             self.add_data_from_name(name)
 
-    def add_data_from_votes_dict(self, votes_dict: dict, name: str):
-        """Add data from a given votes_dict."""
-        assert (
-            name not in self._handlers
-        ), f"Dataset {name} already loaded or using duplicate name"
-
-        self._handlers[name] = DatasetHandler(
+    def add_data_from_path(self, path: str | Path, name: str):
+        """Add data from a given path."""
+        handler = SingleDatasetHandler(
             cache=self.cache, avail_datasets=self.avail_datasets
         )
-        self._handlers[name].load_from_votes_dict(votes_dict)
+        handler.load_data_from_path(path)
+        self.add_handler(name, handler)
+
+    def load_data_from_paths(self, paths: list[str | Path]):
+        """Load data from a given list of paths."""
+        for path in paths:
+            self.add_data_from_path(path, name=path.split("/")[-1])
+
+    def add_data_from_votes_dict(self, votes_dict: dict, name: str):
+        """Add data from a given votes_dict."""
+        handler = SingleDatasetHandler(
+            cache=self.cache, avail_datasets=self.avail_datasets
+        )
+        handler.load_from_votes_dict(votes_dict)
+        self.add_handler(name, handler)
 
     def load_data_from_votes_dicts(self, votes_dicts: dict[str, dict]):
         """Load data from a given list of votes_dicts."""
@@ -257,8 +274,15 @@ class DatasetHandler:
 
     def set_annotator_rows(self, annotator_rows_visible_names: list[str]):
         """Change the visible annotator rows for all dataset handlers."""
+        if len(annotator_rows_visible_names) == 0:
+            logger.warning("No annotator rows provided, no changes to annotator rows.")
+            return
+
+        annotator_row_keys = _get_annotator_df_col_names(
+            annotator_rows_visible_names, self.votes_dicts
+        )
         for handler in self._handlers.values():
-            handler.set_visible_annotator_rows(annotator_rows_visible_names)
+            handler.set_visible_annotator_rows(annotator_row_keys)
 
     def split_by_col(self, col: str, selected_vals: list[str] | None = None):
         """Split the dataset by a given column to create multiple datasets."""
@@ -274,6 +298,12 @@ class DatasetHandler:
 
     def set_annotator_cols(self, annotator_cols: list[str]):
         """Change the annotator columns for all dataset handlers."""
+        if len(annotator_cols) == 0:
+            logger.warning(
+                "No annotator columns provided, no changes to annotator columns."
+            )
+            return
+
         if not self.is_single_dataset and len(annotator_cols) > 1:
             logger.warning(
                 "Only one annotator column is supported for multi-dataset handler. "
@@ -286,7 +316,7 @@ class DatasetHandler:
 
         annotator_cols_df_names = _get_annotator_df_col_names(
             annotator_visible_names=annotator_cols,
-            votes_dicts=self.first_handler.votes_dict,
+            votes_dicts=self.votes_dicts,
         )
 
         if self.is_single_dataset:
@@ -316,6 +346,7 @@ class DatasetHandler:
                 votes_dicts,
             )
         }
+        assert len(votes_dicts) > 0, "votes_dicts must have at least one dataset"
 
         self.reset_handlers()
         self.load_data_from_votes_dicts(votes_dicts)
