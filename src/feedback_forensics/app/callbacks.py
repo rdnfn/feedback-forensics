@@ -36,89 +36,16 @@ from feedback_forensics.app.url_parser import (
     get_list_member_from_url_string,
     transfer_url_list_to_nonurl_list,
 )
+from feedback_forensics.app.data.handler import (
+    MultiDatasetHandler,
+    split_dataset_by_col,
+)
 
 from feedback_forensics.app.metrics import DEFAULT_METRIC_NAME
 
 
-def split_votes_dicts(
-    votes_dicts: dict[str, dict],
-    split_col: str,
-    selected_vals: list[str] | None = None,
-) -> dict[str, pd.DataFrame]:
-    """Split votes data by split_col.
-
-    First assert that only one votes_df in vote_dfs, and split that votes_df into multiple, based on the unique values of split_col.
-
-    Args:
-        votes_dicts: Dictionary mapping dataset names to dicts with keys "df" and "annotator_metadata"
-        split_col: Column to split on
-        selected_vals: Optional list of values to filter split_col by. If None, use all values.
-
-    Returns:
-        Dictionary mapping split values to filtered DataFrames
-    """
-    assert len(votes_dicts) == 1, "Only one votes_df is supported for now"
-    votes_dict = list(votes_dicts.values())[0]
-    votes_df = votes_dict["df"]
-    votes_df[split_col] = votes_df[split_col].astype(str)
-
-    if selected_vals:
-        # Filter to only selected values before grouping
-        votes_df = votes_df[votes_df[split_col].isin(selected_vals)]
-
-    grouped_df = votes_df.groupby(split_col)
-
-    split_dicts = {}
-    for name, group in grouped_df:
-        split_dicts[name] = {
-            "df": group,
-            "annotator_metadata": votes_dict["annotator_metadata"],
-            "reference_annotator_col": votes_dict["reference_annotator_col"],
-            "shown_annotator_rows": votes_dict["shown_annotator_rows"],
-        }
-
-    return split_dicts
-
-
 def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
     """Generate callbacks for the ICAI app."""
-
-    def _get_annotator_df_col_names(
-        annotator_visible_names: list[str], votes_dicts: dict[str, dict]
-    ) -> list[str]:
-        """Get the column names of the annotators in votes_df.
-
-        Note that this fn can be used both for annotators shown in rows and columns of
-        the final output plot. All annotators are columns in the original votes_df.
-
-        This also gives warning if not all annotators are available across all datasets.
-        """
-        # get mappings from visible names to column names for each dataset
-        visible_to_cols = {}
-        for dataset_name, votes_dict in votes_dicts.items():
-            metadata = votes_dict["annotator_metadata"]
-            visible_to_col = {
-                value["annotator_visible_name"]: col for col, value in metadata.items()
-            }
-            visible_to_cols[dataset_name] = visible_to_col
-
-        updated_annotator_visible_names = copy.deepcopy(annotator_visible_names)
-
-        for annotator_name in annotator_visible_names:
-            for dataset_name, visible_to_col in visible_to_cols.items():
-                if annotator_name not in visible_to_col:
-                    gr.Warning(
-                        f"Annotator '{annotator_name}' (visible name) not found in dataset '{dataset_name}'. Skipping this annotator."
-                    )
-                    # remove annotator from annotator_visible_names
-                    updated_annotator_visible_names.remove(annotator_name)
-
-        # get column names for the remaining annotators
-        col_names = [
-            visible_to_col[annotator_name]
-            for annotator_name in updated_annotator_visible_names
-        ]
-        return col_names
 
     def load_data(
         data: dict,
@@ -146,60 +73,47 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             }
         gr.Info(f"Loading data for {datasets}...", duration=3)
 
-        votes_dicts = {}
-        for dataset in datasets:
-            dataset_config = data[state["avail_datasets"]][dataset]
-            path = dataset_config.path
-            # check results dir inside the path
-            results_dir = pathlib.Path(path)
-            base_votes_dict = get_votes_dict(results_dir, cache=cache)
-            votes_dict = add_virtual_annotators(
-                base_votes_dict,
-                cache=cache,
-                dataset_cache_key=results_dir,
-                reference_models=data[inp["reference_models_dropdown"]],
-                target_models=[],
+        multi_dataset_handler = MultiDatasetHandler(
+            cache=cache,
+            avail_datasets=data[state["avail_datasets"]],
+        )
+        multi_dataset_handler.load_data_from_names(datasets)
+        first_handler = multi_dataset_handler.first_handler
+
+        # checking if splitting by column is requested
+        if split_col != NONE_SELECTED_VALUE and split_col is not None:
+            if len(multi_dataset_handler.handlers) > 1:
+                raise gr.Error(
+                    "Only one votes_df is supported when splitting by column"
+                )
+            if selected_vals == [] or set(selected_vals) == set(
+                inp["split_col_selected_vals_dropdown"].choices
+            ):
+                selected_vals = None
+
+            # split the first dataset (handler) by the selected column
+            # this now is treated like multiple datasets (as in multiple columns)
+            multi_dataset_handler = split_dataset_by_col(
+                first_handler, split_col, selected_vals
             )
 
-            votes_dicts[dataset] = votes_dict
-
-        default_annotator_rows = votes_dicts[datasets[0]]["shown_annotator_rows"]
-        default_annotator_cols = [votes_dicts[datasets[0]]["reference_annotator_col"]]
-
-        # parsing of potential url params
-        if split_col != NONE_SELECTED_VALUE and split_col is not None:
-
-            if len(votes_dicts) > 1:
-                raise gr.Error(
-                    "Only one votes_df is supported for now when splitting by column"
-                )
-            if (
-                selected_vals is None
-                or selected_vals == []
-                or set(selected_vals)
-                == set(inp["split_col_selected_vals_dropdown"].choices)
-            ):
-                votes_dicts = split_votes_dicts(votes_dicts, split_col)
-            else:
-                votes_dicts = split_votes_dicts(votes_dicts, split_col, selected_vals)
-
-        annotator_cols_visible_names = data[inp["annotator_cols_dropdown"]]
-        annotator_cols = _get_annotator_df_col_names(
-            annotator_cols_visible_names, votes_dicts
-        )
+        # setting visible annotator rows
         annotator_rows_visible_names = data[inp["annotator_rows_dropdown"]]
-        annotator_rows = _get_annotator_df_col_names(
-            annotator_rows_visible_names, votes_dicts
-        )
+        multi_dataset_handler.set_visible_annotator_rows(annotator_rows_visible_names)
+
+        # taking care of annotator columns
+        annotator_cols_visible_names = data[inp["annotator_cols_dropdown"]]
 
         # check if multiple annotator columns and datasets are selected
-        if len(annotator_cols) > 1 and len(votes_dicts) > 1:
+        if (
+            len(annotator_cols_visible_names) > 1
+            and len(multi_dataset_handler.handlers) > 1
+        ):
             gr.Warning(
                 f"Only one votes_df is supported when selecting multiple annotator columns. "
-                f"Currently {len(votes_dicts)} votes_dfs are loaded with the following annotators: "
-                f"{annotator_cols_visible_names}. Only using the first annotator column ({annotator_cols[0]})."
+                f"Currently {len(multi_dataset_handler.handlers)} votes_dfs are loaded with the following annotators: "
+                f"{annotator_cols_visible_names}. Only using the first annotator column ({annotator_cols_visible_names[0]})."
             )
-            annotator_cols = [annotator_cols[0]]
             annotator_cols_visible_names = [annotator_cols_visible_names[0]]
 
         # split votes_dicts into one per annotator column (only available for one dataset)
@@ -233,11 +147,6 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 )
             }
 
-        # update set of annotator rows (keys in annotator_metadata)
-        if len(annotator_rows) >= 1:
-            for votes_dict in votes_dicts.values():
-                votes_dict["shown_annotator_rows"] = annotator_rows
-
         # compute metrics for each dataset
         overall_metrics = {}
         annotator_metrics = {}
@@ -269,20 +178,9 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             out["annotator_table"]: tables["annotator"],
             state["cache"]: cache,
             state["computed_overall_metrics"]: overall_metrics,
-            state["default_annotator_cols"]: default_annotator_cols,
-            state["default_annotator_rows"]: default_annotator_rows,
-            state["votes_dicts"]: votes_dicts,
-            inp["metric_name_dropdown"]: gr.Dropdown(
-                value=metric_name,
-                interactive=True,
-            ),
-            inp["sort_by_dropdown"]: gr.Dropdown(
-                choices=sort_by_choices, value=sort_by
-            ),
             state["computed_annotator_metrics"]: annotator_metrics,
-            state["computed_overall_metrics"]: overall_metrics,
-            state["default_annotator_cols"]: default_annotator_cols,
-            state["default_annotator_rows"]: default_annotator_rows,
+            state["default_annotator_cols"]: first_handler.default_annotator_cols,
+            state["default_annotator_rows"]: first_handler.default_annotator_rows,
             state["votes_dicts"]: votes_dicts,
             inp["metric_name_dropdown"]: gr.Dropdown(
                 value=metric_name,
