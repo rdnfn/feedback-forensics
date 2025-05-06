@@ -37,7 +37,7 @@ from feedback_forensics.app.url_parser import (
     transfer_url_list_to_nonurl_list,
 )
 from feedback_forensics.app.data.handler import (
-    MultiDatasetHandler,
+    DatasetHandler,
     split_dataset_by_col,
 )
 
@@ -73,12 +73,11 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             }
         gr.Info(f"Loading data for {datasets}...", duration=3)
 
-        multi_dataset_handler = MultiDatasetHandler(
+        dataset_handler = DatasetHandler(
             cache=cache,
             avail_datasets=data[state["avail_datasets"]],
         )
-        multi_dataset_handler.load_data_from_names(datasets)
-        first_handler = multi_dataset_handler.first_handler
+        dataset_handler.load_data_from_names(datasets)
 
         # checking if splitting by column is requested
         if split_col != NONE_SELECTED_VALUE and split_col is not None:
@@ -93,59 +92,15 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
             # split the first dataset (handler) by the selected column
             # this now is treated like multiple datasets (as in multiple columns)
-            multi_dataset_handler = split_dataset_by_col(
-                first_handler, split_col, selected_vals
-            )
+            dataset_handler.split_by_col(col=split_col, selected_vals=selected_vals)
 
-        # setting visible annotator rows
+        # setting annotator rows
         annotator_rows_visible_names = data[inp["annotator_rows_dropdown"]]
-        multi_dataset_handler.set_visible_annotator_rows(annotator_rows_visible_names)
+        dataset_handler.set_annotator_rows(annotator_rows_visible_names)
 
-        # taking care of annotator columns
+        # setting annotator columns
         annotator_cols_visible_names = data[inp["annotator_cols_dropdown"]]
-
-        # check if multiple annotator columns and datasets are selected
-        if (
-            len(annotator_cols_visible_names) > 1
-            and len(multi_dataset_handler.handlers) > 1
-        ):
-            gr.Warning(
-                f"Only one votes_df is supported when selecting multiple annotator columns. "
-                f"Currently {len(multi_dataset_handler.handlers)} votes_dfs are loaded with the following annotators: "
-                f"{annotator_cols_visible_names}. Only using the first annotator column ({annotator_cols_visible_names[0]})."
-            )
-            annotator_cols_visible_names = [annotator_cols_visible_names[0]]
-
-        # split votes_dicts into one per annotator column (only available for one dataset)
-        if len(annotator_cols) >= 1:
-            if len(votes_dicts) == 1:
-                dataset_name = list(votes_dicts.keys())[0]
-                dataset_names = [dataset_name] * len(annotator_cols)
-                votes_dicts = [votes_dicts[dataset_name]] * len(annotator_cols)
-            else:
-                dataset_names = list(votes_dicts.keys())
-                votes_dicts = list(votes_dicts.values())
-
-            if len(annotator_cols) == 1:
-                annotator_cols = annotator_cols * len(dataset_names)
-                annotator_cols_visible_names = annotator_cols_visible_names * len(
-                    dataset_names
-                )
-
-            votes_dicts = {
-                f"{dataset_name}\n({annotator_name.replace('-', ' ')})": {
-                    "df": votes_dict["df"],
-                    "annotator_metadata": votes_dict["annotator_metadata"],
-                    "reference_annotator_col": annotator_col,
-                    "shown_annotator_rows": votes_dict["shown_annotator_rows"],
-                }
-                for annotator_col, annotator_name, dataset_name, votes_dict in zip(
-                    annotator_cols,
-                    annotator_cols_visible_names,
-                    dataset_names,
-                    votes_dicts,
-                )
-            }
+        dataset_handler.set_annotator_cols(annotator_cols_visible_names)
 
         # compute metrics for each dataset
         overall_metrics = {}
