@@ -72,7 +72,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 ),
             }
 
-        gr.Info(f"Loading data for {datasets}...", duration=3)
+        gr.Info(f"Loading data for: {', '.join(datasets)}...", duration=3)
         dataset_handler = DatasetHandler(
             cache=cache,
             avail_datasets=data[state["avail_datasets"]],
@@ -113,6 +113,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         if sort_by not in sort_by_choices and sort_by_choices:
             sort_by = sort_by_choices[0]
 
+        # generate Gradio (not pandas) dataframes (shown as tables in the app)
         tables = feedback_forensics.app.plotting.generate_dataframes(
             annotator_metrics=annotator_metrics,
             overall_metrics=overall_metrics,
