@@ -239,7 +239,12 @@ class ColumnHandler:
 
 
 class DatasetHandler:
-    """Class to handle data operations (loading, computing metrics) of one or multiple annotation datasets."""
+    """Class to handle dataset operations of multi-column annotation datasets.
+
+    A dataset consists of one or multiple annotation columns, represented by
+    ColumnHandler objects. Each column can either be a different annotator or
+    the same annotator but on a different data(sub)set.
+    """
 
     def __init__(self, cache: dict | None = None, avail_datasets: dict | None = None):
         self._cache = cache

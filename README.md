@@ -67,6 +67,20 @@ feedback-forensics -d /path/to/icai_results/
 
 This command will again open up the feedback forensics app on localhost port 7860, now including the local results on your own dataset.
 
+### Python interface
+
+Feedback Forensics can also be used to interpret annotator data within Python. Below is a minimal example:
+
+```
+import feedback_forensics as ff
+
+dataset = ff.DatasetHandler()
+dataset.add_data_from_path("/path/to/icai_results/")
+
+overall_metrics = dataset.get_overall_metrics()
+annotator_metrics = dataset.get_annotator_metrics()
+```
+
 ## Limitations
 
 Feedback Forensics relies on AI annotators (LLM-as-a-Judge) to detect implicit objectives in feedback data. Though such annotators have been shown correlate with human judgements on many [tasks](https://github.com/tatsu-lab/alpaca_eval/tree/main/src/alpaca_eval/evaluators_configs), they also have well-known limitations: they are often susceptible to small input changes and can exhibit [various](https://arxiv.org/abs/2405.01724) [biases](https://arxiv.org/abs/2306.05685) (as do [human annotators](https://arxiv.org/abs/2309.16349)). As such, *Feedback Forensics results should be taken as an indication for further investigation rather than a definitive final judgement of the data*. In general, results based on more samples are less susceptible to noise introduced by AI annotators – and thus may be considered more reliable.
