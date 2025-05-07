@@ -319,7 +319,7 @@ class DatasetHandler:
     def add_data_from_path(self, path: str | Path, name: str | None = None):
         """Add data from a given path."""
         if name is None:
-            name = path.split("/")[-1].split(".")[0]
+            name = str(path).split("/")[-1].split(".")[0]
         handler = ColumnHandler(cache=self.cache, avail_datasets=self.avail_datasets)
         handler.load_data_from_path(path)
         self.add_col_handler(name, handler)
