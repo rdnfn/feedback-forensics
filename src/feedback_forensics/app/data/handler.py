@@ -11,6 +11,10 @@ from pathlib import Path
 from loguru import logger
 
 from feedback_forensics.app.data.loader import add_virtual_annotators, get_votes_dict
+from feedback_forensics.app.metrics import (
+    get_overall_metrics,
+    compute_annotator_metrics,
+)
 
 
 def _get_annotator_df_col_names(
@@ -98,13 +102,21 @@ class ColumnHandler:
 
         self.cache = cache
         self.avail_datasets = avail_datasets
+        self.df = None
+        self.annotator_metadata = None
+        self.reference_annotator_col = None
+        self.shown_annotator_rows = None
 
-        self._votes_dict = {}
         self.data_path = None
 
     @property
     def votes_dict(self):
-        return self._votes_dict
+        return {
+            "df": self.df,
+            "annotator_metadata": self.annotator_metadata,
+            "reference_annotator_col": self.reference_annotator_col,
+            "shown_annotator_rows": self.shown_annotator_rows,
+        }
 
     @property
     def default_annotator_rows(self):
@@ -162,12 +174,15 @@ class ColumnHandler:
             target_models=[],
         )
 
-        self._votes_dict = votes_dict
+        self.load_from_votes_dict(votes_dict)
         logger.info(f"Loaded data from path: {dataset_path}")
 
     def load_from_votes_dict(self, votes_dict: dict):
         """Load data from a given votes_dict."""
-        self._votes_dict = votes_dict
+        self.df = votes_dict["df"]
+        self.annotator_metadata = votes_dict["annotator_metadata"]
+        self.reference_annotator_col = votes_dict["reference_annotator_col"]
+        self.shown_annotator_rows = votes_dict["shown_annotator_rows"]
 
     def set_visible_annotator_rows(self, annotator_rows_keys: list[str]):
         """Change the visible annotator rows for the votes_dict."""
@@ -177,11 +192,20 @@ class ColumnHandler:
             )
             return
 
-        self._votes_dict["shown_annotator_rows"] = annotator_rows_keys
+        self.shown_annotator_rows = annotator_rows_keys
 
-    def compute_metrics(self, data: pd.DataFrame):
-        """Compute metrics from a given dataset."""
-        pass
+    def compute_overall_metrics(self):
+        """Compute the overall metrics for the votes_dict."""
+        return get_overall_metrics(self.df, self.reference_annotator_col)
+
+    def compute_annotator_metrics(self):
+        """Compute the annotator metrics for the votes_dict."""
+        return compute_annotator_metrics(
+            votes_df=self.df,
+            annotator_metadata=self.annotator_metadata,
+            annotator_cols=self.shown_annotator_rows,
+            ref_annotator_col=self.reference_annotator_col,
+        )
 
 
 class DatasetHandler:
@@ -357,3 +381,17 @@ class DatasetHandler:
 
         self.reset_handlers()
         self.load_data_from_votes_dicts(votes_dicts)
+
+    def get_overall_metrics(self):
+        """Get the overall metrics for all dataset handlers."""
+        return {
+            name: handler.compute_overall_metrics()
+            for name, handler in self._col_handlers.items()
+        }
+
+    def get_annotator_metrics(self):
+        """Get the annotator metrics for all dataset handlers."""
+        return {
+            name: handler.compute_annotator_metrics()
+            for name, handler in self._col_handlers.items()
+        }

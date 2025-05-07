@@ -90,7 +90,12 @@ def get_not_applicable(
     return value_counts.get("Not applicable", 0)
 
 
-def compute_metrics(votes_dict: dict) -> dict:
+def compute_annotator_metrics(
+    votes_df: pd.DataFrame,
+    annotator_metadata: dict,
+    annotator_cols: list[str],
+    ref_annotator_col: str,
+) -> dict:
 
     # votes_df is a pd.DataFrame with one row
     # per vote, and columns "comparison_id", "principle", "vote"
@@ -106,11 +111,6 @@ def compute_metrics(votes_dict: dict) -> dict:
         "disagreed": get_disagreed,
         "not_applicable": get_not_applicable,
     }
-
-    votes_df: pd.DataFrame = votes_dict["df"]
-    annotator_metadata = votes_dict["annotator_metadata"]
-    annotator_cols = votes_dict["shown_annotator_rows"]
-    ref_annotator_col = votes_dict["reference_annotator_col"]
 
     # check that ref annotator col only contains "text_a" or "text_b"
     if not all(votes_df[ref_annotator_col].isin(["text_a", "text_b"])):

@@ -71,8 +71,8 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                     value=pd.DataFrame(), headers=["No data available"]
                 ),
             }
-        gr.Info(f"Loading data for {datasets}...", duration=3)
 
+        gr.Info(f"Loading data for {datasets}...", duration=3)
         dataset_handler = DatasetHandler(
             cache=cache,
             avail_datasets=data[state["avail_datasets"]],
@@ -102,22 +102,12 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         annotator_cols_visible_names = data[inp["annotator_cols_dropdown"]]
         dataset_handler.set_annotator_cols(annotator_cols_visible_names)
 
-        # compute metrics for each dataset
-        votes_dicts = dataset_handler.votes_dicts
-        overall_metrics = {}
-        annotator_metrics = {}
-        for dataset_name, votes_dict in votes_dicts.items():
-            overall_metrics[dataset_name] = (
-                feedback_forensics.app.metrics.get_overall_metrics(
-                    votes_dict["df"],
-                    ref_annotator_col=votes_dict["reference_annotator_col"],
-                )
-            )
-            annotator_metrics[dataset_name] = (
-                feedback_forensics.app.metrics.compute_metrics(votes_dict)
-            )
+        # compute metrics
+        overall_metrics = dataset_handler.get_overall_metrics()
+        annotator_metrics = dataset_handler.get_annotator_metrics()
 
-        sort_by_choices = ["Max diff"] + list(votes_dicts.keys())
+        # set up sorting of annotator metrics table
+        sort_by_choices = ["Max diff"] + list(annotator_metrics.keys())
         if sort_by not in sort_by_choices and sort_by_choices:
             sort_by = sort_by_choices[0]
 
@@ -141,7 +131,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             state[
                 "default_annotator_rows"
             ]: dataset_handler.first_handler.default_annotator_rows,
-            state["votes_dicts"]: votes_dicts,
+            state["votes_dicts"]: dataset_handler.votes_dicts,
             inp["metric_name_dropdown"]: gr.Dropdown(
                 value=metric_name,
                 interactive=True,
