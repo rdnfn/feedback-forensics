@@ -85,6 +85,8 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 raise gr.Error(
                     "Only one votes_df is supported when splitting by column"
                 )
+
+            # set values equivalent to no value to None
             if selected_vals == [] or set(selected_vals) == set(
                 inp["split_col_selected_vals_dropdown"].choices
             ):

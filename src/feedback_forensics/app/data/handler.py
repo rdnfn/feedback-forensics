@@ -5,8 +5,6 @@ and computation of annotation metrics. It provides a unified interface
 for loading data from different sources and computing metrics.
 """
 
-import copy
-import pandas as pd
 from pathlib import Path
 from loguru import logger
 
@@ -100,14 +98,13 @@ class ColumnHandler:
 
     def __init__(self, cache: dict | None = None, avail_datasets: dict | None = None):
 
-        self.cache = cache
-        self.avail_datasets = avail_datasets
-        self.df = None
-        self.annotator_metadata = None
-        self.reference_annotator_col = None
-        self.shown_annotator_rows = None
-
-        self.data_path = None
+        self._cache = cache
+        self._avail_datasets = avail_datasets
+        self._df = None
+        self._annotator_metadata = None
+        self._reference_annotator_col = None
+        self._shown_annotator_rows = None
+        self._data_path = None
 
     @property
     def votes_dict(self):
@@ -117,6 +114,34 @@ class ColumnHandler:
             "reference_annotator_col": self.reference_annotator_col,
             "shown_annotator_rows": self.shown_annotator_rows,
         }
+
+    @property
+    def cache(self):
+        return self._cache
+
+    @property
+    def avail_datasets(self):
+        return self._avail_datasets
+
+    @property
+    def df(self):
+        return self._df
+
+    @property
+    def annotator_metadata(self):
+        return self._annotator_metadata
+
+    @property
+    def reference_annotator_col(self):
+        return self._reference_annotator_col
+
+    @property
+    def shown_annotator_rows(self):
+        return self._shown_annotator_rows
+
+    @property
+    def data_path(self):
+        return self._data_path
 
     @property
     def default_annotator_rows(self):
@@ -179,10 +204,10 @@ class ColumnHandler:
 
     def load_from_votes_dict(self, votes_dict: dict):
         """Load data from a given votes_dict."""
-        self.df = votes_dict["df"]
-        self.annotator_metadata = votes_dict["annotator_metadata"]
-        self.reference_annotator_col = votes_dict["reference_annotator_col"]
-        self.shown_annotator_rows = votes_dict["shown_annotator_rows"]
+        self._df = votes_dict["df"]
+        self._annotator_metadata = votes_dict["annotator_metadata"]
+        self._reference_annotator_col = votes_dict["reference_annotator_col"]
+        self._shown_annotator_rows = votes_dict["shown_annotator_rows"]
 
     def set_visible_annotator_rows(self, annotator_rows_keys: list[str]):
         """Change the visible annotator rows for the votes_dict."""
