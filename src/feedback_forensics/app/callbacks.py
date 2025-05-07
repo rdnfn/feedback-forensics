@@ -81,7 +81,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
         # checking if splitting by column is requested
         if split_col != NONE_SELECTED_VALUE and split_col is not None:
-            if len(dataset_handler.handlers) > 1:
+            if len(dataset_handler.column_handlers) > 1:
                 raise gr.Error(
                     "Only one votes_df is supported when splitting by column"
                 )

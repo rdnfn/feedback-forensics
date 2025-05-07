@@ -32,16 +32,17 @@ def _get_annotator_df_col_names(
         }
         visible_to_cols[dataset_name] = visible_to_col
 
-    updated_annotator_visible_names = copy.deepcopy(annotator_visible_names)
-
+    updated_annotator_visible_names = []
     for annotator_name in annotator_visible_names:
+        add_annotator = True
         for dataset_name, visible_to_col in visible_to_cols.items():
             if annotator_name not in visible_to_col:
                 logger.warning(
-                    f"Annotator '{annotator_name}' (visible name) not found in dataset '{dataset_name}'. Skipping this annotator. Available annotators: {list(visible_to_col.keys())}"
+                    f"Annotator '{annotator_name}' (visible name) not found in dataset '{dataset_name}'. Skipping this annotator. Available annotators in this dataset: {list(visible_to_col.keys())}"
                 )
-                # remove annotator from annotator_visible_names
-                updated_annotator_visible_names.remove(annotator_name)
+                add_annotator = False
+        if add_annotator:
+            updated_annotator_visible_names.append(annotator_name)
 
     # get column names for the remaining annotators
     col_names = [
@@ -190,43 +191,45 @@ class DatasetHandler:
         self.cache = cache
         self.avail_datasets = avail_datasets
 
-        self._handlers = {}
+        self._column_handlers = {}
 
     @property
-    def handlers(self):
-        """Get dataset handlers."""
-        return self._handlers
+    def column_handlers(self):
+        """Get column handlers (each handler is a single dataset)."""
+        return self._column_handlers
 
     @property
     def first_handler(self):
-        """Get the first dataset handler."""
-        return list(self._handlers.values())[0]
+        """Get the first column handler."""
+        return list(self._column_handlers.values())[0]
 
     @property
     def first_handler_name(self):
         """Get the name of the first dataset handler."""
-        return list(self._handlers.keys())[0]
+        return list(self._column_handlers.keys())[0]
 
     @property
     def is_single_dataset(self):
         """Check if the dataset handler is a single dataset."""
-        return len(self._handlers) == 1
+        return len(self._column_handlers) == 1
 
     @property
     def votes_dicts(self):
         """Get the votes_dicts for all dataset handlers."""
-        return {name: handler.votes_dict for name, handler in self._handlers.items()}
+        return {
+            name: handler.votes_dict for name, handler in self._column_handlers.items()
+        }
 
     def add_handler(self, name: str, handler: SingleDatasetHandler):
         """Add a dataset handler."""
         assert (
-            name not in self._handlers
+            name not in self._column_handlers
         ), f"Dataset {name} already loaded or using duplicate name"
-        self._handlers[name] = handler
+        self._column_handlers[name] = handler
 
     def reset_handlers(self):
         """Reset the dataset handlers."""
-        self._handlers = {}
+        self._column_handlers = {}
 
     def add_data_from_name(self, name: str):
         """Load data from a given dataset name."""
@@ -268,9 +271,9 @@ class DatasetHandler:
         for name, votes_dict in votes_dicts.items():
             self.add_data_from_votes_dict(votes_dict=votes_dict, name=name)
 
-    def get_handler(self, name: str):
-        """Get the dataset handler for a given dataset name."""
-        return self._handlers[name]
+    def get_column_handler(self, name: str):
+        """Get the column handler for a given dataset name."""
+        return self._column_handlers[name]
 
     def set_annotator_rows(self, annotator_rows_visible_names: list[str]):
         """Change the visible annotator rows for all dataset handlers."""
@@ -281,7 +284,7 @@ class DatasetHandler:
         annotator_row_keys = _get_annotator_df_col_names(
             annotator_rows_visible_names, self.votes_dicts
         )
-        for handler in self._handlers.values():
+        for handler in self._column_handlers.values():
             handler.set_visible_annotator_rows(annotator_row_keys)
 
     def split_by_col(self, col: str, selected_vals: list[str] | None = None):
@@ -304,16 +307,6 @@ class DatasetHandler:
             )
             return
 
-        if not self.is_single_dataset and len(annotator_cols) > 1:
-            logger.warning(
-                "Only one annotator column is supported for multi-dataset handler. "
-                "Ignoring additional annotator columns."
-                f"Currently {len(self._handlers)} datasets are loaded with the following"
-                f"annotators: {annotator_cols}. Only using the first annotator column "
-                f"({annotator_cols[0]})."
-            )
-            annotator_cols = [annotator_cols[0]]
-
         annotator_cols_df_names = _get_annotator_df_col_names(
             annotator_visible_names=annotator_cols,
             votes_dicts=self.votes_dicts,
@@ -327,9 +320,27 @@ class DatasetHandler:
             dataset_names = [dataset_name] * len(annotator_cols)
             votes_dicts = [votes_dict] * len(annotator_cols)
         else:
+            # if is not single dataset, can currently only handle one annotator column
+            if len(annotator_cols) > 1:
+                logger.warning(
+                    "Only one annotator column is supported for multi-dataset handler. "
+                    "Ignoring additional annotator columns. "
+                    f"Currently {len(self._column_handlers)} datasets are loaded with the following"
+                    f"annotators: {annotator_cols}. Only using the first annotator column "
+                    f"({annotator_cols[0]})."
+                )
+                annotator_cols = [annotator_cols[0]]
+                annotator_cols_df_names = [annotator_cols_df_names[0]]
+
+            annotator_cols = annotator_cols * len(self._column_handlers)
+            annotator_cols_df_names = annotator_cols_df_names * len(
+                self._column_handlers
+            )
             # if has multiple datasets, duplicate each dataset with new annotator column
-            dataset_names = list(self._handlers.keys())
-            votes_dicts = [handler.votes_dict for handler in self._handlers.values()]
+            dataset_names = list(self._column_handlers.keys())
+            votes_dicts = [
+                handler.votes_dict for handler in self._column_handlers.values()
+            ]
 
         # create new votes_dicts with the new annotator columns
         votes_dicts = {
@@ -346,7 +357,6 @@ class DatasetHandler:
                 votes_dicts,
             )
         }
-        assert len(votes_dicts) > 0, "votes_dicts must have at least one dataset"
 
         self.reset_handlers()
         self.load_data_from_votes_dicts(votes_dicts)
