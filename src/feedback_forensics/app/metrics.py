@@ -8,6 +8,37 @@ import sklearn.metrics
 from loguru import logger
 
 
+DEFAULT_METRIC_NAME = "strength"
+
+METRIC_COL_OPTIONS = {
+    "agreement": {
+        "name": "Agreement",
+        "short": "Agr.",
+        "descr": "Agreement: proportion of all votes that agree with original preferences",
+    },
+    "acc": {
+        "name": "Accuracy",
+        "short": "Acc.",
+        "descr": "Accuracy: proportion of non-irrelevant votes ('agree' or 'disagree')<br>that agree with original preferences",
+    },
+    "relevance": {
+        "name": "Relevance",
+        "short": "Rel.",
+        "descr": "Relevance: proportion of all votes that are not 'not applicable'",
+    },
+    "strength": {
+        "name": "Principle strength (Relevance-weighted Cohen's kappa)",
+        "short": "strength",
+        "descr": "Principle strength: relevance * Cohen's kappa, or relevance * 2 * (accuracy - 0.5)",
+    },
+    "cohens_kappa": {
+        "name": "Cohen's kappa",
+        "short": "kappa",
+        "descr": "Cohen's kappa: measures agreement beyond chance, 2 * (accuracy - 0.5).",
+    },
+}
+
+
 def get_agreement(
     value_counts: pd.Series, *, annotation_a=None, annotation_b=None
 ) -> float:
@@ -171,37 +202,6 @@ def compute_annotator_metrics(
         "num_pairs": num_pairs,
         "metrics": metrics,
     }
-
-
-DEFAULT_METRIC_NAME = "strength"
-
-METRIC_COL_OPTIONS = {
-    "agreement": {
-        "name": "Agreement",
-        "short": "Agr.",
-        "descr": "Agreement: proportion of all votes that agree with original preferences",
-    },
-    "acc": {
-        "name": "Accuracy",
-        "short": "Acc.",
-        "descr": "Accuracy: proportion of non-irrelevant votes ('agree' or 'disagree')<br>that agree with original preferences",
-    },
-    "relevance": {
-        "name": "Relevance",
-        "short": "Rel.",
-        "descr": "Relevance: proportion of all votes that are not 'not applicable'",
-    },
-    "strength": {
-        "name": "Principle strength (Relevance-weighted Cohen's kappa)",
-        "short": "strength",
-        "descr": "Principle strength: relevance * Cohen's kappa, or relevance * 2 * (accuracy - 0.5)",
-    },
-    "cohens_kappa": {
-        "name": "Cohen's kappa",
-        "short": "kappa",
-        "descr": "Cohen's kappa: measures agreement beyond chance, 2 * (accuracy - 0.5).",
-    },
-}
 
 
 def get_overall_metrics(votes_df: pd.DataFrame, ref_annotator_col: str) -> dict:
