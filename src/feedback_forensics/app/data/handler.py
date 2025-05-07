@@ -150,7 +150,10 @@ class ColumnHandler:
 
     @property
     def default_annotator_cols(self):
-        """Default annotator cols for the votes_dict."""
+        """Default annotator cols for the votes_dict.
+
+        This is always the single reference annotator column (in a list).
+        """
         return [self.reference_annotator_col]
 
     def get_annotator_visible_name(self, annotator_col: str):
