@@ -71,7 +71,7 @@ This command will again open up the feedback forensics app on localhost port 786
 
 Feedback Forensics can also be used to interpret annotator data within Python. Below is a minimal example:
 
-```
+```python
 import feedback_forensics as ff
 
 # load dataset from AnnotatedPairs json file produced by ICAI package
