@@ -146,12 +146,16 @@ class ColumnHandler:
     @property
     def default_annotator_rows(self):
         """Default annotator rows for the votes_dict."""
-        return self.votes_dict["shown_annotator_rows"]
+        return self.shown_annotator_rows
 
     @property
     def default_annotator_cols(self):
         """Default annotator cols for the votes_dict."""
-        return [self.votes_dict["reference_annotator_col"]]
+        return [self.reference_annotator_col]
+
+    def get_annotator_visible_name(self, annotator_col: str):
+        """Get the visible name for an annotator column."""
+        return self.annotator_metadata[annotator_col]["annotator_visible_name"]
 
     def _get_data_path(self, dataset_name: str):
         """Get the data path for a given dataset name.
@@ -182,10 +186,8 @@ class ColumnHandler:
         )
 
         logger.info(f"Loading data from name: {name}")
-        self.data_path = self._get_data_path(name)
-        self.load_data_from_path(self.data_path)
-
-        return self.votes_dict
+        self._data_path = self._get_data_path(name)
+        self.load_data_from_path(self._data_path)
 
     def load_data_from_path(self, dataset_path: str):
         """Load data from a given path."""
@@ -213,11 +215,11 @@ class ColumnHandler:
         """Change the visible annotator rows for the votes_dict."""
         if not annotator_rows_keys or len(annotator_rows_keys) == 0:
             logger.warning(
-                "No annotator rows keys provided. " "Showing all annotator rows."
+                "No annotator rows keys provided. Not changing annotator rows."
             )
             return
 
-        self.shown_annotator_rows = annotator_rows_keys
+        self._shown_annotator_rows = annotator_rows_keys
 
     def compute_overall_metrics(self):
         """Compute the overall metrics for the votes_dict."""
@@ -359,9 +361,13 @@ class DatasetHandler:
         """Change the annotator columns for all dataset handlers."""
         if len(annotator_cols) == 0:
             logger.warning(
-                "No annotator columns provided, no changes to annotator columns."
+                "No annotator columns provided, using default annotator columns."
             )
-            return
+            annotator_cols = [
+                self.first_handler.get_annotator_visible_name(
+                    self.first_handler.reference_annotator_col
+                )
+            ]
 
         annotator_cols_df_names = _get_annotator_df_col_names(
             annotator_visible_names=annotator_cols,
