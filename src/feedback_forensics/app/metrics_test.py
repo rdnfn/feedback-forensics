@@ -14,7 +14,7 @@ from feedback_forensics.app.metrics import (
     get_agreed,
     get_disagreed,
     get_not_applicable,
-    compute_metrics,
+    compute_annotator_metrics,
 )
 
 
@@ -154,7 +154,7 @@ def test_compute_metrics():
         "reference_annotator_col": "preferred_text",
     }
 
-    metrics = compute_metrics(votes_dict)
+    metrics = compute_annotator_metrics(votes_dict)
 
     # Check structure
     assert "annotator_names" in metrics
@@ -188,7 +188,7 @@ def test_compute_metrics_empty_data():
         "reference_annotator_col": "vote",
     }
 
-    metrics = compute_metrics(votes_dict)
+    metrics = compute_annotator_metrics(votes_dict)
 
     assert len(metrics["annotator_names"]) == 0
     assert metrics["num_pairs"] == 0
