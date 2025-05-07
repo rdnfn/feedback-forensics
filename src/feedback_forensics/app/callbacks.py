@@ -72,12 +72,19 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 ),
             }
 
+        # loading data via handler
         gr.Info(f"Loading data for: {', '.join(datasets)}...", duration=3)
         dataset_handler = DatasetHandler(
             cache=cache,
             avail_datasets=data[state["avail_datasets"]],
         )
         dataset_handler.load_data_from_names(datasets)
+
+        # set annotators rows and columns according to user input
+        annotator_rows_visible_names = data[inp["annotator_rows_dropdown"]]
+        dataset_handler.set_annotator_rows(annotator_rows_visible_names)
+        annotator_cols_visible_names = data[inp["annotator_cols_dropdown"]]
+        dataset_handler.set_annotator_cols(annotator_cols_visible_names)
 
         # checking if splitting by column is requested
         if split_col != NONE_SELECTED_VALUE and split_col is not None:
@@ -95,14 +102,6 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             # split the first dataset (handler) by the selected column
             # this now is treated like multiple datasets (as in multiple columns)
             dataset_handler.split_by_col(col=split_col, selected_vals=selected_vals)
-
-        # setting annotator rows
-        annotator_rows_visible_names = data[inp["annotator_rows_dropdown"]]
-        dataset_handler.set_annotator_rows(annotator_rows_visible_names)
-
-        # setting annotator columns
-        annotator_cols_visible_names = data[inp["annotator_cols_dropdown"]]
-        dataset_handler.set_annotator_cols(annotator_cols_visible_names)
 
         # compute metrics
         overall_metrics = dataset_handler.get_overall_metrics()
