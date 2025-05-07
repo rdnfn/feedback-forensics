@@ -192,8 +192,9 @@ class ColumnHandler:
         self._data_path = self._get_data_path(name)
         self.load_data_from_path(self._data_path)
 
-    def load_data_from_path(self, dataset_path: str):
+    def load_data_from_path(self, dataset_path: str | Path):
         """Load data from a given path."""
+        dataset_path = Path(dataset_path)
 
         base_votes_dict = get_votes_dict(dataset_path, cache=self.cache)
         votes_dict = add_virtual_annotators(
@@ -315,8 +316,10 @@ class DatasetHandler:
         for name in names:
             self.add_data_from_name(name)
 
-    def add_data_from_path(self, path: str | Path, name: str):
+    def add_data_from_path(self, path: str | Path, name: str | None = None):
         """Add data from a given path."""
+        if name is None:
+            name = path.split("/")[-1].split(".")[0]
         handler = ColumnHandler(cache=self.cache, avail_datasets=self.avail_datasets)
         handler.load_data_from_path(path)
         self.add_col_handler(name, handler)
