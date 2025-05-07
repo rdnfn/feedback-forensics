@@ -305,7 +305,6 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
     def update_col_split_value_dropdown(data: dict):
         """Update column split value dropdown."""
         split_col = data[inp["split_col_dropdown"]]
-        datasets = data[inp["active_datasets_dropdown"]]
 
         if split_col != NONE_SELECTED_VALUE:
             avail_values = _get_avail_col_values(split_col, data)
@@ -588,7 +587,6 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         """Get the URL share link based on the current state of the app."""
 
         # Extract the current state of the app based on the data dictionary
-        annotator_metrics = data[state["computed_annotator_metrics"]]
         metric_name = data[inp["metric_name_dropdown"]]
         sort_by = data[inp["sort_by_dropdown"]]
         sort_ascending = data[inp["sort_order_dropdown"]] == "Ascending"
