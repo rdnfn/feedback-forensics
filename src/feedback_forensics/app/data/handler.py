@@ -237,10 +237,18 @@ class DatasetHandler:
     """Class to handle data operations (loading, computing metrics) of one or multiple annotation datasets."""
 
     def __init__(self, cache: dict | None = None, avail_datasets: dict | None = None):
-        self.cache = cache
-        self.avail_datasets = avail_datasets
+        self._cache = cache
+        self._avail_datasets = avail_datasets
 
         self._col_handlers = {}
+
+    @property
+    def cache(self):
+        return self._cache
+
+    @property
+    def avail_datasets(self):
+        return self._avail_datasets
 
     @property
     def col_handlers(self):
