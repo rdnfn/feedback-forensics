@@ -14,7 +14,7 @@ from feedback_forensics.app.metrics import (
     get_agreed,
     get_disagreed,
     get_not_applicable,
-    compute_metrics,
+    compute_annotator_metrics,
 )
 
 
@@ -154,7 +154,12 @@ def test_compute_metrics():
         "reference_annotator_col": "preferred_text",
     }
 
-    metrics = compute_metrics(votes_dict)
+    metrics = compute_annotator_metrics(
+        votes_df=votes_dict["df"],
+        annotator_metadata=votes_dict["annotator_metadata"],
+        annotator_cols=votes_dict["shown_annotator_rows"],
+        ref_annotator_col=votes_dict["reference_annotator_col"],
+    )
 
     # Check structure
     assert "annotator_names" in metrics
@@ -167,7 +172,7 @@ def test_compute_metrics():
 
     # Check metrics for p1
     p1_metrics = {
-        metric: metrics["metrics"][metric]["by_annotator"]["p1"]
+        metric: metrics["metrics"][metric]["p1"]
         for metric in ["agreement", "acc", "relevance", "strength"]
     }
 
@@ -181,14 +186,12 @@ def test_compute_metrics_empty_data():
     """Test metric computation with empty input data."""
     empty_df = pd.DataFrame(columns=["comparison_id", "principle", "vote"])
 
-    votes_dict = {
-        "df": empty_df,
-        "shown_annotator_rows": [],
-        "annotator_metadata": {},
-        "reference_annotator_col": "vote",
-    }
-
-    metrics = compute_metrics(votes_dict)
+    metrics = compute_annotator_metrics(
+        votes_df=empty_df,
+        annotator_metadata={},
+        annotator_cols=[],
+        ref_annotator_col="vote",
+    )
 
     assert len(metrics["annotator_names"]) == 0
     assert metrics["num_pairs"] == 0

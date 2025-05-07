@@ -8,6 +8,37 @@ import sklearn.metrics
 from loguru import logger
 
 
+DEFAULT_METRIC_NAME = "strength"
+
+METRIC_COL_OPTIONS = {
+    "agreement": {
+        "name": "Agreement",
+        "short": "Agr.",
+        "descr": "Agreement: proportion of all votes that agree with original preferences",
+    },
+    "acc": {
+        "name": "Accuracy",
+        "short": "Acc.",
+        "descr": "Accuracy: proportion of non-irrelevant votes ('agree' or 'disagree')<br>that agree with original preferences",
+    },
+    "relevance": {
+        "name": "Relevance",
+        "short": "Rel.",
+        "descr": "Relevance: proportion of all votes that are not 'not applicable'",
+    },
+    "strength": {
+        "name": "Principle strength (Relevance-weighted Cohen's kappa)",
+        "short": "strength",
+        "descr": "Principle strength: relevance * Cohen's kappa, or relevance * 2 * (accuracy - 0.5)",
+    },
+    "cohens_kappa": {
+        "name": "Cohen's kappa",
+        "short": "kappa",
+        "descr": "Cohen's kappa: measures agreement beyond chance, 2 * (accuracy - 0.5).",
+    },
+}
+
+
 def get_agreement(
     value_counts: pd.Series, *, annotation_a=None, annotation_b=None
 ) -> float:
@@ -90,7 +121,12 @@ def get_not_applicable(
     return value_counts.get("Not applicable", 0)
 
 
-def compute_metrics(votes_dict: dict) -> dict:
+def compute_annotator_metrics(
+    votes_df: pd.DataFrame,
+    annotator_metadata: dict,
+    annotator_cols: list[str],
+    ref_annotator_col: str,
+) -> dict:
 
     # votes_df is a pd.DataFrame with one row
     # per vote, and columns "comparison_id", "principle", "vote"
@@ -106,11 +142,6 @@ def compute_metrics(votes_dict: dict) -> dict:
         "disagreed": get_disagreed,
         "not_applicable": get_not_applicable,
     }
-
-    votes_df: pd.DataFrame = votes_dict["df"]
-    annotator_metadata = votes_dict["annotator_metadata"]
-    annotator_cols = votes_dict["shown_annotator_rows"]
-    ref_annotator_col = votes_dict["reference_annotator_col"]
 
     # check that ref annotator col only contains "text_a" or "text_b"
     if not all(votes_df[ref_annotator_col].isin(["text_a", "text_b"])):
@@ -160,135 +191,13 @@ def compute_metrics(votes_dict: dict) -> dict:
         for metric_name, metric_fn in metric_fns.items():
             if metric_name not in metrics:
                 metrics[metric_name] = {}
-            if "by_annotator" not in metrics[metric_name]:
-                metrics[metric_name]["by_annotator"] = {}
-            metrics[metric_name]["by_annotator"][annotator_name] = metric_fn(
-                value_counts
-            )
-
-    for metric_name, metric_dict in metrics.items():
-        metric_dict["annotator_order"] = sorted(
-            annotator_names,
-            key=lambda x: (metric_dict["by_annotator"][x],),
-        )
+            metrics[metric_name][annotator_name] = metric_fn(value_counts)
 
     return {
         "annotator_names": annotator_names,
         "num_pairs": num_pairs,
         "metrics": metrics,
     }
-
-
-DEFAULT_METRIC_NAME = "strength"
-
-METRIC_COL_OPTIONS = {
-    "agreement": {
-        "name": "Agreement",
-        "short": "Agr.",
-        "descr": "Agreement: proportion of all votes that agree with original preferences",
-    },
-    "acc": {
-        "name": "Accuracy",
-        "short": "Acc.",
-        "descr": "Accuracy: proportion of non-irrelevant votes ('agree' or 'disagree')<br>that agree with original preferences",
-    },
-    "relevance": {
-        "name": "Relevance",
-        "short": "Rel.",
-        "descr": "Relevance: proportion of all votes that are not 'not applicable'",
-    },
-    "strength": {
-        "name": "Principle strength (Relevance-weighted Cohen's kappa)",
-        "short": "strength",
-        "descr": "Principle strength: relevance * Cohen's kappa, or relevance * 2 * (accuracy - 0.5)",
-    },
-    "cohens_kappa": {
-        "name": "Cohen's kappa",
-        "short": "kappa",
-        "descr": "Cohen's kappa: measures agreement beyond chance, 2 * (accuracy - 0.5).",
-    },
-    # "strength_base": {
-    #    "name": "Principle strength on full dataset",
-    #    "short": "(all)",
-    #    "descr": "Principle strength on all datapoints (not just selected subset)",
-    # },
-    # "strength_diff": {
-    #    "name": "Principle strength difference (full vs subset)",
-    #    "short": "(diff)",
-    #    "descr": "Absolute principle strength difference to votes on entire dataset",
-    # },
-}
-
-
-def get_metric_cols_by_annotator(
-    annotator_name: str,
-    metrics: dict,
-    metric_names: str,
-    metrics_cols_start_y: float,
-    metrics_cols_width: float,
-) -> dict:
-    num_cols = len(metric_names)
-    metric_col_width = metrics_cols_width / num_cols
-
-    return [
-        [
-            metrics_cols_start_y + (i + 1) * metric_col_width,
-            metrics["metrics"][metric_name]["by_annotator"][annotator_name],
-            METRIC_COL_OPTIONS[metric_name]["short"],
-            METRIC_COL_OPTIONS[metric_name]["descr"],
-        ]
-        for i, metric_name in enumerate(metric_names)
-    ]
-
-
-def get_ordering_options(
-    metrics,
-    shown_metric_names: list,
-    initial: str,
-) -> list:
-    order_options = {
-        "agreement": [
-            "Agreement ↓",
-            metrics["metrics"]["agreement"]["annotator_order"],
-        ],
-        "acc": [
-            "Accuracy ↓",
-            metrics["metrics"]["acc"]["annotator_order"],
-        ],
-        "relevance": [
-            "Relevance ↓",
-            metrics["metrics"]["relevance"]["annotator_order"],
-        ],
-        "principle_strength": [
-            "Principle strength ↓",
-            metrics["metrics"]["principle_strength"]["annotator_order"],
-        ],
-        "cohens_kappa": [
-            "Cohen's kappa ↓",
-            metrics["metrics"]["cohens_kappa"]["annotator_order"],
-        ],
-        "principle_strength_base": [
-            "Principle strength on full dataset ↓",
-            metrics["metrics"]["principle_strength_base"]["annotator_order"],
-        ],
-        "principle_strength_diff": [
-            "Principle strength difference ↓",
-            metrics["metrics"]["principle_strength_diff"]["annotator_order"],
-        ],
-    }
-
-    if initial not in order_options.keys():
-        raise ValueError(f"Initial ordering metric '{initial}' not found.")
-
-    ordering = [
-        value for key, value in order_options.items() if key in shown_metric_names
-    ]
-
-    if initial in shown_metric_names:
-        # make sure initial is first
-        ordering.insert(0, ordering.pop(ordering.index(order_options[initial])))
-
-    return ordering
 
 
 def get_overall_metrics(votes_df: pd.DataFrame, ref_annotator_col: str) -> dict:

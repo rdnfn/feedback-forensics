@@ -41,7 +41,7 @@ pip install feedback-forensics
 To start the app locally, run the following command in your terminal:
 
 ```sh
-feedback-forensics -d data/output/example
+feedback-forensics -d data/output/example/annotated_pairs.json
 ```
 
 This will start the Gradio interface on localhost port 7860 (e.g. http://localhost:7860).
@@ -62,10 +62,25 @@ Replace `example.csv` with your own dataset, ensuring it complies with the ICAI 
 Once the experiment is completed, run the following command (also shown at end of ICAI experiment terminal output):
 
 ```shell
-feedback-forensics -d /path/to/icai_results/
+feedback-forensics -d /path/to/your/icai_results/070_annotations_train_ap.json
 ```
 
 This command will again open up the feedback forensics app on localhost port 7860, now including the local results on your own dataset.
+
+### Python interface
+
+Feedback Forensics can also be used to interpret annotator data within Python. Below is a minimal example:
+
+```python
+import feedback_forensics as ff
+
+# load dataset from AnnotatedPairs json file produced by ICAI package
+dataset = ff.DatasetHandler()
+dataset.add_data_from_path("data/output/example/annotated_pairs.json")
+
+overall_metrics = dataset.get_overall_metrics()
+annotator_metrics = dataset.get_annotator_metrics()
+```
 
 ## Limitations
 
