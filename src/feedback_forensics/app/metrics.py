@@ -191,11 +191,7 @@ def compute_annotator_metrics(
         for metric_name, metric_fn in metric_fns.items():
             if metric_name not in metrics:
                 metrics[metric_name] = {}
-            if "by_annotator" not in metrics[metric_name]:
-                metrics[metric_name]["by_annotator"] = {}
-            metrics[metric_name]["by_annotator"][annotator_name] = metric_fn(
-                value_counts
-            )
+            metrics[metric_name][annotator_name] = metric_fn(value_counts)
 
     return {
         "annotator_names": annotator_names,

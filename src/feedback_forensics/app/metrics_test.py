@@ -167,7 +167,7 @@ def test_compute_metrics():
 
     # Check metrics for p1
     p1_metrics = {
-        metric: metrics["metrics"][metric]["by_annotator"]["p1"]
+        metric: metrics["metrics"][metric]["p1"]
         for metric in ["agreement", "acc", "relevance", "strength"]
     }
 
