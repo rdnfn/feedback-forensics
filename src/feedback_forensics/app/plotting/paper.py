@@ -162,6 +162,9 @@ def get_latex_top_and_bottom_annotators(
         String containing LaTeX code for just the table content
     """
     MINIPAGE_WIDTH = 0.45
+    FIRST_COLUMN_WIDTH = 0.82
+    SECOND_COLUMN_WIDTH = 0.18
+
     metric_series = pd.Series(annotator_metrics)
 
     top_n_annotators = [
@@ -194,7 +197,15 @@ def get_latex_top_and_bottom_annotators(
     # Begin table
     latex.append(r"\begin{table}")
     latex.append(r"\centering")
+    latex.append(r"\caption{Top and Bottom Annotators by " + metric_name + r"}")
     latex.append(r"\renewcommand{\arraystretch}{1.5}")
+
+    # Define row spacing variable
+    latex.append(r"\newlength{\rowspacing}")
+    latex.append(r"\setlength{\rowspacing}{1.5pt}")
+
+    # Define font size command that can be changed
+    latex.append(r"\newcommand{\tablefontsize}{\small}")  # Default to \small
 
     # Define colors
     latex.append(
@@ -210,20 +221,30 @@ def get_latex_top_and_bottom_annotators(
     # Create a minipage environment to place tables side by side
     latex.append(r"\begin{minipage}[t]{" + str(MINIPAGE_WIDTH) + r"\textwidth}")
     latex.append(r"\centering")
+    latex.append(r"\sffamily")  # Sans serif font for the entire table
+    latex.append(r"\tablefontsize")  # Apply the font size
 
     # Top annotators header
     latex.append(f"\\textbf{{Top {top_n} Annotators}}\\\\[0.5em]")
 
     # Top annotators table
     latex.append(r"\begin{tabular}{")
-    latex.append(r"    >{\raggedright\arraybackslash}p{0.6\linewidth}")
-    latex.append(r"    >{\centering\arraybackslash}p{0.4\linewidth}")
+    latex.append(
+        r"    >{\raggedright\arraybackslash}p{"
+        + str(FIRST_COLUMN_WIDTH)
+        + r"\linewidth}"
+    )
+    latex.append(
+        r"    >{\centering\arraybackslash}p{"
+        + str(SECOND_COLUMN_WIDTH)
+        + r"\linewidth}"
+    )
     latex.append(r"}")
     latex.append(r"")
 
     # Column headers
     latex.append(f"\\textbf{{Annotator}} & \\textbf{{{metric_name}}} \\\\")
-    latex.append(r"\hline")
+    latex.append(r"\toprule")
 
     # Top annotators data
     for i, (annotator, value) in enumerate(top_n_annotators):
@@ -237,7 +258,12 @@ def get_latex_top_and_bottom_annotators(
                 f"{annotator} & \\cellcolor{{poscolor!{intensity}}}{{{value:.3f}}} \\\\"
             )
 
+        # Add spacing after each row (except the last one)
+        if i < len(top_n_annotators) - 1:
+            latex.append(r"\addlinespace[\rowspacing]")
+
     # End top table
+    # latex.append(r"\bottomrule")
     latex.append(r"\end{tabular}")
     latex.append(r"\end{minipage}")
 
@@ -247,20 +273,29 @@ def get_latex_top_and_bottom_annotators(
     # Start bottom table in another minipage
     latex.append(r"\begin{minipage}[t]{" + str(MINIPAGE_WIDTH) + r"\textwidth}")
     latex.append(r"\centering")
+    latex.append(r"\sffamily")  # Sans serif font for the entire table
+    latex.append(r"\tablefontsize")  # Apply the font size
 
     # Bottom annotators header
     latex.append(f"\\textbf{{Bottom {bottom_n} Annotators}}\\\\[0.5em]")
 
     # Bottom annotators table
     latex.append(r"\begin{tabular}{")
-    latex.append(r"    >{\raggedright\arraybackslash}p{0.6\linewidth}")
-    latex.append(r"    >{\centering\arraybackslash}p{0.4\linewidth}")
+    latex.append(
+        r"    >{\raggedright\arraybackslash}p{"
+        + str(FIRST_COLUMN_WIDTH)
+        + r"\linewidth}"
+    )
+    latex.append(
+        r"    >{\centering\arraybackslash}p{"
+        + str(SECOND_COLUMN_WIDTH)
+        + r"\linewidth}"
+    )
     latex.append(r"}")
-    latex.append(r"")
 
     # Column headers
     latex.append(f"\\textbf{{Annotator}} & \\textbf{{{metric_name}}} \\\\")
-    latex.append(r"\hline")
+    latex.append(r"\toprule")
 
     # Bottom annotators data
     for i, (annotator, value) in enumerate(bottom_n_annotators):
@@ -274,12 +309,14 @@ def get_latex_top_and_bottom_annotators(
                 f"{annotator} & \\cellcolor{{negcolor!{intensity}}}{{{value:.3f}}} \\\\"
             )
 
-    # Finish the table
+        # Add spacing after each row (except the last one)
+        if i < len(bottom_n_annotators) - 1:
+            latex.append(r"\addlinespace[\rowspacing]")
+
+    # End bottom table
+    # latex.append(r"\bottomrule")
     latex.append(r"\end{tabular}")
     latex.append(r"\end{minipage}")
-
-    latex.append(r"\\[0.5em]")  # Add 1em vertical space before the caption
-    latex.append(r"\caption{Top and Bottom Annotators by " + metric_name + r"}")
     latex.append(r"\end{table}")
 
     return "\n".join(latex)
