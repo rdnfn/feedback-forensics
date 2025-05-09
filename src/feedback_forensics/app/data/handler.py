@@ -7,6 +7,7 @@ for loading data from different sources and computing metrics.
 
 from pathlib import Path
 from loguru import logger
+import pandas as pd
 
 from feedback_forensics.app.data.loader import add_virtual_annotators, get_votes_dict
 from feedback_forensics.app.metrics import (
@@ -445,3 +446,33 @@ class DatasetHandler:
             name: handler.compute_annotator_metrics()
             for name, handler in self._col_handlers.items()
         }
+
+    def get_annotator_metrics_df(
+        self,
+        metric_name: str,
+        add_max_diff_col: bool = True,
+        index_col_name: str = "Annotator",
+    ):
+        """Get the annotator metrics for all dataset handlers as a single dataframe."""
+        annotator_metrics = self.get_annotator_metrics()
+        metrics_df = {
+            col_name: annotator_metrics[col_name]["metrics"][metric_name]
+            for col_name in annotator_metrics
+        }
+        metrics_df = pd.DataFrame(metrics_df)
+        if add_max_diff_col:
+            metrics_df["Max diff"] = abs(
+                metrics_df.iloc[:, 1:].max(axis=1) - metrics_df.iloc[:, 1:].min(axis=1)
+            )
+
+        if add_max_diff_col:
+            # by default, sort by max diff, then by annotator names
+            sort_by = ["Max diff"] + list(metrics_df.columns[1:])
+            metrics_df = metrics_df.sort_values(by=sort_by, ascending=False)
+
+        # Add index column with name
+        metrics_df[index_col_name] = metrics_df.index
+
+        metrics_df = metrics_df[[index_col_name, *metrics_df.columns[:-1]]]
+
+        return metrics_df
