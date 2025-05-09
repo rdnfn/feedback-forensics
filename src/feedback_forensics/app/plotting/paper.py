@@ -82,7 +82,8 @@ def generate_latex_table(
     minipage_width: float,
     first_col_width: float,
     metric_col_width: float,
-    get_color_intensity: Callable[[float], float],
+    vertical_spacing: float,
+    get_color_intensity: Callable[[float], float] | list[Callable[[float], float]],
 ):
     """Generate LaTeX code for a table of annotators.
 
@@ -94,12 +95,16 @@ def generate_latex_table(
         minipage_width (float): Width of the minipage as fraction of textwidth
         first_col_width (float): Width of first column as fraction of linewidth
         metric_col_width (float): Width of each metric column as fraction of linewidth
+        vertical_spacing (float): Vertical spacing between rows in pt
         get_color_intensity (Callable[[float], float]): Function to calculate color intensity
 
     Returns:
         List of LaTeX code lines
     """
     latex = []
+
+    if isinstance(get_color_intensity, Callable):
+        get_color_intensity = [get_color_intensity] * len(metric_names)
 
     # Start minipage
     latex.append(r"\begin{minipage}[t]{" + str(minipage_width) + r"\textwidth}")
@@ -119,6 +124,7 @@ def generate_latex_table(
     )
     # Add a column for each metric
     for _ in metric_names:
+        latex.append(r"    @{\hspace{" + str(vertical_spacing) + r"pt}} ")
         latex.append(
             r"    >{\centering\arraybackslash}p{"
             + str(metric_col_width)
@@ -147,8 +153,8 @@ def generate_latex_table(
             row = annotator
 
         # Add each metric value with appropriate color
-        for value in values:
-            intensity = get_color_intensity(value)
+        for value, get_intensity_for_col in zip(values, get_color_intensity):
+            intensity = get_intensity_for_col(value)
             color_name = "poscolor" if value >= 0 else "negcolor"
             row += f" & \\cellcolor{{{color_name}!{intensity}}}{{{value:.3f}}}"
 
@@ -196,6 +202,22 @@ def add_table_postamble(latex: list):
     return latex
 
 
+def get_intensity_callable(max_abs_value: float, min_abs_value: float):
+    """Get a callable that calculates the intensity of a value."""
+
+    def get_color_intensity(value):
+        if value == 0:
+            return 0
+        elif value > 0:
+            normalized_val = value / max_abs_value if max_abs_value > 0 else 0
+        else:
+            normalized_val = abs(value) / min_abs_value if min_abs_value > 0 else 0
+        intensity = normalized_val * 100
+        return float(f"{intensity:.1f}")
+
+    return get_color_intensity
+
+
 def get_latex_top_and_bottom_annotators(
     annotator_metrics: dict,
     metric_name: str,
@@ -227,17 +249,6 @@ def get_latex_top_and_bottom_annotators(
         )
     )
 
-    # Function to calculate color intensity based on value
-    def get_color_intensity(value):
-        if value == 0:
-            return 0
-        elif value > 0:
-            normalized_val = value / max_abs_value if max_abs_value > 0 else 0
-        else:
-            normalized_val = abs(value) / min_abs_value if min_abs_value > 0 else 0
-        intensity = normalized_val * 100
-        return float(f"{intensity:.1f}")
-
     # Start building the LaTeX code
     latex = []
     latex = add_table_preamble(latex, title)
@@ -250,7 +261,8 @@ def get_latex_top_and_bottom_annotators(
         minipage_width=MINIPAGE_WIDTH,
         first_col_width=FIRST_COLUMN_WIDTH,
         metric_col_width=SECOND_COLUMN_WIDTH,
-        get_color_intensity=get_color_intensity,
+        vertical_spacing=10,
+        get_color_intensity=get_intensity_callable(max_abs_value, min_abs_value),
     )
     latex.extend(top_table)
 
@@ -266,7 +278,8 @@ def get_latex_top_and_bottom_annotators(
         minipage_width=MINIPAGE_WIDTH,
         first_col_width=FIRST_COLUMN_WIDTH,
         metric_col_width=SECOND_COLUMN_WIDTH,
-        get_color_intensity=get_color_intensity,
+        vertical_spacing=10,
+        get_color_intensity=get_intensity_callable(max_abs_value, min_abs_value),
     )
     latex.extend(bottom_table)
 
