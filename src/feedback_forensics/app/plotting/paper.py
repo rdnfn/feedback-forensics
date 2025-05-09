@@ -16,6 +16,62 @@ NEGATIVE_COLOR = "#ffadad"  # Light red
 ALTERNATE_ROW_COLOR = "#f5f5f5"  # Light grey for alternating rows
 
 
+def get_top_and_bottom_annotators(
+    annotator_metrics: dict,
+    top_n: int = 5,
+    bottom_n: int = 5,
+    format_values: bool = True,
+):
+    """Extract top and bottom annotators from metrics.
+
+    Args:
+        annotator_metrics: Dictionary mapping annotator names to metric values
+        top_n: Number of top annotators to show
+        bottom_n: Number of bottom annotators to show
+        format_values: If True, format values as strings with 3 decimal places
+
+    Returns:
+        tuple: (top_n_annotators, bottom_n_annotators, max_abs_value)
+    """
+    metric_series = pd.Series(annotator_metrics)
+
+    if format_values:
+        top_n_annotators = [
+            [annotator, f"{float(value):.3f}"]
+            for annotator, value in metric_series.sort_values(ascending=False)
+            .head(top_n)
+            .items()
+        ]
+        bottom_n_annotators = [
+            [annotator, f"{float(value):.3f}"]
+            for annotator, value in metric_series.sort_values(ascending=True)
+            .head(bottom_n)
+            .items()
+        ]
+    else:
+        top_n_annotators = [
+            [annotator, float(value)]
+            for annotator, value in metric_series.sort_values(ascending=False)
+            .head(top_n)
+            .items()
+        ]
+        bottom_n_annotators = [
+            [annotator, float(value)]
+            for annotator, value in metric_series.sort_values(ascending=True)
+            .head(bottom_n)
+            .items()
+        ]
+
+    # Find max absolute value for normalization
+    all_values = [
+        float(row[1]) if isinstance(row[1], str) else row[1]
+        for row in top_n_annotators + bottom_n_annotators
+    ]
+    max_abs_value = max(abs(max(all_values)), abs(min(all_values)))
+
+    return top_n_annotators, bottom_n_annotators, max_abs_value
+
+
 def plot_top_and_bottom_annotators(
     annotator_metrics: dict,
     metric_name: str,
@@ -23,20 +79,11 @@ def plot_top_and_bottom_annotators(
     bottom_n: int = 5,
 ) -> None:
 
-    metric_series = pd.Series(annotator_metrics)
-
-    top_n_annotators = [
-        [annotator, f"{float(value):.3f}"]
-        for annotator, value in metric_series.sort_values(ascending=False)
-        .head(top_n)
-        .items()
-    ]
-    bottom_n_annotators = [
-        [annotator, f"{float(value):.3f}"]
-        for annotator, value in metric_series.sort_values(ascending=True)
-        .head(bottom_n)
-        .items()
-    ]
+    top_n_annotators, bottom_n_annotators, max_abs_value = (
+        get_top_and_bottom_annotators(
+            annotator_metrics, top_n, bottom_n, format_values=True
+        )
+    )
 
     # Calculate an appropriate figure height based on the number of rows
     row_height = 0.25  # inches per row
@@ -50,10 +97,6 @@ def plot_top_and_bottom_annotators(
 
     # Create figure with adaptive height
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, fig_height))
-
-    # Find max absolute value for normalization
-    all_values = [float(row[1]) for row in top_n_annotators + bottom_n_annotators]
-    max_abs_value = max(abs(max(all_values)), abs(min(all_values)))
 
     # Function to get color based on value
     def get_color(value):
@@ -141,6 +184,80 @@ def plot_top_and_bottom_annotators(
     return fig
 
 
+def generate_latex_table(
+    annotators_data,
+    metric_name,
+    title,
+    minipage_width,
+    first_col_width,
+    second_col_width,
+    color_name,
+    get_color_intensity,
+):
+    """Generate LaTeX code for a table of annotators.
+
+    Args:
+        annotators_data: List of [annotator, value] pairs
+        metric_name: Name of the metric being displayed
+        title: Title for this table section
+        minipage_width: Width of the minipage as fraction of textwidth
+        first_col_width: Width of first column as fraction of linewidth
+        second_col_width: Width of second column as fraction of linewidth
+        color_name: Name of the LaTeX color to use for cell backgrounds
+        get_color_intensity: Function to calculate color intensity
+
+    Returns:
+        List of LaTeX code lines
+    """
+    latex = []
+
+    # Start minipage
+    latex.append(r"\begin{minipage}[t]{" + str(minipage_width) + r"\textwidth}")
+    latex.append(r"\centering")
+    latex.append(r"\sffamily")  # Sans serif font for the entire table
+    latex.append(r"\tablefontsize")  # Apply the font size
+
+    # Add title
+    latex.append(f"\\textbf{{{title}}}\\\\[0.5em]")
+
+    # Begin table
+    latex.append(r"\begin{tabular}{")
+    latex.append(
+        r"    >{\raggedright\arraybackslash}p{" + str(first_col_width) + r"\linewidth}"
+    )
+    latex.append(
+        r"    >{\centering\arraybackslash}p{" + str(second_col_width) + r"\linewidth}"
+    )
+    latex.append(r"}")
+    latex.append(r"")
+
+    # Column headers
+    latex.append(f"\\textbf{{Annotator}} & \\textbf{{{metric_name}}} \\\\")
+    latex.append(r"\toprule")
+
+    # Data rows
+    for i, (annotator, value) in enumerate(annotators_data):
+        intensity = get_color_intensity(value)
+        if i % 2 == 0:
+            latex.append(
+                f"\\rowcolor{{altrow}} {annotator} & \\cellcolor{{{color_name}!{intensity}}}{{{value:.3f}}} \\\\"
+            )
+        else:
+            latex.append(
+                f"{annotator} & \\cellcolor{{{color_name}!{intensity}}}{{{value:.3f}}} \\\\"
+            )
+
+        # Add spacing after each row (except the last one)
+        if i < len(annotators_data) - 1:
+            latex.append(r"\addlinespace[\rowspacing]")
+
+    # End table
+    latex.append(r"\end{tabular}")
+    latex.append(r"\end{minipage}")
+
+    return latex
+
+
 def get_latex_top_and_bottom_annotators(
     annotator_metrics: dict,
     metric_name: str,
@@ -165,24 +282,11 @@ def get_latex_top_and_bottom_annotators(
     FIRST_COLUMN_WIDTH = 0.82
     SECOND_COLUMN_WIDTH = 0.18
 
-    metric_series = pd.Series(annotator_metrics)
-
-    top_n_annotators = [
-        [annotator, float(value)]
-        for annotator, value in metric_series.sort_values(ascending=False)
-        .head(top_n)
-        .items()
-    ]
-    bottom_n_annotators = [
-        [annotator, float(value)]
-        for annotator, value in metric_series.sort_values(ascending=True)
-        .head(bottom_n)
-        .items()
-    ]
-
-    # Find max absolute value for normalization
-    all_values = [row[1] for row in top_n_annotators + bottom_n_annotators]
-    max_abs_value = max(abs(max(all_values)), abs(min(all_values)))
+    top_n_annotators, bottom_n_annotators, max_abs_value = (
+        get_top_and_bottom_annotators(
+            annotator_metrics, top_n, bottom_n, format_values=False
+        )
+    )
 
     # Function to calculate color intensity based on value
     def get_color_intensity(value):
@@ -218,105 +322,36 @@ def get_latex_top_and_bottom_annotators(
         r"\definecolor{altrow}{RGB}{245,245,245}   % Light grey for alternating rows"
     )
 
-    # Create a minipage environment to place tables side by side
-    latex.append(r"\begin{minipage}[t]{" + str(MINIPAGE_WIDTH) + r"\textwidth}")
-    latex.append(r"\centering")
-    latex.append(r"\sffamily")  # Sans serif font for the entire table
-    latex.append(r"\tablefontsize")  # Apply the font size
-
-    # Top annotators header
-    latex.append(f"\\textbf{{Top {top_n} Annotators}}\\\\[0.5em]")
-
-    # Top annotators table
-    latex.append(r"\begin{tabular}{")
-    latex.append(
-        r"    >{\raggedright\arraybackslash}p{"
-        + str(FIRST_COLUMN_WIDTH)
-        + r"\linewidth}"
+    # Generate top annotators table
+    top_table = generate_latex_table(
+        top_n_annotators,
+        metric_name,
+        f"Top {top_n} Annotators",
+        MINIPAGE_WIDTH,
+        FIRST_COLUMN_WIDTH,
+        SECOND_COLUMN_WIDTH,
+        "poscolor",
+        get_color_intensity,
     )
-    latex.append(
-        r"    >{\centering\arraybackslash}p{"
-        + str(SECOND_COLUMN_WIDTH)
-        + r"\linewidth}"
-    )
-    latex.append(r"}")
-    latex.append(r"")
-
-    # Column headers
-    latex.append(f"\\textbf{{Annotator}} & \\textbf{{{metric_name}}} \\\\")
-    latex.append(r"\toprule")
-
-    # Top annotators data
-    for i, (annotator, value) in enumerate(top_n_annotators):
-        intensity = get_color_intensity(value)
-        if i % 2 == 0:
-            latex.append(
-                f"\\rowcolor{{altrow}} {annotator} & \\cellcolor{{poscolor!{intensity}}}{{{value:.3f}}} \\\\"
-            )
-        else:
-            latex.append(
-                f"{annotator} & \\cellcolor{{poscolor!{intensity}}}{{{value:.3f}}} \\\\"
-            )
-
-        # Add spacing after each row (except the last one)
-        if i < len(top_n_annotators) - 1:
-            latex.append(r"\addlinespace[\rowspacing]")
-
-    # End top table
-    # latex.append(r"\bottomrule")
-    latex.append(r"\end{tabular}")
-    latex.append(r"\end{minipage}")
+    latex.extend(top_table)
 
     # Add spacing between tables
     latex.append(r"\hfill")
 
-    # Start bottom table in another minipage
-    latex.append(r"\begin{minipage}[t]{" + str(MINIPAGE_WIDTH) + r"\textwidth}")
-    latex.append(r"\centering")
-    latex.append(r"\sffamily")  # Sans serif font for the entire table
-    latex.append(r"\tablefontsize")  # Apply the font size
-
-    # Bottom annotators header
-    latex.append(f"\\textbf{{Bottom {bottom_n} Annotators}}\\\\[0.5em]")
-
-    # Bottom annotators table
-    latex.append(r"\begin{tabular}{")
-    latex.append(
-        r"    >{\raggedright\arraybackslash}p{"
-        + str(FIRST_COLUMN_WIDTH)
-        + r"\linewidth}"
+    # Generate bottom annotators table
+    bottom_table = generate_latex_table(
+        bottom_n_annotators,
+        metric_name,
+        f"Bottom {bottom_n} Annotators",
+        MINIPAGE_WIDTH,
+        FIRST_COLUMN_WIDTH,
+        SECOND_COLUMN_WIDTH,
+        "negcolor",
+        get_color_intensity,
     )
-    latex.append(
-        r"    >{\centering\arraybackslash}p{"
-        + str(SECOND_COLUMN_WIDTH)
-        + r"\linewidth}"
-    )
-    latex.append(r"}")
+    latex.extend(bottom_table)
 
-    # Column headers
-    latex.append(f"\\textbf{{Annotator}} & \\textbf{{{metric_name}}} \\\\")
-    latex.append(r"\toprule")
-
-    # Bottom annotators data
-    for i, (annotator, value) in enumerate(bottom_n_annotators):
-        intensity = get_color_intensity(value)
-        if i % 2 == 0:
-            latex.append(
-                f"\\rowcolor{{altrow}} {annotator} & \\cellcolor{{negcolor!{intensity}}}{{{value:.3f}}} \\\\"
-            )
-        else:
-            latex.append(
-                f"{annotator} & \\cellcolor{{negcolor!{intensity}}}{{{value:.3f}}} \\\\"
-            )
-
-        # Add spacing after each row (except the last one)
-        if i < len(bottom_n_annotators) - 1:
-            latex.append(r"\addlinespace[\rowspacing]")
-
-    # End bottom table
-    # latex.append(r"\bottomrule")
-    latex.append(r"\end{tabular}")
-    latex.append(r"\end{minipage}")
+    # End the table environment
     latex.append(r"\end{table}")
 
     return "\n".join(latex)
