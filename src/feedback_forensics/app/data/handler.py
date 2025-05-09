@@ -345,17 +345,61 @@ class DatasetHandler:
         """Get the column handler for a given dataset name."""
         return self._col_handlers[name]
 
-    def set_annotator_rows(self, annotator_rows_visible_names: list[str]):
-        """Change the visible annotator rows for all dataset handlers."""
-        if len(annotator_rows_visible_names) == 0:
-            logger.warning("No annotator rows provided, no changes to annotator rows.")
-            return
+    def get_available_annotators(self):
+        """Get annotators available onall dataset columns.
 
-        annotator_row_keys = _get_annotator_df_col_names(
-            annotator_rows_visible_names, self.votes_dicts
-        )
+        Some datasets may not have all annotators. This method
+        provides access to the shared annotators."""
+
+        avail_annotator_cols = set(self.first_handler.annotator_metadata.keys())
+        incomplete_annotator_cols = set()
+        full_annotator_metadata_dict = {}  # {col_name: annotator_visible_name}
+
+        for col_handler in self._col_handlers.values():
+            annotator_metadata = col_handler.annotator_metadata
+            annotator_cols_set = set(annotator_metadata.keys())
+            avail_annotator_cols = avail_annotator_cols.intersection(annotator_cols_set)
+            incomplete_annotator_cols.update(
+                annotator_cols_set.difference(avail_annotator_cols)
+            )
+            full_annotator_metadata_dict.update(annotator_metadata)
+        if len(incomplete_annotator_cols) > 0:
+            logger.warning(
+                "Annotators only available on some but not all columns:\n\n"
+                + "\n".join(
+                    [
+                        f"{col_name}: {full_annotator_metadata_dict[col_name]}"
+                        for col_name in incomplete_annotator_cols
+                    ]
+                )
+            )
+
+        return {
+            col_name: full_annotator_metadata_dict[col_name]
+            for col_name in avail_annotator_cols
+        }
+
+    def set_annotator_rows(
+        self,
+        annotator_visible_names: list[str] | None = None,
+        annotator_keys: list[str] | None = None,
+    ):
+        """Change the visible annotator rows for all dataset handlers."""
+        if annotator_keys is not None and annotator_visible_names is not None:
+            raise ValueError(
+                "annotator_visible_names and annotator_keys cannot both be provided"
+            )
+
+        if annotator_keys is None:
+            assert (
+                annotator_visible_names is not None
+            ), "annotator_visible_names must be provided if annotator_keys is not provided"
+            annotator_keys = _get_annotator_df_col_names(
+                annotator_visible_names, self.votes_dicts
+            )
+
         for handler in self._col_handlers.values():
-            handler.set_visible_annotator_rows(annotator_row_keys)
+            handler.set_visible_annotator_rows(annotator_keys)
 
     def split_by_col(self, col: str, selected_vals: list[str] | None = None):
         """Split the dataset by a given column to create multiple datasets."""
@@ -369,45 +413,63 @@ class DatasetHandler:
         else:
             raise ValueError("Cannot split multi-dataset handler.")
 
-    def set_annotator_cols(self, annotator_cols: list[str]):
+    def set_annotator_cols(
+        self,
+        annotator_visible_names: list[str] | None = None,
+        annotator_keys: list[str] | None = None,
+    ):
         """Change the annotator columns for all dataset handlers."""
-        if len(annotator_cols) == 0:
+        if annotator_keys is not None and annotator_visible_names is not None:
+            raise ValueError(
+                "annotator_visible_names and annotator_keys cannot both be provided"
+            )
+
+        if (
+            annotator_visible_names is not None and len(annotator_visible_names) == 0
+        ) or (annotator_keys is not None and len(annotator_keys) == 0):
             logger.warning(
                 "No annotator columns provided, using default annotator columns."
             )
-            annotator_cols = [
+            annotator_visible_names = [
                 self.first_handler.get_annotator_visible_name(
                     self.first_handler.reference_annotator_col
                 )
             ]
 
-        annotator_cols_df_names = _get_annotator_df_col_names(
-            annotator_visible_names=annotator_cols,
-            votes_dicts=self.votes_dicts,
-        )
+        if annotator_keys is None:
+            annotator_keys = _get_annotator_df_col_names(
+                annotator_visible_names=annotator_visible_names,
+                votes_dicts=self.votes_dicts,
+            )
+        else:
+            avail_annotators = self.get_available_annotators()
+            annotator_visible_names = [
+                avail_annotators[annotator_key]["annotator_visible_name"]
+                for annotator_key in annotator_keys
+            ]
 
         if self.is_single_dataset:
             # if only has single dataset, just duplicate
             # the single dataset (handler) with new annotator columns
             dataset_name = self.first_handler_name
             votes_dict = self.first_handler.votes_dict
-            dataset_names = [dataset_name] * len(annotator_cols)
-            votes_dicts = [votes_dict] * len(annotator_cols)
+            dataset_names = [dataset_name] * len(annotator_visible_names)
+            votes_dicts = [votes_dict] * len(annotator_visible_names)
         else:
             # if is not single dataset, can currently only handle one annotator column
-            if len(annotator_cols) > 1:
+            if len(annotator_visible_names) > 1:
                 logger.warning(
                     "Only one annotator column is supported for multi-dataset handler. "
                     "Ignoring additional annotator columns. "
                     f"Currently {len(self._col_handlers)} datasets are loaded with the following"
-                    f"annotators: {annotator_cols}. Only using the first annotator column "
-                    f"({annotator_cols[0]})."
+                    f"annotators: {annotator_visible_names}. Only using the first annotator column "
+                    f"({annotator_visible_names[0]})."
                 )
-                annotator_cols = [annotator_cols[0]]
-                annotator_cols_df_names = [annotator_cols_df_names[0]]
+                annotator_visible_names = [annotator_visible_names[0]]
+                annotator_keys = [annotator_keys[0]]
 
-            annotator_cols = annotator_cols * len(self._col_handlers)
-            annotator_cols_df_names = annotator_cols_df_names * len(self._col_handlers)
+            annotator_visible_names = annotator_visible_names * len(self._col_handlers)
+            annotator_keys = annotator_keys * len(self._col_handlers)
             # if has multiple datasets, duplicate each dataset with new annotator column
             dataset_names = list(self._col_handlers.keys())
             votes_dicts = [
@@ -419,12 +481,12 @@ class DatasetHandler:
             f"{dataset_name}\n({annotator_name.replace('-', ' ')})": {
                 "df": votes_dict["df"],
                 "annotator_metadata": votes_dict["annotator_metadata"],
-                "reference_annotator_col": annotator_col,
+                "reference_annotator_col": annotator_key,
                 "shown_annotator_rows": votes_dict["shown_annotator_rows"],
             }
-            for annotator_col, annotator_name, dataset_name, votes_dict in zip(
-                annotator_cols_df_names,
-                annotator_cols,
+            for annotator_key, annotator_name, dataset_name, votes_dict in zip(
+                annotator_keys,
+                annotator_visible_names,
                 dataset_names,
                 votes_dicts,
             )
