@@ -83,7 +83,8 @@ def generate_latex_table(
     first_col_width: float,
     metric_col_width: float,
     vertical_spacing: float,
-    get_color_intensity: Callable[[float], float] | list[Callable[[float], float]],
+    get_color_intensity: Callable[[float], float] | None = None,
+    special_configs: dict | None = None,
 ):
     """Generate LaTeX code for a table of annotators.
 
@@ -103,9 +104,6 @@ def generate_latex_table(
     """
     latex = []
 
-    if isinstance(get_color_intensity, Callable):
-        get_color_intensity = [get_color_intensity] * len(metric_names)
-
     # Start minipage
     latex.append(r"\begin{minipage}[t]{" + str(minipage_width) + r"\textwidth}")
     latex.append(r"\centering")
@@ -115,6 +113,9 @@ def generate_latex_table(
     # Add title
     if title is not None:
         latex.append(f"\\textbf{{{title}}}\\\\[0.5em]")
+
+    if special_configs is None:
+        special_configs = {}
 
     # Begin table
     latex.append(r"\begin{tabular}{")
@@ -152,10 +153,24 @@ def generate_latex_table(
         else:
             row = annotator
 
-        # Add each metric value with appropriate color
-        for value, get_intensity_for_col in zip(values, get_color_intensity):
-            intensity = get_intensity_for_col(value)
-            color_name = "poscolor" if value >= 0 else "negcolor"
+        for j, value in enumerate(values):
+            col_name = metric_names[j]
+
+            intensity = get_color_intensity(value)
+            pos_color = "poscolor"
+            neg_color = "negcolor"
+
+            # If column has special configs, apply them to
+            # overwrite default values
+            if col_name in special_configs:
+                if "get_color_intensity" in special_configs[col_name]:
+                    intensity = special_configs[col_name]["get_color_intensity"](value)
+                if "pos_color" in special_configs[col_name]:
+                    pos_color = special_configs[col_name]["pos_color"]
+                if "neg_color" in special_configs[col_name]:
+                    neg_color = special_configs[col_name]["neg_color"]
+
+            color_name = pos_color if value >= 0 else neg_color
             row += f" & \\cellcolor{{{color_name}!{intensity}}}{{{value:.3f}}}"
 
         row += " \\\\"
@@ -191,6 +206,9 @@ def add_table_preamble(latex: list, title: str):
     )
     latex.append(
         r"\definecolor{altrow}{RGB}{245,245,245}   % Light grey for alternating rows"
+    )
+    latex.append(
+        r"\definecolor{lightgrey}{RGB}{210,210,210}  % Less light grey as alternative value color"
     )
 
     return latex
@@ -286,3 +304,44 @@ def get_latex_top_and_bottom_annotators(
     latex = add_table_postamble(latex)
 
     return "\n".join(latex)
+
+
+def get_latex_table_from_metrics_df(
+    metrics_df: pd.DataFrame,
+    title: str,
+):
+    latex = []
+    latex = add_table_preamble(latex, "Encouraged personality traits in Arena")
+
+    first_col_width = 0.4
+    metric_col_width = (1 - first_col_width) / len(metrics_df.columns[1:])
+
+    max_abs_value = abs(metrics_df.iloc[:, 1:-1].max(axis=1).max())
+    min_abs_value = abs(metrics_df.iloc[:, 1:-1].min(axis=1).min())
+
+    max_diff_value = metrics_df["Max diff"].max()
+
+    get_intensities = get_intensity_callable(max_abs_value, min_abs_value)
+
+    table = generate_latex_table(
+        annotators_data=metrics_df.to_numpy(),
+        metric_names=list(metrics_df.columns[1:]),
+        title=title,
+        minipage_width=0.8,
+        first_col_width=0.2,
+        metric_col_width=metric_col_width,
+        get_color_intensity=get_intensities,
+        vertical_spacing=13.5,
+        special_configs={
+            "Max diff": {
+                "get_color_intensity": get_intensity_callable(max_diff_value, 0),
+                "pos_color": "lightgrey",
+                "neg_color": "lightgrey",
+            }
+        },
+    )
+    latex.extend(table)
+    latex = add_table_postamble(latex)
+
+    latex_str = "\n".join(latex)
+    return latex_str
