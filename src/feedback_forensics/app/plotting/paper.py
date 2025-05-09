@@ -231,7 +231,9 @@ def generate_latex_table(
     latex.append(r"")
 
     # Column headers
-    latex.append(f"\\textbf{{Annotator}} & \\textbf{{{metric_name}}} \\\\")
+    latex.append(
+        f"\\textbf{{Generating a response that...}} & \\textbf{{{metric_name}}} \\\\"
+    )
     latex.append(r"\toprule")
 
     # Data rows
@@ -333,7 +335,7 @@ def get_latex_top_and_bottom_annotators(
     top_table = generate_latex_table(
         top_n_annotators,
         metric_name,
-        f"{top_n} Most Encouraged Traits",
+        "Five most encouraged traits",
         MINIPAGE_WIDTH,
         FIRST_COLUMN_WIDTH,
         SECOND_COLUMN_WIDTH,
@@ -345,10 +347,11 @@ def get_latex_top_and_bottom_annotators(
     latex.append(r"\hfill")
 
     # Generate bottom annotators table
+    # get number as written out string
     bottom_table = generate_latex_table(
         bottom_n_annotators,
         metric_name,
-        f"{bottom_n} Most Discouraged Traits",
+        "Five most discouraged traits",
         MINIPAGE_WIDTH,
         FIRST_COLUMN_WIDTH,
         SECOND_COLUMN_WIDTH,
