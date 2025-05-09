@@ -1,10 +1,12 @@
 """Plotting functions for the paper"""
 
+from typing import Callable
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import numpy as np
 import pandas as pd
 import scienceplots
+
 
 plt.style.use(["science", "nature"])
 
@@ -74,25 +76,25 @@ def get_top_and_bottom_annotators(
 
 
 def generate_latex_table(
-    annotators_data,
-    metric_names,
-    title,
-    minipage_width,
-    first_col_width,
-    metric_col_width,
-    get_color_intensity,
+    annotators_data: list[list[str | float]],
+    metric_names: list[str],
+    title: str | None,
+    minipage_width: float,
+    first_col_width: float,
+    metric_col_width: float,
+    get_color_intensity: Callable[[float], float],
 ):
     """Generate LaTeX code for a table of annotators.
 
     Args:
-        annotators_data: List of [annotator, value1, value2, ...] lists where each value
+        annotators_data (list[list[str | float]]): List of [annotator, value1, value2, ...] lists where each value
                         corresponds to a metric in metric_names
-        metric_names: List of names for the metrics being displayed
-        title: Title for this table section
-        minipage_width: Width of the minipage as fraction of textwidth
-        first_col_width: Width of first column as fraction of linewidth
-        metric_col_width: Width of each metric column as fraction of linewidth
-        get_color_intensity: Function to calculate color intensity
+        metric_names (list[str]): List of names for the metrics being displayed
+        title (str | None): Title for this table section
+        minipage_width (float): Width of the minipage as fraction of textwidth
+        first_col_width (float): Width of first column as fraction of linewidth
+        metric_col_width (float): Width of each metric column as fraction of linewidth
+        get_color_intensity (Callable[[float], float]): Function to calculate color intensity
 
     Returns:
         List of LaTeX code lines
@@ -106,7 +108,8 @@ def generate_latex_table(
     latex.append(r"\tablefontsize")  # Apply the font size
 
     # Add title
-    latex.append(f"\\textbf{{{title}}}\\\\[0.5em]")
+    if title is not None:
+        latex.append(f"\\textbf{{{title}}}\\\\[0.5em]")
 
     # Begin table
     latex.append(r"\begin{tabular}{")
@@ -163,6 +166,36 @@ def generate_latex_table(
     return latex
 
 
+def add_table_preamble(latex: list, title: str):
+    """Add the table preamble to the LaTeX code."""
+
+    latex.append(r"\begin{table}")
+    latex.append(r"\centering")
+    latex.append(r"\caption{" + title + r"}")
+    latex.append(r"\renewcommand{\arraystretch}{1.5}")
+    latex.append(r"\newlength{\rowspacing}")
+    latex.append(r"\setlength{\rowspacing}{1.5pt}")
+    latex.append(r"\newcommand{\tablefontsize}{\scriptsize}")
+
+    latex.append(
+        r"\definecolor{poscolor}{RGB}{158,176,255} % Light blue for positive values"
+    )
+    latex.append(
+        r"\definecolor{negcolor}{RGB}{255,173,173} % Light red for negative values"
+    )
+    latex.append(
+        r"\definecolor{altrow}{RGB}{245,245,245}   % Light grey for alternating rows"
+    )
+
+    return latex
+
+
+def add_table_postamble(latex: list):
+    """Add the table postamble to the LaTeX code."""
+    latex.append(r"\end{table}")
+    return latex
+
+
 def get_latex_top_and_bottom_annotators(
     annotator_metrics: dict,
     metric_name: str,
@@ -207,30 +240,7 @@ def get_latex_top_and_bottom_annotators(
 
     # Start building the LaTeX code
     latex = []
-
-    # Begin table
-    latex.append(r"\begin{table}")
-    latex.append(r"\centering")
-    latex.append(r"\caption{" + title + r"}")
-    latex.append(r"\renewcommand{\arraystretch}{1.5}")
-
-    # Define row spacing variable
-    latex.append(r"\newlength{\rowspacing}")
-    latex.append(r"\setlength{\rowspacing}{1.5pt}")
-
-    # Define font size command that can be changed
-    latex.append(r"\newcommand{\tablefontsize}{\scriptsize}")
-
-    # Define colors
-    latex.append(
-        r"\definecolor{poscolor}{RGB}{158,176,255} % Light blue for positive values"
-    )
-    latex.append(
-        r"\definecolor{negcolor}{RGB}{255,173,173} % Light red for negative values"
-    )
-    latex.append(
-        r"\definecolor{altrow}{RGB}{245,245,245}   % Light grey for alternating rows"
-    )
+    latex = add_table_preamble(latex, title)
 
     # Generate top annotators table
     top_table = generate_latex_table(
@@ -260,7 +270,6 @@ def get_latex_top_and_bottom_annotators(
     )
     latex.extend(bottom_table)
 
-    # End the table environment
-    latex.append(r"\end{table}")
+    latex = add_table_postamble(latex)
 
     return "\n".join(latex)
