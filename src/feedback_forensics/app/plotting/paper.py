@@ -187,16 +187,42 @@ def generate_latex_table(
     return latex
 
 
-def add_table_preamble(latex: list, title: str):
-    """Add the table preamble to the LaTeX code."""
+def get_latex_doc_preamble():
+    """Get the LaTeX preamble for a document."""
 
-    latex.append(r"\begin{table}")
-    latex.append(r"\centering")
-    latex.append(r"\caption{" + title + r"}")
-    latex.append(r"\renewcommand{\arraystretch}{1.5}")
+    latex = []
+
+    latex.append(r"\usepackage{colortbl}")
+    latex.append(r"\usepackage{xcolor}")
+    latex.append(r"\usepackage{array}")
+    latex.append(r"\usepackage{booktabs}")
+    latex.append(
+        r"\definecolor{poscolor}{HTML}{9eb0ff} % Light blue for positive values"
+    )
+    latex.append(
+        r"\definecolor{negcolor}{HTML}{ffadad} % Light red for negative values"
+    )
+    latex.append(
+        r"\definecolor{altrow}{HTML}{f5f5f5}   % Light grey for alternating rows"
+    )
+
     latex.append(r"\newlength{\rowspacing}")
     latex.append(r"\setlength{\rowspacing}{1.5pt}")
     latex.append(r"\newcommand{\tablefontsize}{\scriptsize}")
+
+    return "\n".join(latex)
+
+
+def add_table_preamble(latex: list, title: str):
+    """Add the table preamble to the LaTeX code."""
+
+    latex.append(r"\begin{table}[h]")
+    latex.append(r"\centering")
+    latex.append(r"\caption{" + title + r"}")
+    latex.append(r"\vspace{0.5em}")  # Add vertical space after caption
+    latex.append(r"\renewcommand{\arraystretch}{1.1}")
+    latex.append(r"\setlength{\rowspacing}{1.5pt}")
+    latex.append(r"\renewcommand{\tablefontsize}{\scriptsize}")
 
     latex.append(
         r"\definecolor{poscolor}{RGB}{158,176,255} % Light blue for positive values"
@@ -257,8 +283,8 @@ def get_latex_top_and_bottom_annotators(
     Returns:
         String containing LaTeX code for just the table content
     """
-    MINIPAGE_WIDTH = 0.45
-    FIRST_COLUMN_WIDTH = 0.82
+    MINIPAGE_WIDTH = 0.48
+    FIRST_COLUMN_WIDTH = 0.7
     SECOND_COLUMN_WIDTH = 0.18
 
     top_n_annotators, bottom_n_annotators, max_abs_value, min_abs_value = (
@@ -311,7 +337,7 @@ def get_latex_table_from_metrics_df(
     title: str,
 ):
     latex = []
-    latex = add_table_preamble(latex, "Encouraged personality traits in Arena")
+    latex = add_table_preamble(latex, title=title)
 
     first_col_width = 0.4
     metric_col_width = (1 - first_col_width) / len(metrics_df.columns[1:])
@@ -326,8 +352,8 @@ def get_latex_table_from_metrics_df(
     table = generate_latex_table(
         annotators_data=metrics_df.to_numpy(),
         metric_names=list(metrics_df.columns[1:]),
-        title=title,
-        minipage_width=0.8,
+        title=None,
+        minipage_width=1,
         first_col_width=0.2,
         metric_col_width=metric_col_width,
         get_color_intensity=get_intensities,
