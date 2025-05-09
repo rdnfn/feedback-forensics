@@ -251,6 +251,7 @@ class DatasetHandler:
     def __init__(self, cache: dict | None = None, avail_datasets: dict | None = None):
         self._cache = cache
         self._avail_datasets = avail_datasets
+        self._in_multi_annotator_cols_mode = False
 
         self._col_handlers = {}
 
@@ -304,6 +305,7 @@ class DatasetHandler:
     def reset_handlers(self):
         """Reset the dataset handlers."""
         self._col_handlers = {}
+        self._in_multi_annotator_cols_mode = False
 
     def add_data_from_name(self, name: str):
         """Load data from a given dataset name."""
@@ -448,20 +450,29 @@ class DatasetHandler:
                 for annotator_key in annotator_keys
             ]
 
-        if self.is_single_dataset:
+        assert len(annotator_visible_names) == len(
+            annotator_keys
+        ), "annotator_visible_names and annotator_keys must have the same length"
+
+        multi_annotator_cols_mode = False
+
+        if self.is_single_dataset or self._in_multi_annotator_cols_mode:
             # if only has single dataset, just duplicate
             # the single dataset (handler) with new annotator columns
             dataset_name = self.first_handler_name
             votes_dict = self.first_handler.votes_dict
             dataset_names = [dataset_name] * len(annotator_visible_names)
             votes_dicts = [votes_dict] * len(annotator_visible_names)
+            logger.info(f"Setting annotator cols to {annotator_visible_names}")
+            if len(annotator_visible_names) > 1:
+                multi_annotator_cols_mode = True
         else:
             # if is not single dataset, can currently only handle one annotator column
             if len(annotator_visible_names) > 1:
                 logger.warning(
                     "Only one annotator column is supported for multi-dataset handler. "
                     "Ignoring additional annotator columns. "
-                    f"Currently {len(self._col_handlers)} datasets are loaded with the following"
+                    f"Currently {len(self._col_handlers)} datasets are loaded with the following "
                     f"annotators: {annotator_visible_names}. Only using the first annotator column "
                     f"({annotator_visible_names[0]})."
                 )
@@ -493,6 +504,7 @@ class DatasetHandler:
         }
 
         self.reset_handlers()
+        self._in_multi_annotator_cols_mode = multi_annotator_cols_mode
         self.load_data_from_votes_dicts(votes_dicts)
 
     def get_overall_metrics(self):
