@@ -67,9 +67,10 @@ def get_top_and_bottom_annotators(
         float(row[1]) if isinstance(row[1], str) else row[1]
         for row in top_n_annotators + bottom_n_annotators
     ]
-    max_abs_value = max(abs(max(all_values)), abs(min(all_values)))
+    max_abs_value = abs(max(all_values))
+    min_abs_value = abs(min(all_values))
 
-    return top_n_annotators, bottom_n_annotators, max_abs_value
+    return top_n_annotators, bottom_n_annotators, max_abs_value, min_abs_value
 
 
 def plot_top_and_bottom_annotators(
@@ -191,7 +192,6 @@ def generate_latex_table(
     minipage_width,
     first_col_width,
     second_col_width,
-    color_name,
     get_color_intensity,
 ):
     """Generate LaTeX code for a table of annotators.
@@ -203,7 +203,6 @@ def generate_latex_table(
         minipage_width: Width of the minipage as fraction of textwidth
         first_col_width: Width of first column as fraction of linewidth
         second_col_width: Width of second column as fraction of linewidth
-        color_name: Name of the LaTeX color to use for cell backgrounds
         get_color_intensity: Function to calculate color intensity
 
     Returns:
@@ -238,6 +237,9 @@ def generate_latex_table(
     # Data rows
     for i, (annotator, value) in enumerate(annotators_data):
         intensity = get_color_intensity(value)
+        # Choose color based on the sign of the value
+        color_name = "poscolor" if value >= 0 else "negcolor"
+
         if i % 2 == 0:
             latex.append(
                 f"\\rowcolor{{altrow}} {annotator} & \\cellcolor{{{color_name}!{intensity}}}{{{value:.3f}}} \\\\"
@@ -263,6 +265,7 @@ def get_latex_top_and_bottom_annotators(
     metric_name: str,
     top_n: int = 5,
     bottom_n: int = 5,
+    title: str = "Encouraged Personality Traits",
 ) -> str:
     """Generate LaTeX code for just the table content showing top and bottom annotators.
 
@@ -282,7 +285,7 @@ def get_latex_top_and_bottom_annotators(
     FIRST_COLUMN_WIDTH = 0.82
     SECOND_COLUMN_WIDTH = 0.18
 
-    top_n_annotators, bottom_n_annotators, max_abs_value = (
+    top_n_annotators, bottom_n_annotators, max_abs_value, min_abs_value = (
         get_top_and_bottom_annotators(
             annotator_metrics, top_n, bottom_n, format_values=False
         )
@@ -290,10 +293,14 @@ def get_latex_top_and_bottom_annotators(
 
     # Function to calculate color intensity based on value
     def get_color_intensity(value):
-        normalized_val = abs(value) / max_abs_value if max_abs_value > 0 else 0
-        # Scale to percentage between 30% and 100% for visibility
-        intensity = 30 + (normalized_val * 70)
-        return int(intensity)
+        if value == 0:
+            return 0
+        elif value > 0:
+            normalized_val = value / max_abs_value if max_abs_value > 0 else 0
+        else:
+            normalized_val = abs(value) / min_abs_value if min_abs_value > 0 else 0
+        intensity = normalized_val * 100
+        return float(f"{intensity:.1f}")
 
     # Start building the LaTeX code
     latex = []
@@ -301,7 +308,7 @@ def get_latex_top_and_bottom_annotators(
     # Begin table
     latex.append(r"\begin{table}")
     latex.append(r"\centering")
-    latex.append(r"\caption{Top and Bottom Annotators by " + metric_name + r"}")
+    latex.append(r"\caption{" + title + r"}")
     latex.append(r"\renewcommand{\arraystretch}{1.5}")
 
     # Define row spacing variable
@@ -309,7 +316,7 @@ def get_latex_top_and_bottom_annotators(
     latex.append(r"\setlength{\rowspacing}{1.5pt}")
 
     # Define font size command that can be changed
-    latex.append(r"\newcommand{\tablefontsize}{\small}")  # Default to \small
+    latex.append(r"\newcommand{\tablefontsize}{\scriptsize}")
 
     # Define colors
     latex.append(
@@ -326,11 +333,10 @@ def get_latex_top_and_bottom_annotators(
     top_table = generate_latex_table(
         top_n_annotators,
         metric_name,
-        f"Top {top_n} Annotators",
+        f"{top_n} Most Encouraged Traits",
         MINIPAGE_WIDTH,
         FIRST_COLUMN_WIDTH,
         SECOND_COLUMN_WIDTH,
-        "poscolor",
         get_color_intensity,
     )
     latex.extend(top_table)
@@ -342,11 +348,10 @@ def get_latex_top_and_bottom_annotators(
     bottom_table = generate_latex_table(
         bottom_n_annotators,
         metric_name,
-        f"Bottom {bottom_n} Annotators",
+        f"{bottom_n} Most Discouraged Traits",
         MINIPAGE_WIDTH,
         FIRST_COLUMN_WIDTH,
         SECOND_COLUMN_WIDTH,
-        "negcolor",
         get_color_intensity,
     )
     latex.extend(bottom_table)
