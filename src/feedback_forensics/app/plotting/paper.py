@@ -75,22 +75,23 @@ def get_top_and_bottom_annotators(
 
 def generate_latex_table(
     annotators_data,
-    metric_name,
+    metric_names,
     title,
     minipage_width,
     first_col_width,
-    second_col_width,
+    metric_col_width,
     get_color_intensity,
 ):
     """Generate LaTeX code for a table of annotators.
 
     Args:
-        annotators_data: List of [annotator, value] pairs
-        metric_name: Name of the metric being displayed
+        annotators_data: List of [annotator, value1, value2, ...] lists where each value
+                        corresponds to a metric in metric_names
+        metric_names: List of names for the metrics being displayed
         title: Title for this table section
         minipage_width: Width of the minipage as fraction of textwidth
         first_col_width: Width of first column as fraction of linewidth
-        second_col_width: Width of second column as fraction of linewidth
+        metric_col_width: Width of each metric column as fraction of linewidth
         get_color_intensity: Function to calculate color intensity
 
     Returns:
@@ -109,35 +110,47 @@ def generate_latex_table(
 
     # Begin table
     latex.append(r"\begin{tabular}{")
+    # First column for annotator names
     latex.append(
         r"    >{\raggedright\arraybackslash}p{" + str(first_col_width) + r"\linewidth}"
     )
-    latex.append(
-        r"    >{\centering\arraybackslash}p{" + str(second_col_width) + r"\linewidth}"
-    )
+    # Add a column for each metric
+    for _ in metric_names:
+        latex.append(
+            r"    >{\centering\arraybackslash}p{"
+            + str(metric_col_width)
+            + r"\linewidth}"
+        )
     latex.append(r"}")
     latex.append(r"")
 
     # Column headers
-    latex.append(
-        f"\\textbf{{Generating a response that...}} & \\textbf{{{metric_name}}} \\\\"
-    )
+    header = "\\textbf{Generating a response that...}"
+    for metric_name in metric_names:
+        header += f" & \\textbf{{{metric_name}}}"
+    header += " \\\\"
+    latex.append(header)
     latex.append(r"\toprule")
 
     # Data rows
-    for i, (annotator, value) in enumerate(annotators_data):
-        intensity = get_color_intensity(value)
-        # Choose color based on the sign of the value
-        color_name = "poscolor" if value >= 0 else "negcolor"
+    for i, row_data in enumerate(annotators_data):
+        annotator = row_data[0]
+        values = row_data[1:]
 
+        # Start the row with annotator name and row color if needed
         if i % 2 == 0:
-            latex.append(
-                f"\\rowcolor{{altrow}} {annotator} & \\cellcolor{{{color_name}!{intensity}}}{{{value:.3f}}} \\\\"
-            )
+            row = f"\\rowcolor{{altrow}} {annotator}"
         else:
-            latex.append(
-                f"{annotator} & \\cellcolor{{{color_name}!{intensity}}}{{{value:.3f}}} \\\\"
-            )
+            row = annotator
+
+        # Add each metric value with appropriate color
+        for value in values:
+            intensity = get_color_intensity(value)
+            color_name = "poscolor" if value >= 0 else "negcolor"
+            row += f" & \\cellcolor{{{color_name}!{intensity}}}{{{value:.3f}}}"
+
+        row += " \\\\"
+        latex.append(row)
 
         # Add spacing after each row (except the last one)
         if i < len(annotators_data) - 1:
@@ -221,13 +234,13 @@ def get_latex_top_and_bottom_annotators(
 
     # Generate top annotators table
     top_table = generate_latex_table(
-        top_n_annotators,
-        metric_name,
-        "Five most encouraged traits",
-        MINIPAGE_WIDTH,
-        FIRST_COLUMN_WIDTH,
-        SECOND_COLUMN_WIDTH,
-        get_color_intensity,
+        annotators_data=top_n_annotators,
+        metric_names=[metric_name],
+        title="Five most encouraged traits",
+        minipage_width=MINIPAGE_WIDTH,
+        first_col_width=FIRST_COLUMN_WIDTH,
+        metric_col_width=SECOND_COLUMN_WIDTH,
+        get_color_intensity=get_color_intensity,
     )
     latex.extend(top_table)
 
@@ -237,13 +250,13 @@ def get_latex_top_and_bottom_annotators(
     # Generate bottom annotators table
     # get number as written out string
     bottom_table = generate_latex_table(
-        bottom_n_annotators,
-        metric_name,
-        "Five most discouraged traits",
-        MINIPAGE_WIDTH,
-        FIRST_COLUMN_WIDTH,
-        SECOND_COLUMN_WIDTH,
-        get_color_intensity,
+        annotators_data=bottom_n_annotators,
+        metric_names=[metric_name],
+        title="Five most discouraged traits",
+        minipage_width=MINIPAGE_WIDTH,
+        first_col_width=FIRST_COLUMN_WIDTH,
+        metric_col_width=SECOND_COLUMN_WIDTH,
+        get_color_intensity=get_color_intensity,
     )
     latex.extend(bottom_table)
 
