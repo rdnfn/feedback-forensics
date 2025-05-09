@@ -335,12 +335,12 @@ def get_latex_top_and_bottom_annotators(
 def get_latex_table_from_metrics_df(
     metrics_df: pd.DataFrame,
     title: str,
+    first_col_width: float = 0.2,
 ):
     latex = []
     latex = add_table_preamble(latex, title=title)
 
-    first_col_width = 0.4
-    metric_col_width = (1 - first_col_width) / len(metrics_df.columns[1:])
+    metric_col_width = (0.8 - first_col_width) / len(metrics_df.columns[1:])
 
     max_abs_value = abs(metrics_df.iloc[:, 1:-1].max(axis=1).max())
     min_abs_value = abs(metrics_df.iloc[:, 1:-1].min(axis=1).min())
@@ -354,7 +354,7 @@ def get_latex_table_from_metrics_df(
         metric_names=list(metrics_df.columns[1:]),
         title=None,
         minipage_width=1,
-        first_col_width=0.2,
+        first_col_width=first_col_width,
         metric_col_width=metric_col_width,
         get_color_intensity=get_intensities,
         vertical_spacing=13.5,
