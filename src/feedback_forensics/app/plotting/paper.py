@@ -85,6 +85,7 @@ def generate_latex_table(
     vertical_spacing: float,
     get_color_intensity: Callable[[float], float] | None = None,
     special_configs: dict | None = None,
+    precision: int = 2,
 ):
     """Generate LaTeX code for a table of annotators.
 
@@ -171,7 +172,10 @@ def generate_latex_table(
                     neg_color = special_configs[col_name]["neg_color"]
 
             color_name = pos_color if value >= 0 else neg_color
-            row += f" & \\cellcolor{{{color_name}!{intensity}}}{{{value:.3f}}}"
+            # Default precision is 3 decimal places
+            row += (
+                f" & \\cellcolor{{{color_name}!{intensity}}}{{{value:.{precision}f}}}"
+            )
 
         row += " \\\\"
         latex.append(row)
@@ -205,6 +209,10 @@ def get_latex_doc_preamble():
     latex.append(
         r"\definecolor{altrow}{HTML}{f5f5f5}   % Light grey for alternating rows"
     )
+    latex.append(r"\definecolor{headercolor}{HTML}{fcf1cf} % Light yellow for headers")
+    latex.append(
+        r"\definecolor{lightgrey}{RGB}{210,210,210}  % Less light grey as alternative value color"
+    )
 
     latex.append(r"\newlength{\rowspacing}")
     latex.append(r"\setlength{\rowspacing}{1.5pt}")
@@ -223,19 +231,6 @@ def add_table_preamble(latex: list, title: str):
     latex.append(r"\renewcommand{\arraystretch}{1.1}")
     latex.append(r"\setlength{\rowspacing}{1.5pt}")
     latex.append(r"\renewcommand{\tablefontsize}{\scriptsize}")
-
-    latex.append(
-        r"\definecolor{poscolor}{RGB}{158,176,255} % Light blue for positive values"
-    )
-    latex.append(
-        r"\definecolor{negcolor}{RGB}{255,173,173} % Light red for negative values"
-    )
-    latex.append(
-        r"\definecolor{altrow}{RGB}{245,245,245}   % Light grey for alternating rows"
-    )
-    latex.append(
-        r"\definecolor{lightgrey}{RGB}{210,210,210}  % Less light grey as alternative value color"
-    )
 
     return latex
 
@@ -267,7 +262,8 @@ def get_latex_top_and_bottom_annotators(
     metric_name: str,
     top_n: int = 5,
     bottom_n: int = 5,
-    title: str = "Encouraged Personality Traits",
+    top_title: str = "Five most encouraged traits",
+    bottom_title: str = "Five most discouraged traits",
 ) -> str:
     """Generate LaTeX code for just the table content showing top and bottom annotators.
 
@@ -279,6 +275,8 @@ def get_latex_top_and_bottom_annotators(
         metric_name: Name of the metric being displayed
         top_n: Number of top annotators to show
         bottom_n: Number of bottom annotators to show
+        top_title: Title of the top annotators table
+        bottom_title: Title of the bottom annotators table
 
     Returns:
         String containing LaTeX code for just the table content
@@ -295,13 +293,13 @@ def get_latex_top_and_bottom_annotators(
 
     # Start building the LaTeX code
     latex = []
-    latex = add_table_preamble(latex, title)
+    # latex = add_table_preamble(latex, title)
 
     # Generate top annotators table
     top_table = generate_latex_table(
         annotators_data=top_n_annotators,
         metric_names=[metric_name],
-        title="Five most encouraged traits",
+        title=top_title,
         minipage_width=MINIPAGE_WIDTH,
         first_col_width=FIRST_COLUMN_WIDTH,
         metric_col_width=SECOND_COLUMN_WIDTH,
@@ -318,7 +316,7 @@ def get_latex_top_and_bottom_annotators(
     bottom_table = generate_latex_table(
         annotators_data=bottom_n_annotators,
         metric_names=[metric_name],
-        title="Five most discouraged traits",
+        title=bottom_title,
         minipage_width=MINIPAGE_WIDTH,
         first_col_width=FIRST_COLUMN_WIDTH,
         metric_col_width=SECOND_COLUMN_WIDTH,
@@ -327,7 +325,7 @@ def get_latex_top_and_bottom_annotators(
     )
     latex.extend(bottom_table)
 
-    latex = add_table_postamble(latex)
+    # latex = add_table_postamble(latex)
 
     return "\n".join(latex)
 
@@ -338,9 +336,9 @@ def get_latex_table_from_metrics_df(
     first_col_width: float = 0.2,
 ):
     latex = []
-    latex = add_table_preamble(latex, title=title)
+    # latex = add_table_preamble(latex, title=title)
 
-    metric_col_width = (0.8 - first_col_width) / len(metrics_df.columns[1:])
+    metric_col_width = (0.8 - first_col_width) / (len(metrics_df.columns[1:]) * 1.1)
 
     max_abs_value = abs(metrics_df.iloc[:, 1:-1].max(axis=1).max())
     min_abs_value = abs(metrics_df.iloc[:, 1:-1].min(axis=1).min())
@@ -367,7 +365,7 @@ def get_latex_table_from_metrics_df(
         },
     )
     latex.extend(table)
-    latex = add_table_postamble(latex)
+    # latex = add_table_postamble(latex)
 
     latex_str = "\n".join(latex)
     return latex_str
