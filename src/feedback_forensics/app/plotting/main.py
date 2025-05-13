@@ -189,4 +189,5 @@ def get_annotator_table_df(
         datatype=["str"] + ["number"] * len(metric_columns),
         # show_search="filter", TODO: reactivate once sorting issue by Gradio is fixed
         interactive=False,
+        pinned_columns=1,
     )
