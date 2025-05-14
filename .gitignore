@@ -182,5 +182,6 @@ secrets.toml
 
 data/input
 data/output
+notebooks/output
 
 *.tex
