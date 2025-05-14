@@ -34,7 +34,12 @@ METRIC_COL_OPTIONS = {
     "cohens_kappa": {
         "name": "Cohen's kappa",
         "short": "kappa",
-        "descr": "Cohen's kappa: measures agreement beyond chance, 2 * (accuracy - 0.5).",
+        "descr": "Cohen's kappa: measures agreement beyond chance.",
+    },
+    "cohens_kappa_randomized": {
+        "name": "Cohen's kappa (randomized)",
+        "short": "kappa_randomized",
+        "descr": "Cohen's kappa: measures agreement beyond chance. Special version where we assume that at least one of the annotators had no access to order information, meaning random chance agreement has a probability of 0.5.",
     },
 }
 
@@ -71,7 +76,27 @@ def get_cohens_kappa(
     This takes into account agreement across categories (including non-text_a/text_b votes).
     """
 
-    # TODO: replace with sklearn.metrics.cohen_kappa_score
+    kappa = sklearn.metrics.cohen_kappa_score(
+        annotation_a,
+        annotation_b,
+        labels=["text_a", "text_b"],
+    )
+    return kappa
+
+
+def get_cohens_kappa_randomized(
+    value_counts: pd.Series, *, annotation_a=None, annotation_b=None
+) -> float:
+    """
+    Cohen's kappa: measures agreement beyond chance.
+
+    This version assumes that at least one of the annotators
+    had no access to order information, making the probability
+    of chance agreement at 0.5.
+
+    In the regular version, the value will always be 0 if one
+    annotator is imbalanced (e.g., by construction).
+    """
 
     accuracy = get_acc(value_counts)
     return 2 * (accuracy - 0.5)
@@ -94,7 +119,9 @@ def get_principle_strength(
     This is computed as: (Cohen's kappa) * relevance
     which simplifies to: 2 * (accuracy - 0.5) * relevance
     """
-    cohens_kappa = get_cohens_kappa(value_counts)
+    cohens_kappa = get_cohens_kappa_randomized(
+        value_counts, annotation_a=annotation_a, annotation_b=annotation_b
+    )
     relevance = get_relevance(value_counts)
     return cohens_kappa * relevance
 
@@ -137,6 +164,7 @@ def compute_annotator_metrics(
         "relevance": get_relevance,
         "strength": get_principle_strength,
         "cohens_kappa": get_cohens_kappa,
+        "cohens_kappa_randomized": get_cohens_kappa_randomized,
         "num_votes": get_num_votes,
         "agreed": get_agreed,
         "disagreed": get_disagreed,
@@ -179,6 +207,13 @@ def compute_annotator_metrics(
         ) & valid_votes_mask
         disagree_mask = valid_votes_mask & ~agree_mask
 
+        annotation_a = votes_df[annotator_col].copy()
+        annotation_b = votes_df[ref_annotator_col].copy()
+
+        # make sure all annotations are strings
+        annotation_a = annotation_a.astype(str)
+        annotation_b = annotation_b.astype(str)
+
         # Initialize with "Not applicable" values
         agreement = pd.Series("Not applicable", index=votes_df.index)
         # Set values based on masks
@@ -191,7 +226,9 @@ def compute_annotator_metrics(
         for metric_name, metric_fn in metric_fns.items():
             if metric_name not in metrics:
                 metrics[metric_name] = {}
-            metrics[metric_name][annotator_name] = metric_fn(value_counts)
+            metrics[metric_name][annotator_name] = metric_fn(
+                value_counts, annotation_a=annotation_a, annotation_b=annotation_b
+            )
 
     return {
         "annotator_names": annotator_names,
