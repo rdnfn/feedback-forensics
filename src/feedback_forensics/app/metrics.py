@@ -75,12 +75,17 @@ def get_cohens_kappa(
 
     This takes into account agreement across categories (including non-text_a/text_b votes).
     """
-
-    kappa = sklearn.metrics.cohen_kappa_score(
-        annotation_a,
-        annotation_b,
-        labels=["text_a", "text_b"],
-    )
+    try:
+        kappa = sklearn.metrics.cohen_kappa_score(
+            annotation_a,
+            annotation_b,
+            labels=["text_a", "text_b"],
+        )
+    except ValueError:
+        logger.warning(
+            f"Cohen's kappa could not be computed because the annotators have no agreement. Returning 0."
+        )
+        kappa = 0
     return kappa
 
 
