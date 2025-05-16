@@ -538,8 +538,6 @@ class DatasetHandler:
             metrics_df["Max diff"] = abs(
                 metrics_df.iloc[:, 1:].max(axis=1) - metrics_df.iloc[:, 1:].min(axis=1)
             )
-
-        if add_max_diff_col:
             # by default, sort by max diff, then by annotator names
             sort_by = ["Max diff"] + list(metrics_df.columns[1:])
             metrics_df = metrics_df.sort_values(by=sort_by, ascending=False)
