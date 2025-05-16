@@ -10,11 +10,12 @@ from feedback_forensics.app.metrics import (
     get_relevance,
     get_principle_strength,
     get_cohens_kappa,
+    get_cohens_kappa_randomized,
     get_num_votes,
     get_agreed,
     get_disagreed,
     get_not_applicable,
-    compute_metrics,
+    compute_annotator_metrics,
 )
 
 
@@ -88,27 +89,68 @@ def test_get_principle_strength():
     assert get_principle_strength(value_counts) == 0.0
 
 
-def test_get_cohens_kappa():
+def test_get_cohens_kappa_randomized():
     """Test Cohen's kappa calculation for different vote distributions."""
     # Test with perfect agreement
     value_counts = pd.Series({"Agree": 5, "Disagree": 0, "Not applicable": 0})
-    assert get_cohens_kappa(value_counts) == 1.0  # 2 * (1.0 - 0.5)
+    assert get_cohens_kappa_randomized(value_counts) == 1.0  # 2 * (1.0 - 0.5)
 
     # Test with perfect disagreement
     value_counts = pd.Series({"Agree": 0, "Disagree": 5, "Not applicable": 0})
-    assert get_cohens_kappa(value_counts) == -1.0  # 2 * (0.0 - 0.5)
+    assert get_cohens_kappa_randomized(value_counts) == -1.0  # 2 * (0.0 - 0.5)
 
     # Test with random performance (equal agree/disagree)
     value_counts = pd.Series({"Agree": 3, "Disagree": 3, "Not applicable": 2})
-    assert get_cohens_kappa(value_counts) == 0.0  # 2 * (0.5 - 0.5)
+    assert get_cohens_kappa_randomized(value_counts) == 0.0  # 2 * (0.5 - 0.5)
 
     # Test with 75% agreement
     value_counts = pd.Series({"Agree": 3, "Disagree": 1, "Not applicable": 0})
-    assert get_cohens_kappa(value_counts) == 0.5  # 2 * (0.75 - 0.5)
+    assert get_cohens_kappa_randomized(value_counts) == 0.5  # 2 * (0.75 - 0.5)
 
     # Test with no relevant votes
     value_counts = pd.Series({"Not applicable": 5})
-    assert get_cohens_kappa(value_counts) == 0.0  # Returns 0 for no relevant votes
+    assert (
+        get_cohens_kappa_randomized(value_counts) == 0.0
+    )  # Returns 0 for no relevant votes
+
+
+def test_get_cohens_kappa():
+    """Test Cohen's kappa calculation for different vote distributions."""
+    # Test with perfect agreement
+    annotations_a = ["text_b", "text_a", "text_a", "text_a", "text_a"]
+    annotations_b = ["text_b", "text_a", "text_a", "text_a", "text_a"]
+    assert (
+        get_cohens_kappa(None, annotation_a=annotations_a, annotation_b=annotations_b)
+        == 1.0
+    )
+
+    # Test with perfect disagreement
+    annotations_a = ["text_b", "text_a", "text_b", "text_a", "text_a", "text_b"]
+    annotations_b = ["text_a", "text_b", "text_a", "text_b", "text_b", "text_a"]
+    assert (
+        get_cohens_kappa(None, annotation_a=annotations_a, annotation_b=annotations_b)
+        == -1.0
+    )
+
+    # Test with random performance
+    annotations_a = ["text_a", "text_a", "text_a", "text_a", "text_a"]
+    annotations_b = ["text_b", "text_b", "text_b", "text_b", "text_b"]
+    assert (
+        get_cohens_kappa(
+            None,
+            annotation_a=annotations_a,
+            annotation_b=annotations_b,
+        )
+        == 0.0
+    )
+
+    # Test with no relevant votes
+    annotations_a = ["text_a", "text_b", "text_b", "text_a", "text_b"]
+    annotations_b = ["text_a", "text_a", "text_b", "text_a", "text_a"]
+    assert (
+        get_cohens_kappa(None, annotation_a=annotations_a, annotation_b=annotations_b)
+        > 0.0
+    )
 
 
 def test_vote_count_functions():
@@ -135,6 +177,9 @@ def test_compute_metrics():
         }
     )
 
+    for col in ["preferred_text", "p1", "p2"]:
+        votes_df[col] = votes_df[col].astype("category")
+
     votes_dict = {
         "df": votes_df,
         "shown_annotator_rows": ["p1", "p2"],
@@ -151,7 +196,12 @@ def test_compute_metrics():
         "reference_annotator_col": "preferred_text",
     }
 
-    metrics = compute_metrics(votes_dict)
+    metrics = compute_annotator_metrics(
+        votes_df=votes_dict["df"],
+        annotator_metadata=votes_dict["annotator_metadata"],
+        annotator_cols=votes_dict["shown_annotator_rows"],
+        ref_annotator_col=votes_dict["reference_annotator_col"],
+    )
 
     # Check structure
     assert "annotator_names" in metrics
@@ -164,7 +214,7 @@ def test_compute_metrics():
 
     # Check metrics for p1
     p1_metrics = {
-        metric: metrics["metrics"][metric]["by_annotator"]["p1"]
+        metric: metrics["metrics"][metric]["p1"]
         for metric in ["agreement", "acc", "relevance", "strength"]
     }
 
@@ -178,14 +228,12 @@ def test_compute_metrics_empty_data():
     """Test metric computation with empty input data."""
     empty_df = pd.DataFrame(columns=["comparison_id", "principle", "vote"])
 
-    votes_dict = {
-        "df": empty_df,
-        "shown_annotator_rows": [],
-        "annotator_metadata": {},
-        "reference_annotator_col": "vote",
-    }
-
-    metrics = compute_metrics(votes_dict)
+    metrics = compute_annotator_metrics(
+        votes_df=empty_df,
+        annotator_metadata={},
+        annotator_cols=[],
+        ref_annotator_col="vote",
+    )
 
     assert len(metrics["annotator_names"]) == 0
     assert metrics["num_pairs"] == 0

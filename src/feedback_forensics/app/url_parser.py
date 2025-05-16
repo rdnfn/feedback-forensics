@@ -2,7 +2,7 @@ import gradio as gr
 from loguru import logger
 import re
 
-from feedback_forensics.app.datasets import (
+from feedback_forensics.app.data.datasets import (
     get_available_datasets,
     get_stringname_from_urlname,
     get_urlname_from_stringname,
@@ -39,6 +39,8 @@ def get_config_from_query_params(request: gr.Request) -> dict:
         config["annotator_rows"] = load_str_list(params["ann_rows"])
     if "ann_cols" in params:
         config["annotator_cols"] = load_str_list(params["ann_cols"])
+    if "ref_models" in params:
+        config["reference_models"] = load_str_list(params["ref_models"])
     if "metric" in params:
         config["metric"] = params["metric"]
     if "sort_by" in params:
@@ -59,6 +61,7 @@ def get_url_with_query_params(
     base_url: str,
     annotator_rows: list[str] = None,
     annotator_cols: list[str] = None,
+    reference_models: list[str] = None,
     metric: str = None,
     sort_by: str = None,
     sort_order: str = None,
@@ -81,6 +84,10 @@ def get_url_with_query_params(
     if annotator_cols is not None and len(annotator_cols) > 0:
         url_ready_annotator_cols = [make_str_url_ready(val) for val in annotator_cols]
         url += f"&ann_cols={','.join(url_ready_annotator_cols)}"
+
+    if reference_models is not None and len(reference_models) > 0:
+        url_ready_ref_models = [make_str_url_ready(val) for val in reference_models]
+        url += f"&ref_models={','.join(url_ready_ref_models)}"
 
     if metric is not None:
         url += f"&metric={make_str_url_ready(metric)}"

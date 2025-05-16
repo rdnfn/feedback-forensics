@@ -82,21 +82,16 @@ def get_annotator_table_df(
     initial_dataset = list(annotator_metrics.keys())[0]
     metric = metric_name  # Use the provided metric_name instead of hardcoded "strength"
     metric_columns = {
-        dataset_name: list(dataset_dict["metrics"][metric]["by_annotator"].values())
+        dataset_name: list(dataset_dict["metrics"][metric].values())
         for dataset_name, dataset_dict in annotator_metrics.items()
     }
-    annotator_keys = list(
-        annotator_metrics[initial_dataset]["metrics"][metric]["by_annotator"].keys()
-    )
+    annotator_keys = list(annotator_metrics[initial_dataset]["metrics"][metric].keys())
 
     headers = ["Annotator"] + list(metric_columns.keys())
 
     # sanity check
     for dataset_name, dataset_dict in annotator_metrics.items():
-        assert (
-            list(dataset_dict["metrics"][metric]["by_annotator"].keys())
-            == annotator_keys
-        )
+        assert list(dataset_dict["metrics"][metric].keys()) == annotator_keys
 
     shown_df = pd.DataFrame(
         {
@@ -194,4 +189,5 @@ def get_annotator_table_df(
         datatype=["str"] + ["number"] * len(metric_columns),
         # show_search="filter", TODO: reactivate once sorting issue by Gradio is fixed
         interactive=False,
+        pinned_columns=1,
     )

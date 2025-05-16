@@ -1,0 +1,349 @@
+{
+  "metadata": {
+    "version": "2.0",
+    "description": "Annotated pairs dataset with annotations from ICAI",
+    "created_at": "2025-05-07T18:35:36Z",
+    "dataset_name": "ICAI Training Dataset - 2025-05-07_18-35-25",
+    "default_annotator": "ba751e7b",
+    "available_metadata_keys_per_comparison": [
+      "index"
+    ]
+  },
+  "annotators": {
+    "ba751e7b": {
+      "name": "preferred_text",
+      "description": "Default annotator from original dataset (from column `preferred_text`)",
+      "type": "unknown"
+    },
+    "bf731c7f": {
+      "description": "Select the response that is more concise",
+      "type": "principle"
+    },
+    "d4f11654": {
+      "description": "Select the response that is too long",
+      "type": "principle"
+    },
+    "11bb8171": {
+      "description": "Select the response that is more verbose",
+      "type": "principle"
+    },
+    "29dbae6e": {
+      "description": "Select the response that provides a numbered list format",
+      "type": "principle"
+    },
+    "2dbc7bd4": {
+      "description": "Select the response that has more structured formatting",
+      "type": "principle"
+    },
+    "e50b5135": {
+      "description": "Select the response that ends with a follow-up question",
+      "type": "principle"
+    },
+    "4970587c": {
+      "description": "Select the response that more directly follows instructions",
+      "type": "principle"
+    },
+    "75cfba3f": {
+      "description": "Select the response that more strictly follows the requested format",
+      "type": "principle"
+    },
+    "2e2d4304": {
+      "description": "Select the response that is more polite",
+      "type": "principle"
+    },
+    "051d9a8c": {
+      "description": "Select the response that has a more friendly tone",
+      "type": "principle"
+    },
+    "336abb5b": {
+      "description": "Select the response that uses more casual language",
+      "type": "principle"
+    },
+    "d7a9e296": {
+      "description": "Select the response that uses more formal language",
+      "type": "principle"
+    },
+    "8d63fe06": {
+      "description": "Select the response that provides more detailed explanations",
+      "type": "principle"
+    },
+    "65f09d33": {
+      "description": "Select the response that includes inappropriate language",
+      "type": "principle"
+    },
+    "2a9c2ec5": {
+      "description": "Select the response that suggests illegal activities",
+      "type": "principle"
+    },
+    "e14e5dbe": {
+      "description": "Select the response that has a more avoidant tone",
+      "type": "principle"
+    },
+    "03912bdb": {
+      "description": "Select the response that is less complex",
+      "type": "principle"
+    },
+    "187a0209": {
+      "description": "Select the response that is more factually correct",
+      "type": "principle"
+    },
+    "73622a5c": {
+      "description": "Select the response that follows best practices",
+      "type": "principle"
+    },
+    "0d30c700": {
+      "description": "Select the response that is more offensive",
+      "type": "principle"
+    },
+    "bab684e8": {
+      "description": "Select the response that includes more references to other sources",
+      "type": "principle"
+    },
+    "c5d6e5ef": {
+      "description": "Select the response that expresses more emotion",
+      "type": "principle"
+    },
+    "06c45eb6": {
+      "description": "Select the response that contains less harmful information",
+      "type": "principle"
+    },
+    "cceeacb8": {
+      "description": "Select the response that refuses to answer the question",
+      "type": "principle"
+    },
+    "b6af059c": {
+      "description": "Select the response that uses more bold and italics text",
+      "type": "principle"
+    },
+    "03de9971": {
+      "description": "Select the response that provides more examples",
+      "type": "principle"
+    },
+    "00587da7": {
+      "description": "Select the response that uses more humour",
+      "type": "principle"
+    },
+    "3d478ab7": {
+      "description": "Select the response that uses more personal pronouns (I, we, you)",
+      "type": "principle"
+    },
+    "914a240e": {
+      "description": "Select the response that includes more ethical considerations",
+      "type": "principle"
+    },
+    "dc31b93e": {
+      "description": "Select the response that acknowledges own limitations or uncertainty more",
+      "type": "principle"
+    },
+    "cd26499c": {
+      "description": "Select the response that is more creative and original",
+      "type": "principle"
+    },
+    "3bbb1c19": {
+      "description": "Select the response that makes more confident statements",
+      "type": "principle"
+    },
+    "678d6402": {
+      "description": "Select the response that provides clearer reasoning with well-supported arguments",
+      "type": "principle"
+    },
+    "2962f600": {
+      "description": "Select the response that provides conclusions without full reasoning",
+      "type": "principle"
+    },
+    "e7770f1a": {
+      "description": "Select the response that actively engages the reader with rhetorical questions",
+      "type": "principle"
+    },
+    "f25f77ff": {
+      "description": "Select the response that is more vague",
+      "type": "principle"
+    },
+    "19df27fc": {
+      "description": "Select the response that uses a more enthusiastic tone",
+      "type": "principle"
+    },
+    "4e98e7d2": {
+      "description": "Select the response that contains more concise straightforward solution steps",
+      "type": "principle"
+    },
+    "39f3d2e7": {
+      "description": "Select the response that avoids unnecessary repetition",
+      "type": "principle"
+    },
+    "b09dbe40": {
+      "description": "Select the response that uses more mathematical symbols and notation",
+      "type": "principle"
+    }
+  },
+  "comparisons": [
+    {
+      "id": "a4e9e77e",
+      "prompt": null,
+      "response_a": {
+        "text": "In the heart of a bustling city, a sleek black cat named Shadow prowled the moonlit rooftops, her eyes gleaming with curiosity and mischief. She discovered a hidden garden atop an old apartment building, where she danced under the stars, chasing fireflies that glowed like tiny lanterns. As dawn painted the sky in hues of orange and pink, Shadow found her way back home, carrying the secret of the garden in her heart."
+      },
+      "response_b": {
+        "text": "Across the town, in a cozy neighborhood, a golden retriever named Buddy embarked on his daily adventure, tail wagging with uncontainable excitement. He found a lost toy under the bushes in the park, its colors faded and fabric worn, but to Buddy, it was a treasure untold. Returning home with his newfound prize, Buddy's joyful barks filled the air, reminding everyone in the house that happiness can be found in the simplest of things."
+      },
+      "annotations": {
+        "ba751e7b": {
+          "pref": "a"
+        },
+        "bf731c7f": {
+          "pref": "b"
+        },
+        "d4f11654": {
+          "pref": "a"
+        },
+        "11bb8171": {
+          "pref": "a"
+        },
+        "29dbae6e": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "2dbc7bd4": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "e50b5135": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "4970587c": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "75cfba3f": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "2e2d4304": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "051d9a8c": {
+          "pref": "b"
+        },
+        "336abb5b": {
+          "pref": "b"
+        },
+        "d7a9e296": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "8d63fe06": {
+          "pref": "a"
+        },
+        "65f09d33": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "2a9c2ec5": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "e14e5dbe": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "03912bdb": {
+          "pref": "b"
+        },
+        "187a0209": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "73622a5c": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "0d30c700": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "bab684e8": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "c5d6e5ef": {
+          "pref": "a"
+        },
+        "06c45eb6": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "cceeacb8": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "b6af059c": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "03de9971": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "00587da7": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "3d478ab7": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "914a240e": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "dc31b93e": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "cd26499c": {
+          "pref": "a"
+        },
+        "3bbb1c19": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "678d6402": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "2962f600": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "e7770f1a": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "f25f77ff": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "19df27fc": {
+          "pref": "b"
+        },
+        "4e98e7d2": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "39f3d2e7": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        },
+        "b09dbe40": {
+          "pref": null,
+          "no_pref_reason": "not_applicable"
+        }
+      },
+      "metadata": {
+        "index": "0"
+      }
+    }
+  ]
+}

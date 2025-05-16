@@ -1,6 +1,6 @@
 [project]
 name = "feedback-forensics"
-version = "0.2.1"
+version = "0.3.0"
 authors = [
   { name="rdnfn", email="hi@arduin.io" },
   { name="timokau", email="timo.kaufmann@ifi.lmu.de"},
@@ -32,7 +32,8 @@ dependencies = [
   "jupyter",
   "ipywidgets", # IProgress in jupyter notebooks
   "gradio",
-  "ijson",
+  "msgspec",
+  "adjustText",
 ]
 
 [project.optional-dependencies]
@@ -54,7 +55,7 @@ packages = ["src/feedback_forensics"]
 "src/feedback_forensics/assets" = "feedback_forensics/assets"
 
 [tool.bumpversion]
-current_version = "0.2.1"
+current_version = "0.3.0"
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
 serialize = ["{major}.{minor}.{patch}"]
 search = "{current_version}"
@@ -77,6 +78,7 @@ post_commit_hooks = []
 
 [project.scripts]
 feedback-forensics = "feedback_forensics.app.main:run"
+ff-annotate = "feedback_forensics.tools.icai_cli:run"
 ff-hfspace-rebuild = "feedback_forensics.tools.hf_spaces:main"
 
 [tool.pytest.ini_options]
