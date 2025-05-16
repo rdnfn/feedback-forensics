@@ -33,6 +33,7 @@ dependencies = [
   "ipywidgets", # IProgress in jupyter notebooks
   "gradio",
   "msgspec",
+  "adjustText",
 ]
 
 [project.optional-dependencies]
@@ -77,6 +78,7 @@ post_commit_hooks = []
 
 [project.scripts]
 feedback-forensics = "feedback_forensics.app.main:run"
+ff-annotate = "feedback_forensics.tools.icai_cli:run"
 ff-hfspace-rebuild = "feedback_forensics.tools.hf_spaces:main"
 
 [tool.pytest.ini_options]
