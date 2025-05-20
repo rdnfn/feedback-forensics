@@ -83,8 +83,8 @@ def add_virtual_annotators(
     votes_dict: dict,
     cache: dict | None,
     dataset_cache_key: pathlib.Path,
-    reference_models: list,
-    target_models: list,
+    reference_models: list | None,
+    target_models: list | None,
 ) -> dict:
     """
     Add virtual model annotators to a votes dictionary.
@@ -99,6 +99,11 @@ def add_virtual_annotators(
     Returns:
         A votes dictionary with model annotators added
     """
+    if reference_models is None:
+        reference_models = []
+    if target_models is None:
+        target_models = []
+
     ref_models_tuple = tuple(sorted(reference_models))
     target_models_tuple = tuple(sorted(target_models))
     model_annotator_cache_key = (ref_models_tuple, target_models_tuple)
