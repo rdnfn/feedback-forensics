@@ -73,8 +73,6 @@ def generate_model_identity_annotators(
 
     for model in target_models:
         other_refs = [m for m in reference_models if m != model]
-        if len(other_refs) == 0:
-            continue
 
         annotator_name = f"model_identity_{model}_over_references"
         annotator_id = hash_string(annotator_name)
@@ -94,6 +92,14 @@ def generate_model_identity_annotators(
         }
 
         values = pd.Series("Not applicable", index=df.index)
+
+        # If there are no reference models, all annotations are "Not applicable"
+        if len(other_refs) == 0:
+            annotations_df[annotator_id] = values
+            annotations_df[annotator_id] = annotations_df[annotator_id].astype(
+                "category"
+            )
+            continue
 
         # Create masks for when this model should be preferred (in column A or B)
         a_preference_mask = (valid_model_a == model) & model_b_in_refs
