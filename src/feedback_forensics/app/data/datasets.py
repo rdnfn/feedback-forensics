@@ -110,7 +110,7 @@ MULTIPREF = BuiltinDataset(
 
 LLAMA4_ARENA = BuiltinDataset(
     name="🏟️ Arena (special)",
-    path=DATA_DIR / "v2/llama4_arena_vs_public_version.json",
+    path=DATA_DIR / "arena_llama4.json",
     description="Llama-4-Maverick-03-26-Experimental arena results, combined with public weights version of Llama-4-Maverick.",
     source="https://huggingface.co/spaces/lmarena-ai/Llama-4-Maverick-03-26-Experimental_battles/tree/main/data",
 )
