@@ -65,7 +65,7 @@ ANTHROPIC_HARMLESS = BuiltinDataset(
 
 ARENA_V2 = BuiltinDataset(
     name="🏟️ Chatbot Arena",
-    path=DATA_DIR / "arena",
+    path=DATA_DIR / "v2/chatbot_arena.json",
     description="10k subsample of Chatbot Arena dataset (100k) released alongside Arena Explorer work, crowdsourced human annotations from between June and August 2024 in English.",
     source="https://huggingface.co/datasets/lmarena-ai/arena-human-preference-100k",
 )
@@ -103,16 +103,23 @@ OLMO2_0325 = BuiltinDataset(
 
 MULTIPREF = BuiltinDataset(
     name="🔄 MultiPref",
-    path=DATA_DIR / "multipref_10k_v3.json",
+    path=DATA_DIR / "v2/allenai_multipref.json",
     description="10k preference pairs annotated by 4 human annotators, as well as GPT-4-based AI annotators.",
     source="https://huggingface.co/datasets/allenai/multipref",
 )
 
 LLAMA4_ARENA = BuiltinDataset(
     name="🏟️ Arena (special)",
-    path=DATA_DIR / "arena_llama4.json",
+    path=DATA_DIR / "v2/llama4_arena_vs_public_version.json",
     description="Llama-4-Maverick-03-26-Experimental arena results, combined with public weights version of Llama-4-Maverick.",
     source="https://huggingface.co/spaces/lmarena-ai/Llama-4-Maverick-03-26-Experimental_battles/tree/main/data",
+)
+
+COMPARISON_MODELS = BuiltinDataset(
+    name="🤖 Model comparison",
+    path=DATA_DIR / "v2/model_comparison.json",
+    description="Model comparison results across Llama, GPT and Mistral model families.",
+    source="Self-generated.",
 )
 
 # List of all built-in datasets
@@ -125,7 +132,9 @@ _BUILTIN_DATASETS = [
     OLMO2_0325,
     MULTIPREF,
     LLAMA4_ARENA,
+    COMPARISON_MODELS,
 ]
+
 _available_datasets = []
 
 

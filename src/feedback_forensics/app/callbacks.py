@@ -55,6 +55,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         cache = data[state["cache"]]
         split_col = data[inp["split_col_dropdown"]]
         selected_vals = data[inp["split_col_selected_vals_dropdown"]]
+        reference_models = data[inp["reference_models_dropdown"]]
         metric_name = data[inp["metric_name_dropdown"]]
         sort_by = data[inp["sort_by_dropdown"]]
         sort_ascending = data[inp["sort_order_dropdown"]] == "Ascending"
@@ -77,6 +78,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         dataset_handler = DatasetHandler(
             cache=cache,
             avail_datasets=data[state["avail_datasets"]],
+            reference_models=reference_models,
         )
         dataset_handler.load_data_from_names(datasets)
 

@@ -97,7 +97,12 @@ def _split_votes_dict(
 class ColumnHandler:
     """Class to handle data operations (loading, computing metrics) of a single annotation column dataset."""
 
-    def __init__(self, cache: dict | None = None, avail_datasets: dict | None = None):
+    def __init__(
+        self,
+        cache: dict | None = None,
+        avail_datasets: dict | None = None,
+        reference_models: list[str] | None = None,
+    ):
 
         self._cache = cache
         self._avail_datasets = avail_datasets
@@ -106,6 +111,7 @@ class ColumnHandler:
         self._reference_annotator_col = None
         self._shown_annotator_rows = None
         self._data_path = None
+        self._reference_models = reference_models
 
     @property
     def votes_dict(self):
@@ -202,7 +208,7 @@ class ColumnHandler:
             base_votes_dict,
             cache=self.cache,
             dataset_cache_key=dataset_path,
-            reference_models=[],
+            reference_models=self._reference_models,
             target_models=[],
         )
 
@@ -248,11 +254,26 @@ class DatasetHandler:
     the same annotator but on a different data(sub)set.
     """
 
-    def __init__(self, cache: dict | None = None, avail_datasets: dict | None = None):
+    def __init__(
+        self,
+        cache: dict | None = None,
+        avail_datasets: dict | None = None,
+        reference_models: list[str] | None = None,
+    ):
+        """Initialize the dataset handler.
+
+        Args:
+            cache (dict | None): Cache dictionary to store and retrieve
+                model annotators
+            avail_datasets (dict | None): Dictionary of available datasets
+            reference_models (list[str] | None): List of reference models to
+                use for virtual annotators. Only relevant if using model annotators.
+        """
+
         self._cache = cache
         self._avail_datasets = avail_datasets
         self._in_multi_annotator_cols_mode = False
-
+        self._reference_models = reference_models
         self._col_handlers = {}
 
     @property
@@ -310,7 +331,11 @@ class DatasetHandler:
     def add_data_from_name(self, name: str):
         """Load data from a given dataset name."""
 
-        handler = ColumnHandler(cache=self.cache, avail_datasets=self.avail_datasets)
+        handler = ColumnHandler(
+            cache=self.cache,
+            avail_datasets=self.avail_datasets,
+            reference_models=self._reference_models,
+        )
         handler.load_data_from_name(name)
         self.add_col_handler(name, handler)
 
