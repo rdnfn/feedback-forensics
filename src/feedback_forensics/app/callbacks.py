@@ -558,8 +558,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                         interactive=True,
                         visible=True,
                     )
-        return_dict = {**return_dict, **load_data(data)}
-        return_dict = {**return_dict, **annotator_return_dict}
+        return_dict = {**return_dict, **load_data(data), **annotator_return_dict}
         return return_dict
 
     def update_annotator_table(data):
