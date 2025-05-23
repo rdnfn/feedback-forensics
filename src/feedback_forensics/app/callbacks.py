@@ -330,6 +330,36 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 **_get_default_annotator_cols_config(data),
             }
 
+    def _parse_list_param(
+        url_list: list[str], avail_nonurl_list: list[str], param_name: str
+    ) -> list[str]:
+        """Parse a list parameter from url to nonurl list.
+
+        Args:
+            url_list: List of strings from URL parameter.
+            avail_nonurl_list: List of available non-URL strings to match against.
+                These will eventually be used in the code.
+            param_name: Name of the parameter being parsed (for error messages).
+
+        Returns:
+            List of strings that match between url_list and avail_nonurl_list.
+        """
+
+        nonurl_list = transfer_url_list_to_nonurl_list(
+            url_list=url_list,
+            nonurl_list=avail_nonurl_list,
+        )
+        logger.debug(f"URL list param {param_name} parsed: {url_list} -> {nonurl_list}")
+
+        if len(nonurl_list) != len(url_list):
+            gr.Warning(
+                f"URL problem: not all values for '{param_name}' in URL ({url_list}) could be read successfully. "
+                f"Requested {param_name}: {url_list}, "
+                f"retrieved {param_name}: {nonurl_list}.",
+                duration=15,
+            )
+        return nonurl_list
+
     def load_from_query_params(data: dict, request: gr.Request):
         """Load data from query params."""
         config = get_config_from_query_params(request)
@@ -381,21 +411,11 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
                     # Use URL parser utility to translate URL-encoded model names to their original form
                     url_reference_models = config["reference_models"]
-                    reference_models = transfer_url_list_to_nonurl_list(
+                    reference_models = _parse_list_param(
                         url_list=url_reference_models,
-                        nonurl_list=list(available_models),
+                        avail_nonurl_list=list(available_models),
+                        param_name="reference_models",
                     )
-
-                    logger.debug(
-                        f"URL reference models: {url_reference_models} -> {reference_models}"
-                    )
-
-                    if len(reference_models) != len(url_reference_models):
-                        gr.Warning(
-                            f"URL problem: not all reference models in URL ({url_reference_models}) could be found in the dataset. "
-                            f"Using only available models: {reference_models}.",
-                            duration=15,
-                        )
 
                     data[inp["reference_models_dropdown"]] = reference_models
                     annotator_return_dict[inp["reference_models_dropdown"]] = (
@@ -416,24 +436,17 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
                 annotator_types = get_annotators_by_type(votes_dict)
                 all_available_annotators = []
-                for variant, annotators in annotator_types.items():
+                for _, annotators in annotator_types.items():
                     all_available_annotators.extend(annotators["visible_names"])
 
                 # If annotator rows are specified in the URL
                 if "annotator_rows" in config:
-                    logger.info(
-                        f"Detected annotator rows in URL: {config['annotator_rows']}"
-                    )
                     url_annotator_rows = config["annotator_rows"]
-                    annotator_rows = transfer_url_list_to_nonurl_list(
+                    annotator_rows = _parse_list_param(
                         url_list=url_annotator_rows,
-                        nonurl_list=all_available_annotators,
+                        avail_nonurl_list=all_available_annotators,
+                        param_name="annotator_rows",
                     )
-                    if len(annotator_rows) != len(url_annotator_rows):
-                        gr.Warning(
-                            f"URL problem: not all annotator rows in URL ({url_annotator_rows}) could be read successfully. Requested rows: {url_annotator_rows}, retrieved rows: {annotator_rows}.",
-                            duration=15,
-                        )
                     data[inp["annotator_rows_dropdown"]] = annotator_rows
                     annotator_return_dict[inp["annotator_rows_dropdown"]] = gr.Dropdown(
                         choices=sorted(all_available_annotators),
@@ -443,19 +456,12 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
                 # If annotator columns are specified in the URL
                 if "annotator_cols" in config:
-                    logger.info(
-                        f"Detected annotator cols in URL: {config['annotator_cols']}"
-                    )
                     url_annotator_cols = config["annotator_cols"]
-                    annotator_cols = transfer_url_list_to_nonurl_list(
+                    annotator_cols = _parse_list_param(
                         url_list=url_annotator_cols,
-                        nonurl_list=all_available_annotators,
+                        avail_nonurl_list=all_available_annotators,
+                        param_name="annotator_cols",
                     )
-                    if len(annotator_cols) != len(url_annotator_cols):
-                        gr.Warning(
-                            f"URL problem: not all annotator columns in URL ({url_annotator_cols}) could be read successfully. Requested columns: {url_annotator_cols}, retrieved columns: {annotator_cols}.",
-                            duration=15,
-                        )
                     data[inp["annotator_cols_dropdown"]] = annotator_cols
                     annotator_return_dict[inp["annotator_cols_dropdown"]] = gr.Dropdown(
                         choices=sorted(all_available_annotators),
