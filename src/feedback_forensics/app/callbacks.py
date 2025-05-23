@@ -484,6 +484,22 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                         interactive=True,
                     )
 
+                    # also update model analysis tab
+                    selected_model_annotator_names = [
+                        name.replace(PREFIX_MODEL_IDENTITY_ANNOTATORS, "")
+                        for name in annotator_cols
+                        if PREFIX_MODEL_IDENTITY_ANNOTATORS in name
+                    ]
+                    all_available_model_annotator_names = [
+                        name.replace(PREFIX_MODEL_IDENTITY_ANNOTATORS, "")
+                        for name in all_available_annotators
+                        if PREFIX_MODEL_IDENTITY_ANNOTATORS in name
+                    ]
+                    return_dict[inp["models_to_compare_dropdown"]] = gr.Dropdown(
+                        choices=sorted(all_available_model_annotator_names),
+                        value=selected_model_annotator_names,
+                    )
+
         # Split dataset by column if specified in URL
         if "col" not in config:
             # update split col dropdowns even if no column is selected
@@ -684,6 +700,7 @@ def attach_callbacks(
         inp["multi_dataset_warning_md"],
         inp["annotator_rows_dropdown"],
         inp["annotator_cols_dropdown"],
+        inp["models_to_compare_dropdown"],
         inp["reference_models_dropdown"],
         inp["load_btn"],
     ]

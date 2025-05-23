@@ -150,7 +150,7 @@ def _create_configuration_panel(inp: dict, state: dict):
             with gr.Tab("🔧 Advanced settings"), gr.Group():
                 # single dataset configuration
                 inp["multi_dataset_warning_md"] = gr.Markdown(
-                    value="⚠️ <div style='opacity: 0.6'><i>Some configuration options (grouping by column, selecting multiple col annotators) only work correctly when selecting a single dataset. Select a single dataset to use these features.</i></div>",
+                    value="<div style='opacity: 0.6'>⚠️ <i>Some configuration options (grouping by column, selecting multiple col annotators) only work correctly when selecting a single dataset. Select a single dataset to use these features.</i></div>",
                     visible=True,
                     container=True,
                 )
