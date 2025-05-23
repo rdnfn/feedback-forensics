@@ -373,6 +373,8 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 )
             }
 
+        # ensure that base_url is correctly set
+        # (e.g. app.feedbackforensics.com or localhost:7860)
         if APP_BASE_URL is not None:
             app_url = APP_BASE_URL
         else:
@@ -382,8 +384,6 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             state["app_url"]: app_url,
         }
         data[state["app_url"]] = app_url
-
-        annotator_return_dict = {}
 
         if "datasets" in config:
             data[inp["active_datasets_dropdown"]] = config["datasets"]
@@ -421,12 +421,10 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                     )
 
                     data[inp["reference_models_dropdown"]] = reference_models
-                    annotator_return_dict[inp["reference_models_dropdown"]] = (
-                        gr.Dropdown(
-                            choices=sorted(available_models),
-                            value=reference_models,
-                            interactive=True,
-                        )
+                    return_dict[inp["reference_models_dropdown"]] = gr.Dropdown(
+                        choices=sorted(available_models),
+                        value=reference_models,
+                        interactive=True,
                     )
 
                 votes_dict = add_virtual_annotators(
@@ -451,7 +449,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                         param_name="annotator_rows",
                     )
                     data[inp["annotator_rows_dropdown"]] = annotator_rows
-                    annotator_return_dict[inp["annotator_rows_dropdown"]] = gr.Dropdown(
+                    return_dict[inp["annotator_rows_dropdown"]] = gr.Dropdown(
                         choices=sorted(all_available_annotators),
                         value=annotator_rows,
                         interactive=True,
@@ -466,7 +464,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                         param_name="annotator_cols",
                     )
                     data[inp["annotator_cols_dropdown"]] = annotator_cols
-                    annotator_return_dict[inp["annotator_cols_dropdown"]] = gr.Dropdown(
+                    return_dict[inp["annotator_cols_dropdown"]] = gr.Dropdown(
                         choices=sorted(all_available_annotators),
                         value=annotator_cols,
                         interactive=True,
@@ -503,9 +501,6 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             return_dict = {
                 **return_dict,
                 **split_col_interface_dict,
-            }
-            return_dict = {
-                **return_dict,
                 **update_col_split_value_dropdown(data),
             }
         else:
@@ -538,9 +533,6 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 return_dict = {
                     **return_dict,
                     **split_col_interface_dict,
-                }
-                return_dict = {
-                    **return_dict,
                     **update_col_split_value_dropdown(data),
                 }
                 if (
@@ -567,7 +559,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                         interactive=True,
                         visible=True,
                     )
-        return_dict = {**return_dict, **load_data(data), **annotator_return_dict}
+        return_dict = {**return_dict, **load_data(data)}
         return return_dict
 
     def update_annotator_table(data):
