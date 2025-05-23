@@ -377,11 +377,14 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             app_url = APP_BASE_URL
         else:
             app_url = request.headers["origin"]
+
         return_dict = {
             state["app_url"]: app_url,
         }
         data[state["app_url"]] = app_url
+
         annotator_return_dict = {}
+
         if "datasets" in config:
             data[inp["active_datasets_dropdown"]] = config["datasets"]
             return_dict[inp["active_datasets_dropdown"]] = gr.Dropdown(
@@ -413,7 +416,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                     url_reference_models = config["reference_models"]
                     reference_models = _parse_list_param(
                         url_list=url_reference_models,
-                        avail_nonurl_list=list(available_models),
+                        avail_nonurl_list=available_models,
                         param_name="reference_models",
                     )
 
