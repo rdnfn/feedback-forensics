@@ -235,7 +235,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
         if menus_inactive:
             return {
-                inp["split_col_non_available_md"]: gr.Markdown(
+                inp["multi_dataset_warning_md"]: gr.Markdown(
                     visible=True,
                 ),
                 inp["split_col_dropdown"]: gr.Dropdown(
@@ -248,9 +248,6 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                     choices=[],
                     value=None,
                     interactive=False,
-                    visible=False,
-                ),
-                inp["advanced_settings_accordion"]: gr.Accordion(
                     visible=False,
                 ),
             }
@@ -282,11 +279,8 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                     interactive=False,
                     visible=False,
                 ),
-                inp["split_col_non_available_md"]: gr.Markdown(
+                inp["multi_dataset_warning_md"]: gr.Markdown(
                     visible=False,
-                ),
-                inp["advanced_settings_accordion"]: gr.Accordion(
-                    visible=True,
                 ),
                 **_get_default_annotator_cols_config(data),
             }
@@ -641,8 +635,7 @@ def attach_callbacks(
     dataset_selection_outputs = [
         inp["split_col_dropdown"],
         inp["split_col_selected_vals_dropdown"],
-        inp["split_col_non_available_md"],
-        inp["advanced_settings_accordion"],
+        inp["multi_dataset_warning_md"],
         inp["annotator_rows_dropdown"],
         inp["annotator_cols_dropdown"],
         inp["reference_models_dropdown"],
@@ -652,8 +645,7 @@ def attach_callbacks(
     load_data_outputs = [
         inp["split_col_dropdown"],
         inp["split_col_selected_vals_dropdown"],
-        inp["split_col_non_available_md"],
-        inp["advanced_settings_accordion"],
+        inp["multi_dataset_warning_md"],
         inp["annotator_rows_dropdown"],
         inp["annotator_cols_dropdown"],
         inp["reference_models_dropdown"],

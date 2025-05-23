@@ -119,11 +119,11 @@ def _create_configuration_panel(inp: dict, state: dict):
 
     with gr.Row(variant="panel", render=True):
         with gr.Column():
-            with gr.Group():
-                # Get dataset names and set default value safely
-                dataset_names = get_available_datasets_names()
-                default_datasets = get_default_dataset_names()
+            # Get dataset names and set default value safely
+            dataset_names = get_available_datasets_names()
+            default_datasets = get_default_dataset_names()
 
+            with gr.Group():
                 inp["active_datasets_dropdown"] = gr.Dropdown(
                     label="💽 Active datasets",
                     choices=dataset_names,
@@ -131,6 +131,7 @@ def _create_configuration_panel(inp: dict, state: dict):
                     interactive=True,
                     multiselect=True,
                 )
+
                 with gr.Accordion("ℹ️ Dataset details", open=False):
                     datasets = get_available_datasets()
                     inp["dataset_info_v2"] = gr.Markdown(
@@ -138,9 +139,13 @@ def _create_configuration_panel(inp: dict, state: dict):
                         container=True,
                     )
 
+            with gr.Tab("🔍 Model comparison"):
+                pass
+
+            with gr.Tab("🔧 Advanced settings"), gr.Group():
                 # single dataset configuration
-                inp["split_col_non_available_md"] = gr.Markdown(
-                    value="<div style='opacity: 0.6'><i>Some configuration options (grouping by column, selecting annotators) are only available when selecting a single dataset. Select a single dataset to use these features.</i></div>",
+                inp["multi_dataset_warning_md"] = gr.Markdown(
+                    value="⚠️ <div style='opacity: 0.6'><i>Some configuration options (grouping by column, selecting multiple col annotators) only work correctly when selecting a single dataset. Select a single dataset to use these features.</i></div>",
                     visible=True,
                     container=True,
                 )
@@ -161,34 +166,30 @@ def _create_configuration_panel(inp: dict, state: dict):
                     interactive=False,
                     visible=False,
                 )
-                inp["advanced_settings_accordion"] = gr.Accordion(
-                    "🔧 Advanced settings", open=False
+                inp["annotator_cols_dropdown"] = gr.Dropdown(
+                    label="👥→ Annotator columns",
+                    info="Select the annotators to be included as a column in the results table. By default only a single (ground-truth) annotator is included.",
+                    choices=None,
+                    value=None,
+                    multiselect=True,
                 )
-                with inp["advanced_settings_accordion"]:
-                    inp["annotator_cols_dropdown"] = gr.Dropdown(
-                        label="👥→ Annotator columns",
-                        info="Select the annotators to be included as a column in the results table. By default only a single (ground-truth) annotator is included.",
-                        choices=None,
-                        value=None,
-                        multiselect=True,
-                    )
-                    inp["annotator_rows_dropdown"] = gr.Dropdown(
-                        label="👥↓ Annotator rows",
-                        info=f'Select the annotators to be included as a row in the results table. By default only objective-following AI annotators are included (named as "{PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS} \<OBJECTIVE\>").',
-                        choices=None,
-                        value=None,
-                        multiselect=True,
-                    )
-                    inp["reference_models_dropdown"] = gr.Dropdown(
-                        label="🔍 Reference models for model annotators",
-                        info="Select which models should be used as references for model-identity annotators. If none are selected, all models will be used as references.",
-                        choices=None,
-                        value=None,
-                        multiselect=True,
-                    )
+                inp["annotator_rows_dropdown"] = gr.Dropdown(
+                    label="👥↓ Annotator rows",
+                    info=f'Select the annotators to be included as a row in the results table. By default only objective-following AI annotators are included (named as "{PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS} \<OBJECTIVE\>").',
+                    choices=None,
+                    value=None,
+                    multiselect=True,
+                )
+                inp["reference_models_dropdown"] = gr.Dropdown(
+                    label="🔍 Reference models for model annotators",
+                    info="Select which models should be used as references for model-identity annotators. If none are selected, all models will be used as references.",
+                    choices=None,
+                    value=None,
+                    multiselect=True,
+                )
 
-                # final button to run analysis
-                inp["load_btn"] = gr.Button("Run analysis", variant="secondary")
+            # final button to run analysis
+            inp["load_btn"] = gr.Button("Run analysis", variant="secondary")
 
 
 def _create_results_panel(inp: dict, out: dict):
