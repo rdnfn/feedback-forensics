@@ -406,6 +406,14 @@ class DatasetHandler:
             for col_name in avail_annotator_cols
         }
 
+    def get_available_annotator_visible_names(self):
+        """Get the visible names of the available annotators."""
+        avail_annotators = self.get_available_annotators()
+        return [
+            avail_annotators[col_name]["annotator_visible_name"]
+            for col_name in avail_annotators.keys()
+        ]
+
     def set_annotator_rows(
         self,
         annotator_visible_names: list[str] | None = None,
@@ -477,7 +485,7 @@ class DatasetHandler:
 
         assert len(annotator_visible_names) == len(
             annotator_keys
-        ), "annotator_visible_names and annotator_keys must have the same length"
+        ), f"annotator_visible_names ({annotator_visible_names}) and annotator_keys ({annotator_keys}) must have the same length"
 
         multi_annotator_cols_mode = False
 

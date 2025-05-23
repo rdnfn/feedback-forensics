@@ -24,6 +24,7 @@ from feedback_forensics.app.constants import (
     MODEL_IDENTITY_ANNOTATOR_TYPE,
     PRINCIPLE_ANNOTATOR_TYPE,
     PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS,
+    PREFIX_MODEL_IDENTITY_ANNOTATORS,
 )
 from feedback_forensics.data.datasets import (
     get_available_datasets_names,
@@ -88,6 +89,26 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         annotator_rows_visible_names = data[inp["annotator_rows_dropdown"]]
         dataset_handler.set_annotator_rows(annotator_rows_visible_names)
         annotator_cols_visible_names = data[inp["annotator_cols_dropdown"]]
+        if len(datasets) > 1 and len(annotator_cols_visible_names) > 1:
+            gr.Warning(
+                (
+                    "Only one annotator column (e.g. for model identity) is supported"
+                    " when selecting multiple datasets. Only using first annotator column"
+                    f" ({annotator_cols_visible_names[0]})."
+                ),
+            )
+            avail_annotators_cross_datasets = (
+                dataset_handler.get_available_annotator_visible_names()
+            )
+            annotator_cols_visible_names = annotator_cols_visible_names[:1]
+            if annotator_cols_visible_names[0] not in avail_annotators_cross_datasets:
+                gr.Warning(
+                    f"Annotator column '{annotator_cols_visible_names[0]}' not found in across all selected datasets. Please select a different annotator column."
+                )
+                # return statement needs to have at least one output
+                # thus we add this output without change
+                return {inp["split_col_dropdown"]: data[inp["split_col_dropdown"]]}
+
         dataset_handler.set_annotator_cols(annotator_cols_visible_names)
 
         # checking if splitting by column is requested
@@ -201,6 +222,13 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
         annotator_types = get_annotators_by_type(votes_dict)
         all_annotator_names = []
+        model_annotator_names = annotator_types[MODEL_IDENTITY_ANNOTATOR_TYPE][
+            "visible_names"
+        ]
+        model_annotator_names = [
+            name.replace(PREFIX_MODEL_IDENTITY_ANNOTATORS, "")
+            for name in model_annotator_names
+        ]
         for variant, annotators in annotator_types.items():
             all_annotator_names.extend(annotators["visible_names"])
         return {
@@ -218,6 +246,23 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 choices=sorted(get_available_models(base_votes_dict["df"])),
                 value=[],
                 interactive=True,
+            ),
+            inp["models_to_compare_dropdown"]: gr.Dropdown(
+                choices=sorted(model_annotator_names),
+                value=[],
+                interactive=True,
+            ),
+        }
+
+    def set_advanced_settings_from_model_analysis_tab(data):
+        """Set the advanced settings from the model analysis tab."""
+        model_annotator_names = data[inp["models_to_compare_dropdown"]]
+        model_annotator_names = [
+            PREFIX_MODEL_IDENTITY_ANNOTATORS + name for name in model_annotator_names
+        ]
+        return {
+            inp["annotator_cols_dropdown"]: gr.Dropdown(
+                value=model_annotator_names,
             ),
         }
 
@@ -604,6 +649,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         "update_single_dataset_menus": update_single_dataset_menus,
         "update_col_split_value_dropdown": update_col_split_value_dropdown,
         "update_annotator_table": update_annotator_table,
+        "set_advanced_settings_from_model_analysis_tab": set_advanced_settings_from_model_analysis_tab,
     }
 
 
@@ -648,6 +694,7 @@ def attach_callbacks(
         inp["multi_dataset_warning_md"],
         inp["annotator_rows_dropdown"],
         inp["annotator_cols_dropdown"],
+        inp["models_to_compare_dropdown"],
         inp["reference_models_dropdown"],
         out["share_link"],
         out["overall_metrics_table"],
@@ -709,6 +756,13 @@ def attach_callbacks(
         callbacks["update_annotator_table"],
         inputs=all_inputs,
         outputs=annotation_table_outputs,
+    )
+
+    # update advanced settings from model analysis tab
+    inp["models_to_compare_dropdown"].change(
+        callbacks["set_advanced_settings_from_model_analysis_tab"],
+        inputs={inp["models_to_compare_dropdown"]},
+        outputs={inp["annotator_cols_dropdown"]},
     )
 
     # finally add callbacks that run on start of app

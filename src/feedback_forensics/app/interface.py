@@ -139,8 +139,13 @@ def _create_configuration_panel(inp: dict, state: dict):
                         container=True,
                     )
 
-            with gr.Tab("🔍 Model comparison"):
-                pass
+            with gr.Tab("🤖 Model analysis"):
+                inp["models_to_compare_dropdown"] = gr.Dropdown(
+                    label="📌 Select models to compare",
+                    choices=None,
+                    value=None,
+                    multiselect=True,
+                )
 
             with gr.Tab("🔧 Advanced settings"), gr.Group():
                 # single dataset configuration
