@@ -470,14 +470,13 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                         interactive=True,
                     )
 
-        # Handle metric, sort_by, and sort_order parameters
+        # Config of table (metric, sort_by, sort_order)
         if "metric" in config:
             data[inp["metric_name_dropdown"]] = config["metric"]
             return_dict[inp["metric_name_dropdown"]] = gr.Dropdown(
                 value=config["metric"],
                 interactive=True,
             )
-
         if "sort_by" in config:
             data[inp["sort_by_dropdown"]] = config["sort_by"]
             # We'll update choices after loading data
@@ -485,7 +484,6 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 value=config["sort_by"],
                 interactive=True,
             )
-
         if "sort_order" in config:
             # Consistently capitalize the first letter of sort_order
             capitalized_sort_order = config["sort_order"].lower().capitalize()
@@ -495,6 +493,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 interactive=True,
             )
 
+        # Finally, split dataset by column if specified in URL
         if "col" not in config:
             # update split col dropdowns even if no column is selected
             split_col_interface_dict = update_single_dataset_menus(data)
@@ -559,6 +558,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                         interactive=True,
                         visible=True,
                     )
+
         return_dict = {**return_dict, **load_data(data)}
         return return_dict
 
