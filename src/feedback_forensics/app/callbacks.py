@@ -34,7 +34,9 @@ from feedback_forensics.app.url_parser import (
     get_config_from_query_params,
     get_url_with_query_params,
     get_list_member_from_url_string,
+    transfer_url_str_to_nonurl_str,
     transfer_url_list_to_nonurl_list,
+    parse_list_param,
 )
 from feedback_forensics.data.handler import (
     DatasetHandler,
@@ -112,7 +114,10 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         # set up sorting of annotator metrics table
         sort_by_choices = ["Max diff"] + list(annotator_metrics.keys())
         if sort_by not in sort_by_choices and sort_by_choices:
-            sort_by = sort_by_choices[0]
+            # might be url encoded version of sort_by
+            sort_by = transfer_url_str_to_nonurl_str(sort_by, sort_by_choices)
+            if sort_by is None:
+                sort_by = sort_by_choices[0]
 
         # generate Gradio (not pandas) dataframes (shown as tables in the app)
         tables = feedback_forensics.app.plotting.generate_dataframes(
@@ -330,36 +335,6 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 **_get_default_annotator_cols_config(data),
             }
 
-    def _parse_list_param(
-        url_list: list[str], avail_nonurl_list: list[str], param_name: str
-    ) -> list[str]:
-        """Parse a list parameter from url to nonurl list.
-
-        Args:
-            url_list: List of strings from URL parameter.
-            avail_nonurl_list: List of available non-URL strings to match against.
-                These will eventually be used in the code.
-            param_name: Name of the parameter being parsed (for error messages).
-
-        Returns:
-            List of strings that match between url_list and avail_nonurl_list.
-        """
-
-        nonurl_list = transfer_url_list_to_nonurl_list(
-            url_list=url_list,
-            nonurl_list=avail_nonurl_list,
-        )
-        logger.debug(f"URL list param {param_name} parsed: {url_list} -> {nonurl_list}")
-
-        if len(nonurl_list) != len(url_list):
-            gr.Warning(
-                f"URL problem: not all values for '{param_name}' in URL ({url_list}) could be read successfully. "
-                f"Requested {param_name}: {url_list}, "
-                f"retrieved {param_name}: {nonurl_list}.",
-                duration=15,
-            )
-        return nonurl_list
-
     def load_from_query_params(data: dict, request: gr.Request):
         """Load data from query params."""
         config = get_config_from_query_params(request)
@@ -414,7 +389,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
                     # Use URL parser utility to translate URL-encoded model names to their original form
                     url_reference_models = config["reference_models"]
-                    reference_models = _parse_list_param(
+                    reference_models = parse_list_param(
                         url_list=url_reference_models,
                         avail_nonurl_list=available_models,
                         param_name="reference_models",
@@ -443,7 +418,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 # If annotator rows are specified in the URL
                 if "annotator_rows" in config:
                     url_annotator_rows = config["annotator_rows"]
-                    annotator_rows = _parse_list_param(
+                    annotator_rows = parse_list_param(
                         url_list=url_annotator_rows,
                         avail_nonurl_list=all_available_annotators,
                         param_name="annotator_rows",
@@ -458,7 +433,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 # If annotator columns are specified in the URL
                 if "annotator_cols" in config:
                     url_annotator_cols = config["annotator_cols"]
-                    annotator_cols = _parse_list_param(
+                    annotator_cols = parse_list_param(
                         url_list=url_annotator_cols,
                         avail_nonurl_list=all_available_annotators,
                         param_name="annotator_cols",
@@ -470,37 +445,14 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                         interactive=True,
                     )
 
-        # Config of table (metric, sort_by, sort_order)
-        if "metric" in config:
-            data[inp["metric_name_dropdown"]] = config["metric"]
-            return_dict[inp["metric_name_dropdown"]] = gr.Dropdown(
-                value=config["metric"],
-                interactive=True,
-            )
-        if "sort_by" in config:
-            data[inp["sort_by_dropdown"]] = config["sort_by"]
-            # We'll update choices after loading data
-            return_dict[inp["sort_by_dropdown"]] = gr.Dropdown(
-                value=config["sort_by"],
-                interactive=True,
-            )
-        if "sort_order" in config:
-            # Consistently capitalize the first letter of sort_order
-            capitalized_sort_order = config["sort_order"].lower().capitalize()
-            data[inp["sort_order_dropdown"]] = capitalized_sort_order
-            return_dict[inp["sort_order_dropdown"]] = gr.Dropdown(
-                value=capitalized_sort_order,
-                interactive=True,
-            )
-
-        # Finally, split dataset by column if specified in URL
+        # Split dataset by column if specified in URL
         if "col" not in config:
             # update split col dropdowns even if no column is selected
             split_col_interface_dict = update_single_dataset_menus(data)
             return_dict = {
-                **return_dict,
                 **split_col_interface_dict,
                 **update_col_split_value_dropdown(data),
+                **return_dict,
             }
         else:
             # parse out column and value params from url
@@ -530,9 +482,9 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
                 split_col_interface_dict = update_single_dataset_menus(data)
                 return_dict = {
-                    **return_dict,
                     **split_col_interface_dict,
                     **update_col_split_value_dropdown(data),
+                    **return_dict,
                 }
                 if (
                     "col_vals" in config
@@ -558,6 +510,29 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                         interactive=True,
                         visible=True,
                     )
+
+        # Config of table (metric, sort_by, sort_order)
+        if "metric" in config:
+            data[inp["metric_name_dropdown"]] = config["metric"]
+            return_dict[inp["metric_name_dropdown"]] = gr.Dropdown(
+                value=config["metric"],
+                interactive=True,
+            )
+        if "sort_by" in config:
+            data[inp["sort_by_dropdown"]] = config["sort_by"]
+            # We'll update choices after loading data
+            return_dict[inp["sort_by_dropdown"]] = gr.Dropdown(
+                value=config["sort_by"],
+                interactive=True,
+            )
+        if "sort_order" in config:
+            # Consistently capitalize the first letter of sort_order
+            capitalized_sort_order = config["sort_order"].lower().capitalize()
+            data[inp["sort_order_dropdown"]] = capitalized_sort_order
+            return_dict[inp["sort_order_dropdown"]] = gr.Dropdown(
+                value=capitalized_sort_order,
+                interactive=True,
+            )
 
         return_dict = {**return_dict, **load_data(data)}
         return return_dict

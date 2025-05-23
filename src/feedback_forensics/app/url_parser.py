@@ -114,6 +114,13 @@ def get_list_member_from_url_string(
     return urlified_list_members_dict.get(url_string, None)
 
 
+def transfer_url_str_to_nonurl_str(url_str: str, nonurl_list: list[str]) -> str:
+    urlified_generic_list_dict = {
+        make_str_url_ready(text): text for text in nonurl_list
+    }
+    return urlified_generic_list_dict.get(url_str, None)
+
+
 def transfer_url_list_to_nonurl_list(
     url_list: list[str], nonurl_list: list[str]
 ) -> list[str]:
@@ -125,3 +132,34 @@ def transfer_url_list_to_nonurl_list(
         for url in url_list
         if url in urlified_generic_list_dict
     ]
+
+
+def parse_list_param(
+    url_list: list[str], avail_nonurl_list: list[str], param_name: str
+) -> list[str]:
+    """Parse a list parameter from url to nonurl list.
+
+    Args:
+        url_list: List of strings from URL parameter.
+        avail_nonurl_list: List of available non-URL strings to match against.
+            These will eventually be used in the code.
+        param_name: Name of the parameter being parsed (for error messages).
+
+    Returns:
+        List of strings that match between url_list and avail_nonurl_list.
+    """
+
+    nonurl_list = transfer_url_list_to_nonurl_list(
+        url_list=url_list,
+        nonurl_list=avail_nonurl_list,
+    )
+    logger.debug(f"URL list param {param_name} parsed: {url_list} -> {nonurl_list}")
+
+    if len(nonurl_list) != len(url_list):
+        gr.Warning(
+            f"URL problem: not all values for '{param_name}' in URL ({url_list}) could be read successfully. "
+            f"Requested {param_name}: {url_list}, "
+            f"retrieved {param_name}: {nonurl_list}.",
+            duration=15,
+        )
+    return nonurl_list
