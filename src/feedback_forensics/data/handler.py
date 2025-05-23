@@ -9,7 +9,7 @@ from pathlib import Path
 from loguru import logger
 import pandas as pd
 
-from feedback_forensics.app.data.loader import add_virtual_annotators, get_votes_dict
+from feedback_forensics.data.loader import add_virtual_annotators, get_votes_dict
 from feedback_forensics.app.metrics import (
     get_overall_metrics,
     compute_annotator_metrics,

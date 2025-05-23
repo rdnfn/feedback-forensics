@@ -2,7 +2,7 @@ import gradio as gr
 from loguru import logger
 import re
 
-from feedback_forensics.app.data.datasets import (
+from feedback_forensics.data.datasets import (
     get_available_datasets,
     get_stringname_from_urlname,
     get_urlname_from_stringname,

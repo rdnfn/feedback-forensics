@@ -6,7 +6,7 @@ import pytest
 import pandas as pd
 from pathlib import Path
 
-from feedback_forensics.app.data.handler import (
+from feedback_forensics.data.handler import (
     DatasetHandler,
     _get_annotator_df_col_names,
 )
