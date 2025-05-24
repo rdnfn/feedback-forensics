@@ -166,7 +166,7 @@ def _create_configuration_panel(inp: dict, state: dict):
                 )
                 inp["split_col_selected_vals_dropdown"] = gr.Dropdown(
                     label="🏷️ Column values to show",
-                    info="For each selected value, separate results will be created. If no values selected, all values will be used.",
+                    info="For each selected value, separate results will be created. If no values selected, all values will be used. Requires column to be selected above.",
                     choices=[],
                     value=None,
                     multiselect=True,

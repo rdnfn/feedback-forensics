@@ -316,20 +316,17 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
         if menus_inactive:
             return {
-                inp["multi_dataset_warning_md"]: gr.Markdown(
-                    visible=is_in_advanced_settings
-                ),
                 inp["split_col_dropdown"]: gr.Dropdown(
                     choices=[NONE_SELECTED_VALUE],
                     value=NONE_SELECTED_VALUE,
                     interactive=False,
-                    visible=False,
+                    # visible=False,
                 ),
                 inp["split_col_selected_vals_dropdown"]: gr.Dropdown(
                     choices=[],
                     value=None,
                     interactive=False,
-                    visible=False,
+                    # visible=False,
                 ),
             }
         else:
@@ -352,16 +349,13 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                     + tuple_avail_cols,
                     value=split_col,
                     interactive=True,
-                    visible=is_in_advanced_settings,
+                    # visible=is_in_advanced_settings,
                 ),
                 inp["split_col_selected_vals_dropdown"]: gr.Dropdown(
                     choices=[],
-                    value=None,
+                    value=[],
                     interactive=False,
-                    visible=False,
-                ),
-                inp["multi_dataset_warning_md"]: gr.Markdown(
-                    visible=False,
+                    # visible=False,
                 ),
                 **_get_default_annotator_cols_config(data),
             }
@@ -395,7 +389,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                     value=[val[1] for val in avail_values[: min(len(avail_values), 3)]],
                     multiselect=True,
                     interactive=True,
-                    visible=True,
+                    # visible=True,
                 ),
                 **_get_default_annotator_cols_config(data),
             }
@@ -403,9 +397,9 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             return {
                 inp["split_col_selected_vals_dropdown"]: gr.Dropdown(
                     choices=[],
-                    value=None,
+                    value=[],
                     interactive=False,
-                    visible=False,
+                    # visible=False,
                 ),
                 **_get_default_annotator_cols_config(data),
             }
@@ -707,6 +701,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             inp["annotator_cols_dropdown"],
             inp["annotator_rows_dropdown"],
             inp["split_col_dropdown"],
+            inp["split_col_selected_vals_dropdown"],
             inp["multi_dataset_warning_md"],
         ]
 
@@ -793,12 +788,13 @@ def attach_callbacks(
     ]
 
     config_blocks_inputs = {
+        inp["multi_dataset_warning_md"],
         inp["models_to_compare_dropdown"],
         inp["reference_models_dropdown"],
         inp["annotator_cols_dropdown"],
         inp["annotator_rows_dropdown"],
         inp["split_col_dropdown"],
-        inp["multi_dataset_warning_md"],
+        inp["split_col_selected_vals_dropdown"],
     }
 
     annotation_table_outputs = [
