@@ -1,11 +1,8 @@
-"""Call backs to be used in the app."""
+"""Callbacks to load data and populate output blocks in the app."""
 
 import pathlib
-import copy
 import gradio as gr
 import pandas as pd
-
-from loguru import logger
 
 from feedback_forensics.data.loader import add_virtual_annotators, get_votes_dict
 import feedback_forensics.app.plotting
@@ -13,17 +10,9 @@ from feedback_forensics.data.dataset_utils import (
     get_annotators_by_type,
     get_available_models,
 )
-from feedback_forensics.app.utils import (
-    get_csv_columns,
-    load_json_file,
-)
 from feedback_forensics.app.constants import (
     NONE_SELECTED_VALUE,
     APP_BASE_URL,
-    DEFAULT_ANNOTATOR_VISIBLE_NAME,
-    MODEL_IDENTITY_ANNOTATOR_TYPE,
-    PRINCIPLE_ANNOTATOR_TYPE,
-    PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS,
     PREFIX_MODEL_IDENTITY_ANNOTATORS,
 )
 from feedback_forensics.data.datasets import (
@@ -47,8 +36,24 @@ from feedback_forensics.data.handler import (
 from feedback_forensics.app.metrics import DEFAULT_METRIC_NAME
 
 
-def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
-    """Generate callbacks for the ICAI app."""
+def generate(
+    inp: dict,
+    state: dict,
+    out: dict,
+    utils_callbacks: dict,
+    update_options_callbacks: dict,
+) -> dict:
+    """Generate callbacks for loading data and plots."""
+
+    update_single_dataset_menus = update_options_callbacks[
+        "update_single_dataset_menus"
+    ]
+    update_col_split_value_dropdown = update_options_callbacks[
+        "update_col_split_value_dropdown"
+    ]
+
+    get_columns_in_dataset = utils_callbacks["get_columns_in_dataset"]
+    get_avail_col_values = utils_callbacks["get_avail_col_values"]
 
     def load_data(
         data: dict,
@@ -200,255 +205,6 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
         return return_dict
 
-    def _get_columns_in_dataset(dataset_name, data) -> str:
-        dataset_config = data[state["avail_datasets"]][dataset_name]
-        results_dir = pathlib.Path(dataset_config.path)
-        base_votes_dict = get_votes_dict(results_dir, cache=data[state["cache"]])
-        avail_cols = base_votes_dict["available_metadata_keys"]
-
-        if dataset_config.filterable_columns:
-            avail_cols = [
-                col for col in avail_cols if col in dataset_config.filterable_columns
-            ]
-        return avail_cols
-
-    def _get_default_annotator_cols_config(data) -> str:
-        """Get the default annotator cols config.
-
-        This sets the annotator columns to the default, and the rows to all principle annotators
-        """
-        datasets = data[inp["active_datasets_dropdown"]]
-
-        # Load the full dataset (needed to extract annotator names)
-        # which may take a few seconds. Caching ensures this cost is paid only once.
-        dataset_config = data[state["avail_datasets"]][datasets[0]]
-        results_dir = pathlib.Path(dataset_config.path)
-        base_votes_dict = get_votes_dict(results_dir, cache=data[state["cache"]])
-        votes_dict = add_virtual_annotators(
-            base_votes_dict,
-            cache=data[state["cache"]],
-            dataset_cache_key=results_dir,
-            reference_models=data[inp["reference_models_dropdown"]],
-            target_models=[],
-        )
-
-        annotator_types = get_annotators_by_type(votes_dict)
-        all_annotator_names = []
-        model_annotator_names = annotator_types[MODEL_IDENTITY_ANNOTATOR_TYPE][
-            "visible_names"
-        ]
-        model_annotator_names = [
-            name.replace(PREFIX_MODEL_IDENTITY_ANNOTATORS, "")
-            for name in model_annotator_names
-        ]
-        for variant, annotators in annotator_types.items():
-            all_annotator_names.extend(annotators["visible_names"])
-
-        regular_annotator_names = [
-            name
-            for name in all_annotator_names
-            if PREFIX_MODEL_IDENTITY_ANNOTATORS not in name
-            and PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS not in name
-        ]
-
-        return {
-            inp["annotator_cols_dropdown"]: gr.Dropdown(
-                choices=sorted(all_annotator_names),
-                value=[DEFAULT_ANNOTATOR_VISIBLE_NAME],
-                interactive=True,
-            ),
-            inp["annotator_rows_dropdown"]: gr.Dropdown(
-                choices=sorted(all_annotator_names),
-                value=annotator_types[PRINCIPLE_ANNOTATOR_TYPE]["visible_names"],
-                interactive=True,
-            ),
-            inp["reference_models_dropdown"]: gr.Dropdown(
-                choices=sorted(get_available_models(base_votes_dict["df"])),
-                value=[],
-                interactive=True,
-            ),
-            inp["models_to_compare_dropdown"]: gr.Dropdown(
-                choices=sorted(model_annotator_names),
-                value=[],
-                interactive=True,
-            ),
-            inp["annotations_to_compare_dropdown"]: gr.Dropdown(
-                choices=sorted(regular_annotator_names),
-                value=[],
-                interactive=True,
-            ),
-        }
-
-    def set_advanced_settings_from_model_analysis_tab(data):
-        """Set the advanced settings from the model analysis tab."""
-        model_annotator_names = data[inp["models_to_compare_dropdown"]]
-        model_annotator_names = [
-            PREFIX_MODEL_IDENTITY_ANNOTATORS + name for name in model_annotator_names
-        ]
-        return {
-            inp["annotator_cols_dropdown"]: gr.Dropdown(
-                value=model_annotator_names,
-            ),
-            # clear annotations to compare dropdown
-            inp["annotations_to_compare_dropdown"]: gr.Dropdown(
-                value=[],
-            ),
-        }
-
-    def set_advanced_settings_from_annotation_analysis_tab(data):
-        """Set the advanced settings from the annotation analysis tab."""
-        annotation_annotator_names = data[inp["annotations_to_compare_dropdown"]]
-        return {
-            inp["annotator_cols_dropdown"]: gr.Dropdown(
-                value=annotation_annotator_names,
-            ),
-            # clear models to compare dropdown
-            inp["models_to_compare_dropdown"]: gr.Dropdown(
-                value=[],
-            ),
-        }
-
-    def set_model_analysis_from_advanced_settings(data):
-        """Set the model analysis settings from the advanced settings."""
-        model_annotator_names = data[inp["annotator_cols_dropdown"]]
-        model_annotator_names = [
-            name
-            for name in model_annotator_names
-            if PREFIX_MODEL_IDENTITY_ANNOTATORS in name
-        ]
-        model_names = [
-            name.replace(PREFIX_MODEL_IDENTITY_ANNOTATORS, "")
-            for name in model_annotator_names
-        ]
-        return {
-            inp["models_to_compare_dropdown"]: gr.Dropdown(
-                value=model_names,
-            ),
-        }
-
-    def set_annotation_analysis_from_advanced_settings(data):
-        """Set the annotation analysis settings from the advanced settings."""
-        annotation_annotator_names = data[inp["annotator_cols_dropdown"]]
-        regular_annotator_names = [
-            name
-            for name in annotation_annotator_names
-            if PREFIX_MODEL_IDENTITY_ANNOTATORS not in name
-            and PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS not in name
-        ]
-        return {
-            inp["annotations_to_compare_dropdown"]: gr.Dropdown(
-                value=regular_annotator_names,
-            ),
-        }
-
-    def update_single_dataset_menus(data: dict):
-        """Update menus for single dataset analysis
-
-        Includes splitting dataset by column and selecting annotators."""
-
-        datasets = data[inp["active_datasets_dropdown"]]
-
-        if len(datasets) == 1:
-            menus_inactive = False
-        else:
-            menus_inactive = True
-
-        # Check to only make split col and warning visible
-        # in advanced settings
-        is_in_advanced_settings = (
-            data[inp["analysis_type_radio"]] == "advanced_settings"
-        )
-
-        if menus_inactive:
-            return {
-                inp["split_col_dropdown"]: gr.Dropdown(
-                    choices=[NONE_SELECTED_VALUE],
-                    value=NONE_SELECTED_VALUE,
-                    interactive=False,
-                    # visible=False,
-                ),
-                inp["split_col_selected_vals_dropdown"]: gr.Dropdown(
-                    choices=[],
-                    value=None,
-                    interactive=False,
-                    # visible=False,
-                ),
-            }
-        else:
-            split_col = data[inp["split_col_dropdown"]]
-            avail_cols = _get_columns_in_dataset(datasets[0], data)
-
-            if split_col not in avail_cols:
-                split_col = NONE_SELECTED_VALUE
-
-            tuple_avail_cols = [(col, col) for col in avail_cols]
-
-            return {
-                inp["split_col_dropdown"]: gr.Dropdown(
-                    choices=[
-                        (
-                            "(No grouping applied, click to select column)",
-                            NONE_SELECTED_VALUE,
-                        )
-                    ]
-                    + tuple_avail_cols,
-                    value=split_col,
-                    interactive=True,
-                    # visible=is_in_advanced_settings,
-                ),
-                inp["split_col_selected_vals_dropdown"]: gr.Dropdown(
-                    choices=[],
-                    value=[],
-                    interactive=False,
-                    # visible=False,
-                ),
-                **_get_default_annotator_cols_config(data),
-            }
-
-    def _get_avail_col_values(col_name, data):
-        dataset = data[inp["active_datasets_dropdown"]][0]
-        dataset_config = data[state["avail_datasets"]][dataset]
-        results_dir = pathlib.Path(dataset_config.path)
-        cache = data[state["cache"]]
-        votes_dict = get_votes_dict(results_dir, cache=cache)
-        votes_df = votes_dict["df"]
-        value_counts = votes_df[col_name].value_counts()
-        avail_values = [
-            (count, f"{val} ({count})", str(val)) for val, count in value_counts.items()
-        ]
-        # sort by count descending
-        avail_values = sorted(avail_values, key=lambda x: x[0], reverse=True)
-        # remove count from avail_values
-        avail_values = [(val[1], val[2]) for val in avail_values]
-        return avail_values
-
-    def update_col_split_value_dropdown(data: dict):
-        """Update column split value dropdown."""
-        split_col = data[inp["split_col_dropdown"]]
-
-        if split_col != NONE_SELECTED_VALUE:
-            avail_values = _get_avail_col_values(split_col, data)
-            return {
-                inp["split_col_selected_vals_dropdown"]: gr.Dropdown(
-                    choices=avail_values,
-                    value=[val[1] for val in avail_values[: min(len(avail_values), 3)]],
-                    multiselect=True,
-                    interactive=True,
-                    # visible=True,
-                ),
-                **_get_default_annotator_cols_config(data),
-            }
-        else:
-            return {
-                inp["split_col_selected_vals_dropdown"]: gr.Dropdown(
-                    choices=[],
-                    value=[],
-                    interactive=False,
-                    # visible=False,
-                ),
-                **_get_default_annotator_cols_config(data),
-            }
-
     def load_from_query_params(data: dict, request: gr.Request):
         """Load data from query params."""
         config = get_config_from_query_params(request)
@@ -596,7 +352,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 url_split_col = config["col"]
 
                 # adapt split col to match available columns in dataset
-                avail_cols = _get_columns_in_dataset(config["datasets"][0], data)
+                avail_cols = get_columns_in_dataset(config["datasets"][0], data)
                 split_col = get_list_member_from_url_string(
                     url_string=url_split_col, list_members=avail_cols
                 )
@@ -621,7 +377,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                     and split_col is not None
                     and split_col != NONE_SELECTED_VALUE
                 ):
-                    avail_values = _get_avail_col_values(split_col, data)
+                    avail_values = get_avail_col_values(split_col, data)
                     init_selected_vals = config["col_vals"]
                     selected_vals = transfer_url_list_to_nonurl_list(
                         url_list=init_selected_vals,
@@ -734,228 +490,8 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
         return get_url_with_query_params(**url_kwargs)
 
-    def update_analysis_type_from_radio(data):
-        """Update the analysis type from the radio button."""
-        analysis_type = data[inp["analysis_type_radio"]]
-
-        # config blocks that may be affected by analysis type
-        # (excludes the direct table configs, e.g. metric, sort by, sort order)
-        all_config_blocks = [
-            inp["models_to_compare_dropdown"],
-            inp["annotations_to_compare_dropdown"],
-            inp["reference_models_dropdown"],
-            inp["annotator_cols_dropdown"],
-            inp["annotator_rows_dropdown"],
-            inp["split_col_dropdown"],
-            inp["split_col_selected_vals_dropdown"],
-            inp["multi_dataset_warning_md"],
-        ]
-
-        if analysis_type == "model_analysis":
-            shown_blocks = [inp["models_to_compare_dropdown"]]
-        elif analysis_type == "annotation_analysis":
-            shown_blocks = [inp["annotations_to_compare_dropdown"]]
-        elif analysis_type == "advanced_settings":
-            shown_blocks = all_config_blocks
-
-        return {
-            block: gr.Dropdown(visible=block in shown_blocks)
-            for block in all_config_blocks
-        }
-
     return {
         "load_data": load_data,
         "load_from_query_params": load_from_query_params,
-        "update_single_dataset_menus": update_single_dataset_menus,
-        "update_col_split_value_dropdown": update_col_split_value_dropdown,
         "update_annotator_table": update_annotator_table,
-        "set_advanced_settings_from_model_analysis_tab": set_advanced_settings_from_model_analysis_tab,
-        "set_model_analysis_from_advanced_settings": set_model_analysis_from_advanced_settings,
-        "set_advanced_settings_from_annotation_analysis_tab": set_advanced_settings_from_annotation_analysis_tab,
-        "set_annotation_analysis_from_advanced_settings": set_annotation_analysis_from_advanced_settings,
-        "update_analysis_type_from_radio": update_analysis_type_from_radio,
     }
-
-
-def attach_callbacks(
-    inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks
-) -> None:
-    """Attach callbacks using dictionary inputs."""
-
-    all_inputs = {
-        inp["active_datasets_dropdown"],
-        state["avail_datasets"],
-        inp["analysis_type_radio"],
-        inp["split_col_dropdown"],
-        inp["split_col_selected_vals_dropdown"],
-        inp["annotator_rows_dropdown"],
-        inp["annotator_cols_dropdown"],
-        inp["reference_models_dropdown"],
-        inp["models_to_compare_dropdown"],
-        inp["annotations_to_compare_dropdown"],
-        state["app_url"],
-        state["cache"],
-        inp["metric_name_dropdown"],
-        inp["sort_by_dropdown"],
-        inp["sort_order_dropdown"],
-        state["computed_annotator_metrics"],
-        state["computed_overall_metrics"],
-        state["default_annotator_cols"],
-        state["default_annotator_rows"],
-        state["votes_dicts"],
-    }
-
-    dataset_selection_outputs = [
-        inp["split_col_dropdown"],
-        inp["split_col_selected_vals_dropdown"],
-        inp["multi_dataset_warning_md"],
-        inp["annotator_rows_dropdown"],
-        inp["annotator_cols_dropdown"],
-        inp["models_to_compare_dropdown"],
-        inp["annotations_to_compare_dropdown"],
-        inp["reference_models_dropdown"],
-        inp["load_btn"],
-    ]
-
-    load_data_outputs = [
-        inp["split_col_dropdown"],
-        inp["split_col_selected_vals_dropdown"],
-        inp["multi_dataset_warning_md"],
-        inp["annotator_rows_dropdown"],
-        inp["annotator_cols_dropdown"],
-        inp["models_to_compare_dropdown"],
-        inp["annotations_to_compare_dropdown"],
-        inp["reference_models_dropdown"],
-        out["share_link"],
-        out["overall_metrics_table"],
-        out["annotator_table"],
-        state["cache"],
-        inp["load_btn"],
-        inp["sort_by_dropdown"],
-        inp["sort_order_dropdown"],
-        inp["metric_name_dropdown"],
-        state["computed_annotator_metrics"],
-        state["computed_overall_metrics"],
-        state["default_annotator_cols"],
-        state["default_annotator_rows"],
-        state["votes_dicts"],
-    ]
-
-    config_blocks_inputs = {
-        inp["multi_dataset_warning_md"],
-        inp["models_to_compare_dropdown"],
-        inp["annotations_to_compare_dropdown"],
-        inp["reference_models_dropdown"],
-        inp["annotator_cols_dropdown"],
-        inp["annotator_rows_dropdown"],
-        inp["split_col_dropdown"],
-        inp["split_col_selected_vals_dropdown"],
-    }
-
-    annotation_table_outputs = [
-        out["annotator_table"],
-        inp["sort_by_dropdown"],
-        out["share_link"],
-    ]
-
-    # reload data when load button is clicked
-    inp["load_btn"].click(
-        callbacks["load_data"],
-        inputs=all_inputs,
-        outputs=load_data_outputs,
-    )
-
-    # update single dataset menus when active dataset is changed
-    # (e.g. hiding this menu if multiple datasets are selected)
-    inp["active_datasets_dropdown"].input(
-        callbacks["update_single_dataset_menus"],
-        inputs=all_inputs,
-        outputs=dataset_selection_outputs,
-    )
-
-    # update column split value dropdowns when split column is changed
-    inp["split_col_dropdown"].input(
-        callbacks["update_col_split_value_dropdown"],
-        inputs=all_inputs,
-        outputs=dataset_selection_outputs,
-    )
-
-    # Update annotator table when metric type, sort by, or sort order is changed
-    inp["metric_name_dropdown"].change(
-        callbacks["update_annotator_table"],
-        inputs=all_inputs,
-        outputs=annotation_table_outputs,
-    )
-
-    inp["sort_by_dropdown"].change(
-        callbacks["update_annotator_table"],
-        inputs=all_inputs,
-        outputs=annotation_table_outputs,
-    )
-
-    inp["sort_order_dropdown"].change(
-        callbacks["update_annotator_table"],
-        inputs=all_inputs,
-        outputs=annotation_table_outputs,
-    )
-
-    # update advanced settings from model analysis tab
-    inp["models_to_compare_dropdown"].input(
-        callbacks["set_advanced_settings_from_model_analysis_tab"],
-        inputs={inp["models_to_compare_dropdown"]},
-        outputs={
-            inp["annotator_cols_dropdown"],
-            inp["annotations_to_compare_dropdown"],
-        },
-        show_progress="hidden",
-    )
-
-    # update model analysis settings from advanced settings
-    inp["annotator_cols_dropdown"].input(
-        callbacks["set_model_analysis_from_advanced_settings"],
-        inputs={inp["annotator_cols_dropdown"]},
-        outputs={inp["models_to_compare_dropdown"]},
-        show_progress="hidden",
-    )
-
-    # update advanced settings from annotation analysis tab
-    inp["annotations_to_compare_dropdown"].input(
-        callbacks["set_advanced_settings_from_annotation_analysis_tab"],
-        inputs={inp["annotations_to_compare_dropdown"]},
-        outputs={
-            inp["annotator_cols_dropdown"],
-            inp["models_to_compare_dropdown"],
-        },
-        show_progress="hidden",
-    )
-
-    # update annotation analysis settings from advanced settings
-    inp["annotator_cols_dropdown"].input(
-        callbacks["set_annotation_analysis_from_advanced_settings"],
-        inputs={inp["annotator_cols_dropdown"]},
-        outputs={inp["annotations_to_compare_dropdown"]},
-        show_progress="hidden",
-    )
-
-    # update visible config blocks when analysis type is changed
-    inp["analysis_type_radio"].change(
-        callbacks["update_analysis_type_from_radio"],
-        inputs={inp["analysis_type_radio"]},
-        outputs=config_blocks_inputs,  # we changing their visibility
-    )
-
-    demo.load(
-        callbacks["update_analysis_type_from_radio"],
-        inputs={inp["analysis_type_radio"]},
-        outputs=config_blocks_inputs,  # we changing their visibility
-    )
-
-    # finally add callbacks that run on start of app
-    demo.load(
-        callbacks["load_from_query_params"],
-        inputs=all_inputs,
-        outputs=load_data_outputs
-        + [inp["active_datasets_dropdown"]]
-        + [state["app_url"]],
-        trigger_mode="always_last",
-    )

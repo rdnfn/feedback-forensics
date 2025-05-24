@@ -1,7 +1,6 @@
 import gradio as gr
 import pandas as pd
 
-from feedback_forensics.app.callbacks import generate_callbacks, attach_callbacks
 from feedback_forensics.app.constants import (
     NONE_SELECTED_VALUE,
     VERSION,
@@ -20,6 +19,7 @@ from feedback_forensics.app.info_texts import (
 from feedback_forensics.app.styling import CUSTOM_CSS, THEME
 from feedback_forensics.app.utils import get_gradio_image_path
 from feedback_forensics.app.metrics import METRIC_COL_OPTIONS
+import feedback_forensics.app.callbacks
 
 
 def _add_title_row(title: str):
@@ -301,7 +301,7 @@ def generate():
         with gr.Row():
             gr.HTML(f"<center>Feedback Forensics app v{VERSION}</center>")
 
-        callbacks = generate_callbacks(inp, state, out)
-        attach_callbacks(inp, state, out, callbacks, demo)
+        callbacks = feedback_forensics.app.callbacks.generate(inp, state, out)
+        feedback_forensics.app.callbacks.attach(inp, state, out, callbacks, demo)
 
     return demo

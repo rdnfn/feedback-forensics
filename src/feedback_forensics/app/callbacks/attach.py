@@ -1,0 +1,188 @@
+"""Module to attach callbacks to components/blocks in the app.
+
+This module for example enables the "analyze" button to trigger the loading of data.
+"""
+
+import gradio as gr
+
+
+def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) -> None:
+    """Attach callbacks to components/blocks in the app."""
+
+    all_inputs = {
+        inp["active_datasets_dropdown"],
+        state["avail_datasets"],
+        inp["analysis_type_radio"],
+        inp["split_col_dropdown"],
+        inp["split_col_selected_vals_dropdown"],
+        inp["annotator_rows_dropdown"],
+        inp["annotator_cols_dropdown"],
+        inp["reference_models_dropdown"],
+        inp["models_to_compare_dropdown"],
+        inp["annotations_to_compare_dropdown"],
+        state["app_url"],
+        state["cache"],
+        inp["metric_name_dropdown"],
+        inp["sort_by_dropdown"],
+        inp["sort_order_dropdown"],
+        state["computed_annotator_metrics"],
+        state["computed_overall_metrics"],
+        state["default_annotator_cols"],
+        state["default_annotator_rows"],
+        state["votes_dicts"],
+    }
+
+    dataset_selection_outputs = [
+        inp["split_col_dropdown"],
+        inp["split_col_selected_vals_dropdown"],
+        inp["multi_dataset_warning_md"],
+        inp["annotator_rows_dropdown"],
+        inp["annotator_cols_dropdown"],
+        inp["models_to_compare_dropdown"],
+        inp["annotations_to_compare_dropdown"],
+        inp["reference_models_dropdown"],
+        inp["load_btn"],
+    ]
+
+    load_data_outputs = [
+        inp["split_col_dropdown"],
+        inp["split_col_selected_vals_dropdown"],
+        inp["multi_dataset_warning_md"],
+        inp["annotator_rows_dropdown"],
+        inp["annotator_cols_dropdown"],
+        inp["models_to_compare_dropdown"],
+        inp["annotations_to_compare_dropdown"],
+        inp["reference_models_dropdown"],
+        out["share_link"],
+        out["overall_metrics_table"],
+        out["annotator_table"],
+        state["cache"],
+        inp["load_btn"],
+        inp["sort_by_dropdown"],
+        inp["sort_order_dropdown"],
+        inp["metric_name_dropdown"],
+        state["computed_annotator_metrics"],
+        state["computed_overall_metrics"],
+        state["default_annotator_cols"],
+        state["default_annotator_rows"],
+        state["votes_dicts"],
+    ]
+
+    config_blocks_inputs = {
+        inp["multi_dataset_warning_md"],
+        inp["models_to_compare_dropdown"],
+        inp["annotations_to_compare_dropdown"],
+        inp["reference_models_dropdown"],
+        inp["annotator_cols_dropdown"],
+        inp["annotator_rows_dropdown"],
+        inp["split_col_dropdown"],
+        inp["split_col_selected_vals_dropdown"],
+    }
+
+    annotation_table_outputs = [
+        out["annotator_table"],
+        inp["sort_by_dropdown"],
+        out["share_link"],
+    ]
+
+    # reload data when load button is clicked
+    inp["load_btn"].click(
+        callbacks["load_data"],
+        inputs=all_inputs,
+        outputs=load_data_outputs,
+    )
+
+    # update single dataset menus when active dataset is changed
+    # (e.g. hiding this menu if multiple datasets are selected)
+    inp["active_datasets_dropdown"].input(
+        callbacks["update_single_dataset_menus"],
+        inputs=all_inputs,
+        outputs=dataset_selection_outputs,
+    )
+
+    # update column split value dropdowns when split column is changed
+    inp["split_col_dropdown"].input(
+        callbacks["update_col_split_value_dropdown"],
+        inputs=all_inputs,
+        outputs=dataset_selection_outputs,
+    )
+
+    # Update annotator table when metric type, sort by, or sort order is changed
+    inp["metric_name_dropdown"].change(
+        callbacks["update_annotator_table"],
+        inputs=all_inputs,
+        outputs=annotation_table_outputs,
+    )
+
+    inp["sort_by_dropdown"].change(
+        callbacks["update_annotator_table"],
+        inputs=all_inputs,
+        outputs=annotation_table_outputs,
+    )
+
+    inp["sort_order_dropdown"].change(
+        callbacks["update_annotator_table"],
+        inputs=all_inputs,
+        outputs=annotation_table_outputs,
+    )
+
+    # update advanced settings from model analysis tab
+    inp["models_to_compare_dropdown"].input(
+        callbacks["set_advanced_settings_from_model_analysis_tab"],
+        inputs={inp["models_to_compare_dropdown"]},
+        outputs={
+            inp["annotator_cols_dropdown"],
+            inp["annotations_to_compare_dropdown"],
+        },
+        show_progress="hidden",
+    )
+
+    # update model analysis settings from advanced settings
+    inp["annotator_cols_dropdown"].input(
+        callbacks["set_model_analysis_from_advanced_settings"],
+        inputs={inp["annotator_cols_dropdown"]},
+        outputs={inp["models_to_compare_dropdown"]},
+        show_progress="hidden",
+    )
+
+    # update advanced settings from annotation analysis tab
+    inp["annotations_to_compare_dropdown"].input(
+        callbacks["set_advanced_settings_from_annotation_analysis_tab"],
+        inputs={inp["annotations_to_compare_dropdown"]},
+        outputs={
+            inp["annotator_cols_dropdown"],
+            inp["models_to_compare_dropdown"],
+        },
+        show_progress="hidden",
+    )
+
+    # update annotation analysis settings from advanced settings
+    inp["annotator_cols_dropdown"].input(
+        callbacks["set_annotation_analysis_from_advanced_settings"],
+        inputs={inp["annotator_cols_dropdown"]},
+        outputs={inp["annotations_to_compare_dropdown"]},
+        show_progress="hidden",
+    )
+
+    # update visible config blocks when analysis type is changed
+    inp["analysis_type_radio"].change(
+        callbacks["update_analysis_type_from_radio"],
+        inputs={inp["analysis_type_radio"]},
+        outputs=config_blocks_inputs,  # we changing their visibility
+    )
+
+    demo.load(
+        callbacks["update_analysis_type_from_radio"],
+        inputs={inp["analysis_type_radio"]},
+        outputs=config_blocks_inputs,  # we changing their visibility
+    )
+
+    # finally add callbacks that run on start of app
+    demo.load(
+        callbacks["load_from_query_params"],
+        inputs=all_inputs,
+        outputs=load_data_outputs
+        + [inp["active_datasets_dropdown"]]
+        + [state["app_url"]],
+        trigger_mode="always_last",
+    )
