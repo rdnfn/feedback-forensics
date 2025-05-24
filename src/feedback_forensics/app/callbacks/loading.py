@@ -84,6 +84,9 @@ def generate(
                 out["annotator_table"]: gr.Dataframe(
                     value=pd.DataFrame(), headers=["No data available"]
                 ),
+                out["share_link"]: data.get(
+                    state["app_url"], ""
+                ),  # Return base URL or empty string
             }
 
         # loading data via handler
@@ -477,8 +480,14 @@ def generate(
         default_sort_by = "Max diff"
         default_sort_ascending = False
 
+        # Normalize datasets to always be a list and filter out None values
+        datasets = data[inp["active_datasets_dropdown"]]
+        if not isinstance(datasets, list):
+            datasets = [datasets] if datasets is not None else []
+        datasets = [d for d in datasets if d is not None]  # Filter out None values
+
         url_kwargs = {
-            "datasets": data[inp["active_datasets_dropdown"]],
+            "datasets": datasets,
             "col": data[inp["split_col_dropdown"]],
             "col_vals": data[inp["split_col_selected_vals_dropdown"]],
             "base_url": data[state["app_url"]],

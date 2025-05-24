@@ -67,9 +67,22 @@ def get_url_with_query_params(
     sort_order: str = None,
 ) -> str:
     available_datasets = get_available_datasets()
+
+    # Handle empty datasets list or filter out None values
+    if not datasets:
+        # Return base URL if no datasets are specified
+        return base_url
+
     datasets_url_names = [
         get_urlname_from_stringname(dataset, available_datasets) for dataset in datasets
     ]
+    # Filter out None values that might occur if dataset name is not found
+    datasets_url_names = [name for name in datasets_url_names if name is not None]
+
+    if not datasets_url_names:
+        # Return base URL if no valid dataset URL names are found
+        return base_url
+
     url = f"{base_url}?data={','.join(datasets_url_names)}"
     if col is not None and col != NONE_SELECTED_VALUE and col != "":
         url += f"&col={col}"
