@@ -278,6 +278,24 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             ),
         }
 
+    def set_model_analysis_from_advanced_settings(data):
+        """Set the model analysis settings from the advanced settings."""
+        model_annotator_names = data[inp["annotator_cols_dropdown"]]
+        model_annotator_names = [
+            name
+            for name in model_annotator_names
+            if PREFIX_MODEL_IDENTITY_ANNOTATORS in name
+        ]
+        model_names = [
+            name.replace(PREFIX_MODEL_IDENTITY_ANNOTATORS, "")
+            for name in model_annotator_names
+        ]
+        return {
+            inp["models_to_compare_dropdown"]: gr.Dropdown(
+                value=model_names,
+            ),
+        }
+
     def update_single_dataset_menus(data: dict):
         """Update menus for single dataset analysis
 
@@ -709,6 +727,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         "update_col_split_value_dropdown": update_col_split_value_dropdown,
         "update_annotator_table": update_annotator_table,
         "set_advanced_settings_from_model_analysis_tab": set_advanced_settings_from_model_analysis_tab,
+        "set_model_analysis_from_advanced_settings": set_model_analysis_from_advanced_settings,
         "update_analysis_type_from_radio": update_analysis_type_from_radio,
     }
 
@@ -834,6 +853,15 @@ def attach_callbacks(
         callbacks["set_advanced_settings_from_model_analysis_tab"],
         inputs={inp["models_to_compare_dropdown"]},
         outputs={inp["annotator_cols_dropdown"]},
+        show_progress="hidden",
+    )
+
+    # update model analysis settings from advanced settings
+    inp["annotator_cols_dropdown"].change(
+        callbacks["set_model_analysis_from_advanced_settings"],
+        inputs={inp["annotator_cols_dropdown"]},
+        outputs={inp["models_to_compare_dropdown"]},
+        show_progress="hidden",
     )
 
     # update visible config blocks when analysis type is changed
