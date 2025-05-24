@@ -243,6 +243,14 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         ]
         for variant, annotators in annotator_types.items():
             all_annotator_names.extend(annotators["visible_names"])
+
+        regular_annotator_names = [
+            name
+            for name in all_annotator_names
+            if PREFIX_MODEL_IDENTITY_ANNOTATORS not in name
+            and PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS not in name
+        ]
+
         return {
             inp["annotator_cols_dropdown"]: gr.Dropdown(
                 choices=sorted(all_annotator_names),
@@ -264,6 +272,11 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                 value=[],
                 interactive=True,
             ),
+            inp["annotations_to_compare_dropdown"]: gr.Dropdown(
+                choices=sorted(regular_annotator_names),
+                value=[],
+                interactive=True,
+            ),
         }
 
     def set_advanced_settings_from_model_analysis_tab(data):
@@ -275,6 +288,23 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         return {
             inp["annotator_cols_dropdown"]: gr.Dropdown(
                 value=model_annotator_names,
+            ),
+            # clear annotations to compare dropdown
+            inp["annotations_to_compare_dropdown"]: gr.Dropdown(
+                value=[],
+            ),
+        }
+
+    def set_advanced_settings_from_annotation_analysis_tab(data):
+        """Set the advanced settings from the annotation analysis tab."""
+        annotation_annotator_names = data[inp["annotations_to_compare_dropdown"]]
+        return {
+            inp["annotator_cols_dropdown"]: gr.Dropdown(
+                value=annotation_annotator_names,
+            ),
+            # clear models to compare dropdown
+            inp["models_to_compare_dropdown"]: gr.Dropdown(
+                value=[],
             ),
         }
 
@@ -293,6 +323,21 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         return {
             inp["models_to_compare_dropdown"]: gr.Dropdown(
                 value=model_names,
+            ),
+        }
+
+    def set_annotation_analysis_from_advanced_settings(data):
+        """Set the annotation analysis settings from the advanced settings."""
+        annotation_annotator_names = data[inp["annotator_cols_dropdown"]]
+        regular_annotator_names = [
+            name
+            for name in annotation_annotator_names
+            if PREFIX_MODEL_IDENTITY_ANNOTATORS not in name
+            and PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS not in name
+        ]
+        return {
+            inp["annotations_to_compare_dropdown"]: gr.Dropdown(
+                value=regular_annotator_names,
             ),
         }
 
@@ -697,6 +742,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         # (excludes the direct table configs, e.g. metric, sort by, sort order)
         all_config_blocks = [
             inp["models_to_compare_dropdown"],
+            inp["annotations_to_compare_dropdown"],
             inp["reference_models_dropdown"],
             inp["annotator_cols_dropdown"],
             inp["annotator_rows_dropdown"],
@@ -707,6 +753,8 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
         if analysis_type == "model_analysis":
             shown_blocks = [inp["models_to_compare_dropdown"]]
+        elif analysis_type == "annotation_analysis":
+            shown_blocks = [inp["annotations_to_compare_dropdown"]]
         elif analysis_type == "advanced_settings":
             shown_blocks = all_config_blocks
 
@@ -723,6 +771,8 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         "update_annotator_table": update_annotator_table,
         "set_advanced_settings_from_model_analysis_tab": set_advanced_settings_from_model_analysis_tab,
         "set_model_analysis_from_advanced_settings": set_model_analysis_from_advanced_settings,
+        "set_advanced_settings_from_annotation_analysis_tab": set_advanced_settings_from_annotation_analysis_tab,
+        "set_annotation_analysis_from_advanced_settings": set_annotation_analysis_from_advanced_settings,
         "update_analysis_type_from_radio": update_analysis_type_from_radio,
     }
 
@@ -741,6 +791,8 @@ def attach_callbacks(
         inp["annotator_rows_dropdown"],
         inp["annotator_cols_dropdown"],
         inp["reference_models_dropdown"],
+        inp["models_to_compare_dropdown"],
+        inp["annotations_to_compare_dropdown"],
         state["app_url"],
         state["cache"],
         inp["metric_name_dropdown"],
@@ -760,6 +812,7 @@ def attach_callbacks(
         inp["annotator_rows_dropdown"],
         inp["annotator_cols_dropdown"],
         inp["models_to_compare_dropdown"],
+        inp["annotations_to_compare_dropdown"],
         inp["reference_models_dropdown"],
         inp["load_btn"],
     ]
@@ -771,6 +824,7 @@ def attach_callbacks(
         inp["annotator_rows_dropdown"],
         inp["annotator_cols_dropdown"],
         inp["models_to_compare_dropdown"],
+        inp["annotations_to_compare_dropdown"],
         inp["reference_models_dropdown"],
         out["share_link"],
         out["overall_metrics_table"],
@@ -790,6 +844,7 @@ def attach_callbacks(
     config_blocks_inputs = {
         inp["multi_dataset_warning_md"],
         inp["models_to_compare_dropdown"],
+        inp["annotations_to_compare_dropdown"],
         inp["reference_models_dropdown"],
         inp["annotator_cols_dropdown"],
         inp["annotator_rows_dropdown"],
@@ -845,18 +900,40 @@ def attach_callbacks(
     )
 
     # update advanced settings from model analysis tab
-    inp["models_to_compare_dropdown"].change(
+    inp["models_to_compare_dropdown"].input(
         callbacks["set_advanced_settings_from_model_analysis_tab"],
         inputs={inp["models_to_compare_dropdown"]},
-        outputs={inp["annotator_cols_dropdown"]},
+        outputs={
+            inp["annotator_cols_dropdown"],
+            inp["annotations_to_compare_dropdown"],
+        },
         show_progress="hidden",
     )
 
     # update model analysis settings from advanced settings
-    inp["annotator_cols_dropdown"].change(
+    inp["annotator_cols_dropdown"].input(
         callbacks["set_model_analysis_from_advanced_settings"],
         inputs={inp["annotator_cols_dropdown"]},
         outputs={inp["models_to_compare_dropdown"]},
+        show_progress="hidden",
+    )
+
+    # update advanced settings from annotation analysis tab
+    inp["annotations_to_compare_dropdown"].input(
+        callbacks["set_advanced_settings_from_annotation_analysis_tab"],
+        inputs={inp["annotations_to_compare_dropdown"]},
+        outputs={
+            inp["annotator_cols_dropdown"],
+            inp["models_to_compare_dropdown"],
+        },
+        show_progress="hidden",
+    )
+
+    # update annotation analysis settings from advanced settings
+    inp["annotator_cols_dropdown"].input(
+        callbacks["set_annotation_analysis_from_advanced_settings"],
+        inputs={inp["annotator_cols_dropdown"]},
+        outputs={inp["annotations_to_compare_dropdown"]},
         show_progress="hidden",
     )
 
