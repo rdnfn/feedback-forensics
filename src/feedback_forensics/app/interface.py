@@ -127,9 +127,11 @@ def _create_configuration_panel(inp: dict, state: dict):
                 inp["active_datasets_dropdown"] = gr.Dropdown(
                     label="💽 Active datasets",
                     choices=dataset_names,
-                    value=default_datasets,
+                    value=(
+                        default_datasets[0] if default_datasets else None
+                    ),  # Single selection by default
                     interactive=True,
-                    multiselect=True,
+                    multiselect=False,  # Default to single selection
                 )
 
                 with gr.Accordion("ℹ️ Dataset details", open=False):
@@ -156,6 +158,14 @@ def _create_configuration_panel(inp: dict, state: dict):
                     value="<div style='opacity: 0.6'>⚠️ <i>Some configuration options (grouping by column, selecting multiple col annotators) only work correctly when selecting a single dataset. Select a single dataset to use these features.</i></div>",
                     visible=True,
                     container=True,
+                )
+                # Add the multiple dataset selection setting in advanced settings
+                inp["enable_multiple_datasets_checkbox"] = gr.Checkbox(
+                    label="Enable multiple dataset selection",
+                    info="Allow selecting multiple datasets simultaneously. Some features (like column grouping) only work with single datasets.",
+                    value=False,
+                    interactive=True,
+                    visible=False,
                 )
                 inp["split_col_dropdown"] = gr.Dropdown(
                     label="🗃️ Group dataset by column",
@@ -195,7 +205,7 @@ def _create_configuration_panel(inp: dict, state: dict):
                 )
                 inp["annotator_rows_dropdown"] = gr.Dropdown(
                     label="👥↓ Annotator rows",
-                    info=f'Select the annotators to be included as a row in the results table. By default only objective-following AI annotators are included (named as "{PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS} \<OBJECTIVE\>").',
+                    info=f'Select the annotators to be included as a row in the results table. By default only objective-following AI annotators are included (named as "{PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS} \\<OBJECTIVE\\>").',
                     choices=None,
                     value=None,
                     multiselect=True,

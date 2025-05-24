@@ -20,6 +20,7 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
         inp["reference_models_dropdown"],
         inp["models_to_compare_dropdown"],
         inp["annotations_to_compare_dropdown"],
+        inp["enable_multiple_datasets_checkbox"],
         state["app_url"],
         state["cache"],
         inp["metric_name_dropdown"],
@@ -77,6 +78,7 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
         inp["annotator_rows_dropdown"],
         inp["split_col_dropdown"],
         inp["split_col_selected_vals_dropdown"],
+        inp["enable_multiple_datasets_checkbox"],
     }
 
     annotation_table_outputs = [
@@ -161,6 +163,17 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
         callbacks["set_annotation_analysis_from_advanced_settings"],
         inputs={inp["annotator_cols_dropdown"]},
         outputs={inp["annotations_to_compare_dropdown"]},
+        show_progress="hidden",
+    )
+
+    # update dataset dropdown multiselect when checkbox is toggled
+    inp["enable_multiple_datasets_checkbox"].change(
+        callbacks["update_dataset_dropdown_multiselect"],
+        inputs={
+            inp["enable_multiple_datasets_checkbox"],
+            inp["active_datasets_dropdown"],
+        },
+        outputs={inp["active_datasets_dropdown"]},
         show_progress="hidden",
     )
 

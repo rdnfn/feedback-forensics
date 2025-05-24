@@ -67,7 +67,13 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
     def get_avail_col_values(col_name, data):
         """Get the available values for a given column."""
 
-        dataset = data[inp["active_datasets_dropdown"]][0]
+        datasets = data[inp["active_datasets_dropdown"]]
+
+        # Normalize datasets to always be a list for processing
+        if not isinstance(datasets, list):
+            datasets = [datasets] if datasets is not None else []
+
+        dataset = datasets[0]  # Use first dataset for column values
         dataset_config = data[state["avail_datasets"]][dataset]
         results_dir = pathlib.Path(dataset_config.path)
         cache = data[state["cache"]]

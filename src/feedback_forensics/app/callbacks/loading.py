@@ -60,6 +60,11 @@ def generate(
     ) -> dict:
         """Load data with dictionary inputs instead of individual arguments."""
         datasets = data[inp["active_datasets_dropdown"]]
+
+        # Normalize datasets to always be a list for processing
+        if not isinstance(datasets, list):
+            datasets = [datasets] if datasets is not None else []
+
         cache = data[state["cache"]]
         split_col = data[inp["split_col_dropdown"]]
         selected_vals = data[inp["split_col_selected_vals_dropdown"]]
@@ -214,7 +219,12 @@ def generate(
             return {
                 inp["active_datasets_dropdown"]: gr.Dropdown(
                     choices=get_available_datasets_names(),
-                    value=get_default_dataset_names(),
+                    value=(
+                        get_default_dataset_names()[0]
+                        if get_default_dataset_names()
+                        else None
+                    ),
+                    multiselect=False,
                 )
             }
 
@@ -232,9 +242,21 @@ def generate(
 
         if "datasets" in config:
             data[inp["active_datasets_dropdown"]] = config["datasets"]
+
+            # If multiple datasets are specified in URL, enable multiselect
+            multiselect_enabled = len(config["datasets"]) > 1
+
             return_dict[inp["active_datasets_dropdown"]] = gr.Dropdown(
                 value=config["datasets"],
+                multiselect=multiselect_enabled,
             )
+
+            # Also update the checkbox state if multiple datasets are loaded
+            if multiselect_enabled:
+                data[inp["enable_multiple_datasets_checkbox"]] = True
+                return_dict[inp["enable_multiple_datasets_checkbox"]] = gr.Checkbox(
+                    value=True,
+                )
 
             # Only load the dataset when necessary (annotators or reference models are specified)
             need_to_load_dataset = (

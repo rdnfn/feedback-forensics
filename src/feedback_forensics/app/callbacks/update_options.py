@@ -34,6 +34,10 @@ def generate(inp: dict, state: dict, out: dict, utils_callbacks: dict) -> dict:
         """
         datasets = data[inp["active_datasets_dropdown"]]
 
+        # Normalize datasets to always be a list for processing
+        if not isinstance(datasets, list):
+            datasets = [datasets] if datasets is not None else []
+
         # Load the full dataset (needed to extract annotator names)
         # which may take a few seconds. Caching ensures this cost is paid only once.
         dataset_config = data[state["avail_datasets"]][datasets[0]]
@@ -163,6 +167,10 @@ def generate(inp: dict, state: dict, out: dict, utils_callbacks: dict) -> dict:
 
         datasets = data[inp["active_datasets_dropdown"]]
 
+        # Normalize datasets to always be a list for processing
+        if not isinstance(datasets, list):
+            datasets = [datasets] if datasets is not None else []
+
         if len(datasets) == 1:
             menus_inactive = False
         else:
@@ -256,6 +264,7 @@ def generate(inp: dict, state: dict, out: dict, utils_callbacks: dict) -> dict:
             inp["split_col_dropdown"],
             inp["split_col_selected_vals_dropdown"],
             inp["multi_dataset_warning_md"],
+            inp["enable_multiple_datasets_checkbox"],
         ]
 
         if analysis_type == "model_analysis":
@@ -266,8 +275,38 @@ def generate(inp: dict, state: dict, out: dict, utils_callbacks: dict) -> dict:
             shown_blocks = all_config_blocks
 
         return {
-            block: gr.Dropdown(visible=block in shown_blocks)
+            block: (
+                gr.Dropdown(visible=block in shown_blocks)
+                if block != inp["enable_multiple_datasets_checkbox"]
+                else gr.Checkbox(visible=block in shown_blocks)
+            )
             for block in all_config_blocks
+        }
+
+    def update_dataset_dropdown_multiselect(data):
+        """Update the dataset dropdown multiselect property based on the checkbox."""
+        enable_multiple = data[inp["enable_multiple_datasets_checkbox"]]
+        current_value = data[inp["active_datasets_dropdown"]]
+
+        # If switching from multiple to single selection and multiple datasets are selected,
+        # keep only the first one
+        if (
+            not enable_multiple
+            and isinstance(current_value, list)
+            and len(current_value) > 1
+        ):
+            current_value = [current_value[0]]
+
+        # Ensure current_value is a list when multiselect is True, single value when False
+        if enable_multiple and not isinstance(current_value, list):
+            current_value = [current_value] if current_value else []
+        elif not enable_multiple and isinstance(current_value, list):
+            current_value = current_value[0] if current_value else None
+
+        return {
+            inp["active_datasets_dropdown"]: gr.Dropdown(
+                multiselect=enable_multiple, value=current_value
+            )
         }
 
     return {
@@ -278,4 +317,5 @@ def generate(inp: dict, state: dict, out: dict, utils_callbacks: dict) -> dict:
         "set_advanced_settings_from_annotation_analysis_tab": set_advanced_settings_from_annotation_analysis_tab,
         "set_annotation_analysis_from_advanced_settings": set_annotation_analysis_from_advanced_settings,
         "update_analysis_type_from_radio": update_analysis_type_from_radio,
+        "update_dataset_dropdown_multiselect": update_dataset_dropdown_multiselect,
     }
