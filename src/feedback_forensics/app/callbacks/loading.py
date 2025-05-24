@@ -244,13 +244,17 @@ def generate(
         data[state["app_url"]] = app_url
 
         if "datasets" in config:
-            data[inp["active_datasets_dropdown"]] = config["datasets"]
 
             # If multiple datasets are specified in URL, enable multiselect
             multiselect_enabled = len(config["datasets"]) > 1
+            data[inp["active_datasets_dropdown"]] = (
+                config["datasets"] if multiselect_enabled else config["datasets"][0]
+            )
 
             return_dict[inp["active_datasets_dropdown"]] = gr.Dropdown(
-                value=config["datasets"],
+                value=(
+                    config["datasets"] if multiselect_enabled else config["datasets"][0]
+                ),
                 multiselect=multiselect_enabled,
             )
 
