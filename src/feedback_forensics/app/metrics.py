@@ -7,6 +7,13 @@ import sklearn.metrics
 
 from loguru import logger
 
+from feedback_forensics.app.constants import DISABLE_SKLEARN_WARNINGS
+
+if DISABLE_SKLEARN_WARNINGS:
+    import warnings
+
+    warnings.filterwarnings("ignore", category=RuntimeWarning)
+
 
 DEFAULT_METRIC_NAME = "strength"
 
