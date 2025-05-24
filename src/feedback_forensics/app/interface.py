@@ -139,15 +139,17 @@ def _create_configuration_panel(inp: dict, state: dict):
                         container=True,
                     )
 
-            with gr.Tab("🤖 Model analysis"):
-                inp["models_to_compare_dropdown"] = gr.Dropdown(
-                    label="📌 Select models to compare",
-                    choices=None,
-                    value=None,
-                    multiselect=True,
+            with gr.Group():
+                inp["analysis_type_radio"] = gr.Radio(
+                    label="🔎 Analysis mode",
+                    choices=[
+                        ("🤖 Model analysis", "model_analysis"),
+                        ("🔧 Advanced settings", "advanced_settings"),
+                    ],
+                    value="model_analysis",
+                    interactive=True,
                 )
 
-            with gr.Tab("🔧 Advanced settings"), gr.Group():
                 # single dataset configuration
                 inp["multi_dataset_warning_md"] = gr.Markdown(
                     value="<div style='opacity: 0.6'>⚠️ <i>Some configuration options (grouping by column, selecting multiple col annotators) only work correctly when selecting a single dataset. Select a single dataset to use these features.</i></div>",
@@ -170,6 +172,12 @@ def _create_configuration_panel(inp: dict, state: dict):
                     multiselect=True,
                     interactive=False,
                     visible=False,
+                )
+                inp["models_to_compare_dropdown"] = gr.Dropdown(
+                    label="📌 Select models to compare",
+                    choices=None,
+                    value=None,
+                    multiselect=True,
                 )
                 inp["annotator_cols_dropdown"] = gr.Dropdown(
                     label="👥→ Annotator columns",

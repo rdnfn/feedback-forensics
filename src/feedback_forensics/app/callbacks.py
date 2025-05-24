@@ -278,10 +278,16 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         else:
             menus_inactive = True
 
+        # Check to only make split col and warning visible
+        # in advanced settings
+        is_in_advanced_settings = (
+            data[inp["analysis_type_radio"]] == "advanced_settings"
+        )
+
         if menus_inactive:
             return {
                 inp["multi_dataset_warning_md"]: gr.Markdown(
-                    visible=True,
+                    visible=is_in_advanced_settings
                 ),
                 inp["split_col_dropdown"]: gr.Dropdown(
                     choices=[NONE_SELECTED_VALUE],
@@ -316,7 +322,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
                     + tuple_avail_cols,
                     value=split_col,
                     interactive=True,
-                    visible=True,
+                    visible=is_in_advanced_settings,
                 ),
                 inp["split_col_selected_vals_dropdown"]: gr.Dropdown(
                     choices=[],
@@ -659,6 +665,31 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
 
         return get_url_with_query_params(**url_kwargs)
 
+    def update_analysis_type_from_radio(data):
+        """Update the analysis type from the radio button."""
+        analysis_type = data[inp["analysis_type_radio"]]
+
+        # config blocks that may be affected by analysis type
+        # (excludes the direct table configs, e.g. metric, sort by, sort order)
+        all_config_blocks = [
+            inp["models_to_compare_dropdown"],
+            inp["reference_models_dropdown"],
+            inp["annotator_cols_dropdown"],
+            inp["annotator_rows_dropdown"],
+            inp["split_col_dropdown"],
+            inp["multi_dataset_warning_md"],
+        ]
+
+        if analysis_type == "model_analysis":
+            shown_blocks = [inp["models_to_compare_dropdown"]]
+        elif analysis_type == "advanced_settings":
+            shown_blocks = all_config_blocks
+
+        return {
+            block: gr.Dropdown(visible=block in shown_blocks)
+            for block in all_config_blocks
+        }
+
     return {
         "load_data": load_data,
         "load_from_query_params": load_from_query_params,
@@ -666,6 +697,7 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
         "update_col_split_value_dropdown": update_col_split_value_dropdown,
         "update_annotator_table": update_annotator_table,
         "set_advanced_settings_from_model_analysis_tab": set_advanced_settings_from_model_analysis_tab,
+        "update_analysis_type_from_radio": update_analysis_type_from_radio,
     }
 
 
@@ -677,6 +709,7 @@ def attach_callbacks(
     all_inputs = {
         inp["active_datasets_dropdown"],
         state["avail_datasets"],
+        inp["analysis_type_radio"],
         inp["split_col_dropdown"],
         inp["split_col_selected_vals_dropdown"],
         inp["annotator_rows_dropdown"],
@@ -727,6 +760,15 @@ def attach_callbacks(
         state["default_annotator_rows"],
         state["votes_dicts"],
     ]
+
+    config_blocks_inputs = {
+        inp["models_to_compare_dropdown"],
+        inp["reference_models_dropdown"],
+        inp["annotator_cols_dropdown"],
+        inp["annotator_rows_dropdown"],
+        inp["split_col_dropdown"],
+        inp["multi_dataset_warning_md"],
+    }
 
     annotation_table_outputs = [
         out["annotator_table"],
@@ -780,6 +822,19 @@ def attach_callbacks(
         callbacks["set_advanced_settings_from_model_analysis_tab"],
         inputs={inp["models_to_compare_dropdown"]},
         outputs={inp["annotator_cols_dropdown"]},
+    )
+
+    # update visible config blocks when analysis type is changed
+    inp["analysis_type_radio"].change(
+        callbacks["update_analysis_type_from_radio"],
+        inputs={inp["analysis_type_radio"]},
+        outputs=config_blocks_inputs,  # we changing their visibility
+    )
+
+    demo.load(
+        callbacks["update_analysis_type_from_radio"],
+        inputs={inp["analysis_type_radio"]},
+        outputs=config_blocks_inputs,  # we changing their visibility
     )
 
     # finally add callbacks that run on start of app
