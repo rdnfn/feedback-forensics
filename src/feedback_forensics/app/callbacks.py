@@ -103,11 +103,23 @@ def generate_callbacks(inp: dict, state: dict, out: dict) -> dict:
             annotator_cols_visible_names = annotator_cols_visible_names[:1]
             if annotator_cols_visible_names[0] not in avail_annotators_cross_datasets:
                 gr.Warning(
-                    f"Annotator column '{annotator_cols_visible_names[0]}' not found in across all selected datasets. Please select a different annotator column."
+                    (
+                        f"Annotator column '{annotator_cols_visible_names[0]}' not"
+                        " found in across all selected datasets. Please select a "
+                        "different annotator column. Aborting analysis."
+                    )
                 )
                 # return statement needs to have at least one output
                 # thus we add this output without change
-                return {inp["split_col_dropdown"]: data[inp["split_col_dropdown"]]}
+                return {
+                    inp["split_col_dropdown"]: data[inp["split_col_dropdown"]],
+                    out["overall_metrics_table"]: gr.Dataframe(
+                        value=pd.DataFrame(), headers=["⛔️ Analysis stopped"]
+                    ),
+                    out["annotator_table"]: gr.Dataframe(
+                        value=pd.DataFrame(), headers=["⛔️ Analysis stopped"]
+                    ),
+                }
 
         dataset_handler.set_annotator_cols(annotator_cols_visible_names)
 

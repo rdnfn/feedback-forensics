@@ -520,15 +520,30 @@ class DatasetHandler:
                 handler.votes_dict for handler in self._col_handlers.values()
             ]
 
+        has_different_datasets = len(set(dataset_names)) > 1
+
+        if has_different_datasets:
+            vote_dict_keys = [
+                f"{dataset_name}\n({annotator_name})"
+                for annotator_name, dataset_name in zip(
+                    annotator_visible_names, dataset_names
+                )
+            ]
+        else:
+            vote_dict_keys = [
+                f"{annotator_name}" for annotator_name in annotator_visible_names
+            ]
+
         # create new votes_dicts with the new annotator columns
         votes_dicts = {
-            f"{dataset_name}\n({annotator_name.replace('-', ' ')})": {
+            vote_dict_key: {
                 "df": votes_dict["df"],
                 "annotator_metadata": votes_dict["annotator_metadata"],
                 "reference_annotator_col": annotator_key,
                 "shown_annotator_rows": votes_dict["shown_annotator_rows"],
             }
-            for annotator_key, annotator_name, dataset_name, votes_dict in zip(
+            for vote_dict_key, annotator_key, annotator_name, dataset_name, votes_dict in zip(
+                vote_dict_keys,
                 annotator_keys,
                 annotator_visible_names,
                 dataset_names,
