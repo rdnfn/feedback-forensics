@@ -214,29 +214,38 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
 
     # Example viewer callbacks
     # Update example viewer options when data is loaded
+    example_viewer_inputs = {
+        inp["example_dataset_dropdown"],
+        inp["example_annotator_row_dropdown"],
+        inp["example_annotator_col_dropdown"],
+        inp["example_index_slider"],
+    }
+
+    example_viewer_outputs = {
+        out["example_comparison_id"],
+        out["example_prompt"],
+        out["example_response_a"],
+        out["example_response_b"],
+        out["example_annotator_row_result"],
+        out["example_annotator_col_result"],
+        out["example_metadata"],
+        out["example_no_examples_message"],
+        out["example_details_group"],
+    }
+
+    example_viewer_all_components = example_viewer_inputs | example_viewer_outputs
+
     inp["load_btn"].click(
         callbacks["update_example_viewer_options"],
         inputs=all_inputs,
-        outputs={
-            inp["example_dataset_dropdown"],
-            inp["example_annotator_row_dropdown"],
-            inp["example_annotator_col_dropdown"],
-            inp["example_index_slider"],
-        },
-        show_progress="hidden",
+        outputs=example_viewer_all_components,
     )
 
     # Initialize example viewer on page load
     demo.load(
         callbacks["update_example_viewer_options"],
         inputs=all_inputs,
-        outputs={
-            inp["example_dataset_dropdown"],
-            inp["example_annotator_row_dropdown"],
-            inp["example_annotator_col_dropdown"],
-            inp["example_index_slider"],
-        },
-        show_progress="hidden",
+        outputs=example_viewer_all_components,
     )
 
     # Update annotator dropdowns when dataset changes
@@ -246,12 +255,7 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
             inp["example_dataset_dropdown"],
             state["votes_dicts"],
         },
-        outputs={
-            inp["example_annotator_row_dropdown"],
-            inp["example_annotator_col_dropdown"],
-            inp["example_index_slider"],
-        },
-        show_progress="hidden",
+        outputs=example_viewer_all_components,
     )
 
     # Update slider when subset filter or annotators change
@@ -269,7 +273,7 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
                 inp["example_subset_dropdown"],
                 state["votes_dicts"],
             },
-            outputs={inp["example_index_slider"]},
+            outputs=example_viewer_all_components,
             show_progress="hidden",
         )
 
@@ -291,15 +295,7 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
                 inp["example_index_slider"],
                 state["votes_dicts"],
             },
-            outputs={
-                out["example_comparison_id"],
-                out["example_prompt"],
-                out["example_response_a"],
-                out["example_response_b"],
-                out["example_annotator_row_result"],
-                out["example_annotator_col_result"],
-                out["example_metadata"],
-            },
+            outputs=example_viewer_all_components,
             show_progress="hidden",
         )
 

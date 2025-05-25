@@ -344,7 +344,14 @@ def _create_example_viewer(inp: dict, out: dict):
             )
 
         # Output displays
-        with gr.Group():
+        out["example_no_examples_message"] = gr.Markdown(
+            "⚠️ No examples found",
+            visible=False,
+        )
+        out["example_details_group"] = gr.Group(
+            visible=False,
+        )
+        with out["example_details_group"]:
             gr.Markdown("### Example Details")
 
             out["example_comparison_id"] = gr.Textbox(

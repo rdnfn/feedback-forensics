@@ -7,6 +7,9 @@ import gradio as gr
 def generate(inp: dict, state: dict, out: dict) -> dict:
     """Generate callbacks for the example viewer."""
 
+    def _generate_non_functional_slider():
+        return gr.Slider(value=0, interactive=False)
+
     def update_example_viewer_options(data):
         """Update the example viewer dropdown options based on loaded data."""
         votes_dicts = data.get(state["votes_dicts"], {})
@@ -20,7 +23,7 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
                 inp["example_annotator_col_dropdown"]: gr.Dropdown(
                     choices=[], value=None
                 ),
-                inp["example_index_slider"]: gr.Slider(maximum=0, value=0),
+                inp["example_index_slider"]: _generate_non_functional_slider(),
             }
 
         # Get dataset names
@@ -85,7 +88,7 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
                 inp["example_annotator_col_dropdown"]: gr.Dropdown(
                     choices=[], value=None
                 ),
-                inp["example_index_slider"]: gr.Slider(maximum=0, value=0),
+                inp["example_index_slider"]: _generate_non_functional_slider(),
             }
 
         votes_dict = votes_dicts[selected_dataset]
@@ -130,13 +133,13 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
         votes_dicts = data.get(state["votes_dicts"], {})
 
         if not selected_dataset or selected_dataset not in votes_dicts:
-            return {inp["example_index_slider"]: gr.Slider(maximum=0, value=0)}
+            return {inp["example_index_slider"]: _generate_non_functional_slider()}
 
         votes_dict = votes_dicts[selected_dataset]
         df = votes_dict.get("df")
 
         if df is None:
-            return {inp["example_index_slider"]: gr.Slider(maximum=0, value=0)}
+            return {inp["example_index_slider"]: _generate_non_functional_slider()}
 
         # Filter dataframe based on subset selection
         filtered_df = _filter_dataframe(
@@ -237,6 +240,8 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
             out["example_annotator_row_result"]: annotator_row_result,
             out["example_annotator_col_result"]: annotator_col_result,
             out["example_metadata"]: metadata,
+            out["example_no_examples_message"]: gr.Markdown(visible=False),
+            out["example_details_group"]: gr.Group(visible=True),
         }
 
     return {
@@ -314,6 +319,7 @@ def _filter_dataframe(
 
 def _empty_example_display(out: dict) -> dict:
     """Return empty example display values."""
+    gr.Warning("No examples found")
     return {
         out["example_comparison_id"]: "",
         out["example_prompt"]: "",
@@ -322,4 +328,6 @@ def _empty_example_display(out: dict) -> dict:
         out["example_annotator_row_result"]: "",
         out["example_annotator_col_result"]: "",
         out["example_metadata"]: {},
+        out["example_no_examples_message"]: gr.Markdown(visible=True),
+        out["example_details_group"]: gr.Group(visible=False),
     }
