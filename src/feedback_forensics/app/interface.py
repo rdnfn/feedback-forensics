@@ -125,7 +125,7 @@ def _create_configuration_panel(inp: dict, state: dict):
 
             with gr.Group():
                 inp["active_datasets_dropdown"] = gr.Dropdown(
-                    label="💽 Active datasets",
+                    label="💽 Dataset selection",
                     choices=dataset_names,
                     value=(
                         default_datasets[0] if default_datasets else None
