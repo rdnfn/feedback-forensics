@@ -190,6 +190,28 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
         outputs=config_blocks_inputs,  # we changing their visibility
     )
 
+    # update visible results view when results view radio is changed
+    inp["results_view_radio"].change(
+        callbacks["update_results_view"],
+        inputs={inp["results_view_radio"]},
+        outputs={
+            inp["numerical_results_col"],
+            inp["example_view_col"],
+        },
+        show_progress="hidden",
+    )
+
+    # set initial results view visibility on page load
+    demo.load(
+        callbacks["update_results_view"],
+        inputs={inp["results_view_radio"]},
+        outputs={
+            inp["numerical_results_col"],
+            inp["example_view_col"],
+        },
+        show_progress="hidden",
+    )
+
     # finally add callbacks that run on start of app
     demo.load(
         callbacks["load_from_query_params"],

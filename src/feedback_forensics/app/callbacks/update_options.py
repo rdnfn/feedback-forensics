@@ -309,6 +309,19 @@ def generate(inp: dict, state: dict, out: dict, utils_callbacks: dict) -> dict:
             )
         }
 
+    def update_results_view(data):
+        """Update the visibility of results view components based on radio selection."""
+        results_view = data[inp["results_view_radio"]]
+
+        return {
+            inp["numerical_results_col"]: gr.Column(
+                visible=results_view == "numerical_results"
+            ),
+            inp["example_view_col"]: gr.Column(
+                visible=results_view == "example_viewer"
+            ),
+        }
+
     return {
         "update_single_dataset_menus": update_single_dataset_menus,
         "update_col_split_value_dropdown": update_col_split_value_dropdown,
@@ -318,4 +331,5 @@ def generate(inp: dict, state: dict, out: dict, utils_callbacks: dict) -> dict:
         "set_annotation_analysis_from_advanced_settings": set_annotation_analysis_from_advanced_settings,
         "update_analysis_type_from_radio": update_analysis_type_from_radio,
         "update_dataset_dropdown_multiselect": update_dataset_dropdown_multiselect,
+        "update_results_view": update_results_view,
     }

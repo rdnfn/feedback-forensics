@@ -292,8 +292,6 @@ def _create_example_viewer(inp: dict, out: dict):
     # Annotator column
     # Metadata
 
-    _add_title_row("Example Viewer")
-
     inp["example_view_col"] = gr.Column(variant="panel")
     with inp["example_view_col"]:
         # Input controls
