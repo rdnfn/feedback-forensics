@@ -222,9 +222,8 @@ def _create_configuration_panel(inp: dict, state: dict):
             inp["load_btn"] = gr.Button("Run analysis", variant="secondary")
 
 
-def _create_results_panel(inp: dict, out: dict):
+def _create_numerical_results_panel(inp: dict, out: dict):
 
-    _add_title_row("Results")
     with gr.Column(scale=1, variant="panel"):
         with gr.Group():
             out["share_link"] = gr.Textbox(
@@ -275,6 +274,140 @@ def _create_results_panel(inp: dict, out: dict):
                 value=pd.DataFrame(),
                 headers=["No data loaded"],
             )
+
+
+def _create_example_viewer(inp: dict, out: dict):
+    # Inputs:
+    # Dataset, Annotator row, Annotator column,
+    # Subset: ["all", "agree", "disagree", "only annotator row does not apply", "only annotator column does not apply", "neither apply"]
+    # Index: slider between 0 and num_examples
+
+    # Output:
+    # Comparion id
+    # Prompt
+    # Response A, Response B
+    # Annotator row
+    # Annotator column
+    # Metadata
+
+    _add_title_row("Example Viewer")
+
+    with gr.Column(variant="panel"):
+        # Input controls
+        with gr.Group():
+            gr.Markdown("### Controls")
+
+            inp["example_dataset_dropdown"] = gr.Dropdown(
+                label="📊 Dataset",
+                choices=[],
+                value=None,
+                interactive=True,
+            )
+
+            with gr.Row():
+                inp["example_annotator_row_dropdown"] = gr.Dropdown(
+                    label="👥↓ Annotator (Row)",
+                    choices=[],
+                    value=None,
+                    interactive=True,
+                )
+
+                inp["example_annotator_col_dropdown"] = gr.Dropdown(
+                    label="👥→ Annotator (Column)",
+                    choices=[],
+                    value=None,
+                    interactive=True,
+                )
+
+            inp["example_subset_dropdown"] = gr.Dropdown(
+                label="🔍 Filter subset",
+                choices=[
+                    "all",
+                    "agree",
+                    "disagree",
+                    "only annotator row does not apply",
+                    "only annotator column does not apply",
+                    "neither apply",
+                ],
+                value="all",
+                interactive=True,
+            )
+
+            inp["example_index_slider"] = gr.Slider(
+                label="📋 Example index",
+                minimum=0,
+                maximum=100,
+                step=1,
+                value=0,
+                interactive=True,
+            )
+
+        # Output displays
+        with gr.Group():
+            gr.Markdown("### Example Details")
+
+            out["example_comparison_id"] = gr.Textbox(
+                label="🏷️ Comparison ID",
+                value="",
+                interactive=False,
+            )
+
+            out["example_prompt"] = gr.Textbox(
+                label="💬 Prompt",
+                value="",
+                interactive=False,
+                lines=3,
+            )
+
+            with gr.Row():
+                out["example_response_a"] = gr.Textbox(
+                    label="📝 Response A",
+                    value="",
+                    interactive=False,
+                    lines=5,
+                )
+
+                out["example_response_b"] = gr.Textbox(
+                    label="📝 Response B",
+                    value="",
+                    interactive=False,
+                    lines=5,
+                )
+
+            out["example_annotator_row_result"] = gr.Textbox(
+                label="👥↓ Annotator Row Result",
+                value="",
+                interactive=False,
+            )
+
+            out["example_annotator_col_result"] = gr.Textbox(
+                label="👥→ Annotator Column Result",
+                value="",
+                interactive=False,
+            )
+
+            out["example_metadata"] = gr.JSON(
+                label="📋 Metadata",
+                value={},
+            )
+
+
+def _create_results_panel(inp: dict, out: dict):
+
+    _add_title_row("Results")
+
+    inp["results_view_radio"] = gr.Radio(
+        label="🎛️ View",
+        choices=[
+            ("📊 Numerical results", "numerical_results"),
+            ("👀 Example viewer", "example_viewer"),
+        ],
+        value="numerical_results",
+        interactive=True,
+    )
+
+    _create_numerical_results_panel(inp, out)
+    _create_example_viewer(inp, out)
 
 
 def _force_dark_theme(block):
