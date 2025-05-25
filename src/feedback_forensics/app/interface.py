@@ -224,7 +224,9 @@ def _create_configuration_panel(inp: dict, state: dict):
 
 def _create_numerical_results_panel(inp: dict, out: dict):
 
-    with gr.Column(scale=1, variant="panel"):
+    inp["numerical_results_col"] = gr.Column(scale=1, variant="panel")
+
+    with inp["numerical_results_col"]:
         with gr.Group():
             out["share_link"] = gr.Textbox(
                 label="🔗 Share link",
@@ -292,7 +294,8 @@ def _create_example_viewer(inp: dict, out: dict):
 
     _add_title_row("Example Viewer")
 
-    with gr.Column(variant="panel"):
+    inp["example_view_col"] = gr.Column(variant="panel")
+    with inp["example_view_col"]:
         # Input controls
         with gr.Group():
             gr.Markdown("### Controls")
