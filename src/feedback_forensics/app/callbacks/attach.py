@@ -212,6 +212,97 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
         show_progress="hidden",
     )
 
+    # Example viewer callbacks
+    # Update example viewer options when data is loaded
+    inp["load_btn"].click(
+        callbacks["update_example_viewer_options"],
+        inputs=all_inputs,
+        outputs={
+            inp["example_dataset_dropdown"],
+            inp["example_annotator_row_dropdown"],
+            inp["example_annotator_col_dropdown"],
+            inp["example_index_slider"],
+        },
+        show_progress="hidden",
+    )
+
+    # Initialize example viewer on page load
+    demo.load(
+        callbacks["update_example_viewer_options"],
+        inputs=all_inputs,
+        outputs={
+            inp["example_dataset_dropdown"],
+            inp["example_annotator_row_dropdown"],
+            inp["example_annotator_col_dropdown"],
+            inp["example_index_slider"],
+        },
+        show_progress="hidden",
+    )
+
+    # Update annotator dropdowns when dataset changes
+    inp["example_dataset_dropdown"].change(
+        callbacks["update_example_viewer_annotators"],
+        inputs={
+            inp["example_dataset_dropdown"],
+            state["votes_dicts"],
+        },
+        outputs={
+            inp["example_annotator_row_dropdown"],
+            inp["example_annotator_col_dropdown"],
+            inp["example_index_slider"],
+        },
+        show_progress="hidden",
+    )
+
+    # Update slider when subset filter or annotators change
+    for component in [
+        inp["example_annotator_row_dropdown"],
+        inp["example_annotator_col_dropdown"],
+        inp["example_subset_dropdown"],
+    ]:
+        component.change(
+            callbacks["update_example_viewer_slider"],
+            inputs={
+                inp["example_dataset_dropdown"],
+                inp["example_annotator_row_dropdown"],
+                inp["example_annotator_col_dropdown"],
+                inp["example_subset_dropdown"],
+                state["votes_dicts"],
+            },
+            outputs={inp["example_index_slider"]},
+            show_progress="hidden",
+        )
+
+    # Display example when any input changes
+    for component in [
+        inp["example_dataset_dropdown"],
+        inp["example_annotator_row_dropdown"],
+        inp["example_annotator_col_dropdown"],
+        inp["example_subset_dropdown"],
+        inp["example_index_slider"],
+    ]:
+        component.change(
+            callbacks["display_example"],
+            inputs={
+                inp["example_dataset_dropdown"],
+                inp["example_annotator_row_dropdown"],
+                inp["example_annotator_col_dropdown"],
+                inp["example_subset_dropdown"],
+                inp["example_index_slider"],
+                state["votes_dicts"],
+            },
+            outputs={
+                out["example_comparison_id"],
+                out["example_prompt"],
+                out["example_response_a"],
+                out["example_response_b"],
+                out["example_annotator_row_result"],
+                out["example_annotator_col_result"],
+                out["example_metadata"],
+            },
+            show_progress="hidden",
+        )
+
     # finally add callbacks that run on start of app
     demo.load(
         callbacks["load_from_query_params"],
