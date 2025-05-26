@@ -13,23 +13,21 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
     """Create all callbacks for the app."""
 
     utils_callbacks = utils.generate(inp, state, out)
-
+    example_viewer_callbacks = example_viewer.generate(inp, state, out)
     update_options_callbacks = update_options.generate(
         inp,
         state,
         out,
         utils_callbacks=utils_callbacks,
     )
-
     loading_callbacks = loading.generate(
         inp,
         state,
         out,
         utils_callbacks=utils_callbacks,
         update_options_callbacks=update_options_callbacks,
+        example_viewer_callbacks=example_viewer_callbacks,
     )
-
-    example_viewer_callbacks = example_viewer.generate(inp, state, out)
 
     return {
         **utils_callbacks,

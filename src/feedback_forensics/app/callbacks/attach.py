@@ -9,6 +9,31 @@ import gradio as gr
 def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) -> None:
     """Attach callbacks to components/blocks in the app."""
 
+    example_viewer_inputs = {
+        inp["example_dataset_dropdown"],
+        inp["example_annotator_row_dropdown"],
+        inp["example_annotator_col_dropdown"],
+        inp["example_index_slider"],
+        inp["example_subset_dropdown"],
+    }
+
+    external_example_viewer_inputs = {
+        state["votes_dicts"],
+        inp["active_datasets_dropdown"],
+    }
+
+    example_viewer_outputs = {
+        out["example_comparison_id"],
+        out["example_prompt"],
+        out["example_response_a"],
+        out["example_response_b"],
+        out["example_annotator_row_result"],
+        out["example_annotator_col_result"],
+        out["example_metadata"],
+        out["example_no_examples_message"],
+        out["example_details_group"],
+    }
+
     all_inputs = {
         inp["active_datasets_dropdown"],
         state["avail_datasets"],
@@ -31,7 +56,7 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
         state["default_annotator_cols"],
         state["default_annotator_rows"],
         state["votes_dicts"],
-    }
+    } | example_viewer_inputs
 
     dataset_selection_outputs = [
         inp["split_col_dropdown"],
@@ -45,29 +70,33 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
         inp["load_btn"],
     ]
 
-    load_data_outputs = [
-        inp["split_col_dropdown"],
-        inp["split_col_selected_vals_dropdown"],
-        inp["multi_dataset_warning_md"],
-        inp["annotator_rows_dropdown"],
-        inp["annotator_cols_dropdown"],
-        inp["models_to_compare_dropdown"],
-        inp["annotations_to_compare_dropdown"],
-        inp["reference_models_dropdown"],
-        out["share_link"],
-        out["overall_metrics_table"],
-        out["annotator_table"],
-        state["cache"],
-        inp["load_btn"],
-        inp["sort_by_dropdown"],
-        inp["sort_order_dropdown"],
-        inp["metric_name_dropdown"],
-        state["computed_annotator_metrics"],
-        state["computed_overall_metrics"],
-        state["default_annotator_cols"],
-        state["default_annotator_rows"],
-        state["votes_dicts"],
-    ]
+    load_data_outputs = (
+        {
+            inp["split_col_dropdown"],
+            inp["split_col_selected_vals_dropdown"],
+            inp["multi_dataset_warning_md"],
+            inp["annotator_rows_dropdown"],
+            inp["annotator_cols_dropdown"],
+            inp["models_to_compare_dropdown"],
+            inp["annotations_to_compare_dropdown"],
+            inp["reference_models_dropdown"],
+            out["share_link"],
+            out["overall_metrics_table"],
+            out["annotator_table"],
+            state["cache"],
+            inp["load_btn"],
+            inp["sort_by_dropdown"],
+            inp["sort_order_dropdown"],
+            inp["metric_name_dropdown"],
+            state["computed_annotator_metrics"],
+            state["computed_overall_metrics"],
+            state["default_annotator_cols"],
+            state["default_annotator_rows"],
+            state["votes_dicts"],
+        }
+        | example_viewer_inputs
+        | example_viewer_outputs
+    )
 
     config_blocks_inputs = {
         inp["multi_dataset_warning_md"],
@@ -214,30 +243,6 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
 
     # Example viewer callbacks
     # Update example viewer options when data is loaded
-    example_viewer_inputs = {
-        inp["example_dataset_dropdown"],
-        inp["example_annotator_row_dropdown"],
-        inp["example_annotator_col_dropdown"],
-        inp["example_index_slider"],
-        inp["example_subset_dropdown"],
-    }
-
-    external_example_viewer_inputs = {
-        state["votes_dicts"],
-        inp["active_datasets_dropdown"],
-    }
-
-    example_viewer_outputs = {
-        out["example_comparison_id"],
-        out["example_prompt"],
-        out["example_response_a"],
-        out["example_response_b"],
-        out["example_annotator_row_result"],
-        out["example_annotator_col_result"],
-        out["example_metadata"],
-        out["example_no_examples_message"],
-        out["example_details_group"],
-    }
 
     example_viewer_all_components = example_viewer_inputs | example_viewer_outputs
 
@@ -259,15 +264,6 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
     demo.load(
         callbacks["load_from_query_params"],
         inputs=all_inputs,
-        outputs=load_data_outputs
-        + [inp["active_datasets_dropdown"]]
-        + [state["app_url"]],
+        outputs=load_data_outputs | {inp["active_datasets_dropdown"], state["app_url"]},
         trigger_mode="always_last",
-    )
-
-    # Initialize example viewer on page load
-    demo.load(
-        callbacks["update_example_viewer_options"],
-        inputs=example_viewer_inputs | external_example_viewer_inputs,
-        outputs=example_viewer_all_components,
     )

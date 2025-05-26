@@ -42,6 +42,7 @@ def generate(
     out: dict,
     utils_callbacks: dict,
     update_options_callbacks: dict,
+    example_viewer_callbacks: dict,
 ) -> dict:
     """Generate callbacks for loading data and plots."""
 
@@ -174,6 +175,8 @@ def generate(
             sort_ascending=sort_ascending,
         )
 
+        data[state["votes_dicts"]] = dataset_handler.votes_dicts
+
         return_dict = {
             out["overall_metrics_table"]: tables["overall_metrics"],
             out["annotator_table"]: tables["annotator"],
@@ -197,6 +200,7 @@ def generate(
             inp["sort_order_dropdown"]: gr.Dropdown(
                 value="Descending" if not sort_ascending else "Ascending"
             ),
+            **example_viewer_callbacks["update_example_viewer_options"](data),
         }
 
         # generate share link based on updated app state data
