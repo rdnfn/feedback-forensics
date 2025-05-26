@@ -245,14 +245,6 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
         component.input(
             callbacks["update_example_viewer_options"],
             inputs=example_viewer_inputs | external_example_viewer_inputs,
-            outputs=example_viewer_inputs,
-        )
-
-    # Display example when any input changes
-    for component in example_viewer_inputs:
-        component.input(
-            callbacks["display_example"],
-            inputs=example_viewer_inputs | external_example_viewer_inputs,
             outputs=example_viewer_all_components,
             show_progress="hidden",
         )

@@ -49,7 +49,7 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
         selected_dataset = data[inp["example_dataset_dropdown"]]
         annotator_row = data[inp["example_annotator_row_dropdown"]]
         annotator_col = data[inp["example_annotator_col_dropdown"]]
-        subset_filter = data[inp["example_subset_dropdown"]]
+        slider_value = data[inp["example_index_slider"]]
 
         if not votes_dicts or not dataset_names:
             return _get_empty_viewer_option_dict()
@@ -89,6 +89,11 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
         if df is not None:
             max_examples = max(0, len(df) - 1)
 
+        data[inp["example_dataset_dropdown"]] = selected_dataset
+        data[inp["example_annotator_row_dropdown"]] = annotator_row
+        data[inp["example_annotator_col_dropdown"]] = annotator_col
+        data[inp["example_index_slider"]] = slider_value
+
         return {
             inp["example_dataset_dropdown"]: gr.Dropdown(
                 choices=dataset_names, value=selected_dataset, interactive=True
@@ -104,8 +109,9 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
                 interactive=True,
             ),
             inp["example_index_slider"]: gr.Slider(
-                minimum=0, maximum=max_examples, value=0, interactive=True
+                minimum=0, maximum=max_examples, value=slider_value, interactive=True
             ),
+            **display_example(data),
         }
 
     def display_example(data):
