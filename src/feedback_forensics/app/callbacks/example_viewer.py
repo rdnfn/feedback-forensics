@@ -93,6 +93,7 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
                 subset_filter=subset_filter,
             )
             max_examples = max(0, len(filtered_df) - 1)
+            slider_value = min(slider_value, max_examples)
 
         data[inp["example_dataset_dropdown"]] = selected_dataset
         data[inp["example_annotator_row_dropdown"]] = annotator_row
