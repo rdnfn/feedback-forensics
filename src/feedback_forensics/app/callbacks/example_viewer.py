@@ -2,6 +2,7 @@
 
 import pandas as pd
 import gradio as gr
+from loguru import logger
 
 
 def generate(inp: dict, state: dict, out: dict) -> dict:
@@ -10,147 +11,101 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
     def _generate_non_functional_slider():
         return gr.Slider(value=0, interactive=False)
 
+    def _get_empty_viewer_option_dict():
+        return {
+            inp["example_dataset_dropdown"]: gr.Dropdown(choices=[], value=None),
+            inp["example_annotator_row_dropdown"]: gr.Dropdown(choices=[], value=None),
+            inp["example_annotator_col_dropdown"]: gr.Dropdown(choices=[], value=None),
+            inp["example_index_slider"]: _generate_non_functional_slider(),
+        }
+
+    def _get_dataset_col_name(
+        dataset_name: str, dataset_names: list[str], votes_dicts: dict
+    ) -> str:
+        if isinstance(dataset_names, str):
+            dataset_names = [dataset_names]
+
+        logger.info(f"Getting dataset col name for {dataset_name}")
+        logger.info(f"Dataset names: {dataset_names}")
+        logger.info(f"Votes dicts: {list(votes_dicts.keys())}")
+
+        if len(dataset_names) >= 2:
+            dataset_col_name = [
+                col_name for col_name in votes_dicts.keys() if dataset_name in col_name
+            ][0]
+        else:
+            # Note that if it's only a single dataset
+            # the dataset name is not included in the column
+            dataset_col_name = list(votes_dicts.keys())[0]
+        return dataset_col_name
+
     def update_example_viewer_options(data):
-        """Update the example viewer dropdown options based on loaded data."""
+        """Update the example viewer dropdown options based on loaded data.
+
+        Triggered by the active datasets dropdown."""
+
         votes_dicts = data.get(state["votes_dicts"], {})
-
-        if not votes_dicts:
-            return {
-                inp["example_dataset_dropdown"]: gr.Dropdown(choices=[], value=None),
-                inp["example_annotator_row_dropdown"]: gr.Dropdown(
-                    choices=[], value=None
-                ),
-                inp["example_annotator_col_dropdown"]: gr.Dropdown(
-                    choices=[], value=None
-                ),
-                inp["example_index_slider"]: _generate_non_functional_slider(),
-            }
-
-        # Get dataset names
-        dataset_names = list(votes_dicts.keys())
-
-        # Get first dataset to initialize annotator options
-        first_dataset = dataset_names[0] if dataset_names else None
-        annotator_choices = []
-        annotator_visible_names = []
-
-        if first_dataset:
-            first_votes_dict = votes_dicts[first_dataset]
-            annotator_metadata = first_votes_dict.get("annotator_metadata", {})
-
-            # Get annotator choices (visible names)
-            annotator_visible_names = [
-                metadata["annotator_visible_name"]
-                for metadata in annotator_metadata.values()
-            ]
-            annotator_choices = annotator_visible_names
-
-        # Get number of examples for slider
-        max_examples = 0
-        if first_dataset:
-            df = votes_dicts[first_dataset].get("df")
-            if df is not None:
-                max_examples = max(0, len(df) - 1)
-
-        return {
-            inp["example_dataset_dropdown"]: gr.Dropdown(
-                choices=dataset_names, value=first_dataset, interactive=True
-            ),
-            inp["example_annotator_row_dropdown"]: gr.Dropdown(
-                choices=annotator_choices,
-                value=annotator_choices[0] if annotator_choices else None,
-                interactive=True,
-            ),
-            inp["example_annotator_col_dropdown"]: gr.Dropdown(
-                choices=annotator_choices,
-                value=(
-                    annotator_choices[1]
-                    if len(annotator_choices) > 1
-                    else annotator_choices[0] if annotator_choices else None
-                ),
-                interactive=True,
-            ),
-            inp["example_index_slider"]: gr.Slider(
-                minimum=0, maximum=max_examples, value=0, interactive=True
-            ),
-        }
-
-    def update_example_viewer_annotators(data):
-        """Update annotator dropdowns when dataset changes."""
-        selected_dataset = data[inp["example_dataset_dropdown"]]
-        votes_dicts = data.get(state["votes_dicts"], {})
-
-        if not selected_dataset or selected_dataset not in votes_dicts:
-            return {
-                inp["example_annotator_row_dropdown"]: gr.Dropdown(
-                    choices=[], value=None
-                ),
-                inp["example_annotator_col_dropdown"]: gr.Dropdown(
-                    choices=[], value=None
-                ),
-                inp["example_index_slider"]: _generate_non_functional_slider(),
-            }
-
-        votes_dict = votes_dicts[selected_dataset]
-        annotator_metadata = votes_dict.get("annotator_metadata", {})
-
-        # Get annotator choices (visible names)
-        annotator_choices = [
-            metadata["annotator_visible_name"]
-            for metadata in annotator_metadata.values()
-        ]
-
-        # Get number of examples for slider
-        df = votes_dict.get("df")
-        max_examples = max(0, len(df) - 1) if df is not None else 0
-
-        return {
-            inp["example_annotator_row_dropdown"]: gr.Dropdown(
-                choices=annotator_choices,
-                value=annotator_choices[0] if annotator_choices else None,
-                interactive=True,
-            ),
-            inp["example_annotator_col_dropdown"]: gr.Dropdown(
-                choices=annotator_choices,
-                value=(
-                    annotator_choices[1]
-                    if len(annotator_choices) > 1
-                    else annotator_choices[0] if annotator_choices else None
-                ),
-                interactive=True,
-            ),
-            inp["example_index_slider"]: gr.Slider(
-                minimum=0, maximum=max_examples, value=0, interactive=True
-            ),
-        }
-
-    def update_example_viewer_slider(data):
-        """Update the example index slider when subset filter changes."""
+        dataset_names = data[inp["active_datasets_dropdown"]]
         selected_dataset = data[inp["example_dataset_dropdown"]]
         annotator_row = data[inp["example_annotator_row_dropdown"]]
         annotator_col = data[inp["example_annotator_col_dropdown"]]
         subset_filter = data[inp["example_subset_dropdown"]]
-        votes_dicts = data.get(state["votes_dicts"], {})
 
-        if not selected_dataset or selected_dataset not in votes_dicts:
-            return {inp["example_index_slider"]: _generate_non_functional_slider()}
+        if not votes_dicts or not dataset_names:
+            return _get_empty_viewer_option_dict()
 
-        votes_dict = votes_dicts[selected_dataset]
-        df = votes_dict.get("df")
+        if isinstance(dataset_names, str):
+            dataset_names = [dataset_names]
 
-        if df is None:
-            return {inp["example_index_slider"]: _generate_non_functional_slider()}
+        if not selected_dataset:
+            selected_dataset = dataset_names[0]
 
-        # Filter dataframe based on subset selection
-        filtered_df = _filter_dataframe(
-            df, votes_dict, annotator_row, annotator_col, subset_filter
+        selected_dataset_col_name = _get_dataset_col_name(
+            selected_dataset, dataset_names, votes_dicts
         )
-        max_examples = max(0, len(filtered_df) - 1)
+
+        selected_votes_dict = votes_dicts[selected_dataset_col_name]
+        annotator_metadata = selected_votes_dict.get("annotator_metadata", {})
+
+        # Get annotator choices (visible names)
+        annotator_visible_names = [
+            metadata["annotator_visible_name"]
+            for metadata in annotator_metadata.values()
+        ]
+        annotator_choices = annotator_visible_names
+
+        if annotator_row is None:
+            annotator_row = annotator_choices[0]
+
+        if annotator_col is None:
+            if len(annotator_choices) > 1:
+                annotator_col = annotator_choices[1]
+            else:
+                annotator_col = annotator_choices[0]
+
+        # Get number of examples for slider
+        max_examples = 0
+        df = votes_dicts[selected_dataset_col_name].get("df")
+        if df is not None:
+            max_examples = max(0, len(df) - 1)
 
         return {
+            inp["example_dataset_dropdown"]: gr.Dropdown(
+                choices=dataset_names, value=selected_dataset, interactive=True
+            ),
+            inp["example_annotator_row_dropdown"]: gr.Dropdown(
+                choices=annotator_choices,
+                value=annotator_row,
+                interactive=True,
+            ),
+            inp["example_annotator_col_dropdown"]: gr.Dropdown(
+                choices=annotator_choices,
+                value=annotator_col,
+                interactive=True,
+            ),
             inp["example_index_slider"]: gr.Slider(
                 minimum=0, maximum=max_examples, value=0, interactive=True
-            )
+            ),
         }
 
     def display_example(data):
@@ -161,15 +116,26 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
         subset_filter = data[inp["example_subset_dropdown"]]
         example_index = int(data[inp["example_index_slider"]])
         votes_dicts = data.get(state["votes_dicts"], {})
+        dataset_names = data[inp["active_datasets_dropdown"]]
 
-        if not selected_dataset or selected_dataset not in votes_dicts:
+        dataset_col_name = _get_dataset_col_name(
+            selected_dataset, dataset_names, votes_dicts
+        )
+
+        if dataset_col_name not in votes_dicts:
+            logger.warning(
+                "Example viewer: selected_dataset not in votes_dicts"
+                f"selected_dataset: {dataset_col_name}, "
+                f"votes_dicts: {list(votes_dicts.keys())}"
+            )
             return _empty_example_display(out)
 
-        votes_dict = votes_dicts[selected_dataset]
+        votes_dict = votes_dicts[dataset_col_name]
         df = votes_dict.get("df")
         annotator_metadata = votes_dict.get("annotator_metadata", {})
 
         if df is None or len(df) == 0:
+            logger.warning("Example viewer: df is None or empty")
             return _empty_example_display(out)
 
         # Filter dataframe based on subset selection
@@ -178,6 +144,11 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
         )
 
         if len(filtered_df) == 0 or example_index >= len(filtered_df):
+            logger.warning(
+                "Example viewer: filtered_df is empty or example_index is out of range"
+                f"filtered_df: {filtered_df}"
+                f"example_index: {example_index}"
+            )
             return _empty_example_display(out)
 
         # Get the selected row
@@ -246,8 +217,6 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
 
     return {
         "update_example_viewer_options": update_example_viewer_options,
-        "update_example_viewer_annotators": update_example_viewer_annotators,
-        "update_example_viewer_slider": update_example_viewer_slider,
         "display_example": display_example,
     }
 

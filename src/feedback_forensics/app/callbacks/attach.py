@@ -219,6 +219,12 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
         inp["example_annotator_row_dropdown"],
         inp["example_annotator_col_dropdown"],
         inp["example_index_slider"],
+        inp["example_subset_dropdown"],
+    }
+
+    external_example_viewer_inputs = {
+        state["votes_dicts"],
+        inp["active_datasets_dropdown"],
     }
 
     example_viewer_outputs = {
@@ -235,69 +241,27 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
 
     example_viewer_all_components = example_viewer_inputs | example_viewer_outputs
 
-    inp["load_btn"].click(
-        callbacks["update_example_viewer_options"],
-        inputs=all_inputs,
-        outputs=example_viewer_all_components,
-    )
-
-    # Initialize example viewer on page load
-    demo.load(
-        callbacks["update_example_viewer_options"],
-        inputs=all_inputs,
-        outputs=example_viewer_all_components,
-    )
-
-    # Update annotator dropdowns when dataset changes
-    inp["example_dataset_dropdown"].change(
-        callbacks["update_example_viewer_annotators"],
-        inputs={
-            inp["example_dataset_dropdown"],
-            state["votes_dicts"],
-        },
-        outputs=example_viewer_all_components,
-    )
-
-    # Update slider when subset filter or annotators change
-    for component in [
-        inp["example_annotator_row_dropdown"],
-        inp["example_annotator_col_dropdown"],
-        inp["example_subset_dropdown"],
-    ]:
-        component.change(
-            callbacks["update_example_viewer_slider"],
-            inputs={
-                inp["example_dataset_dropdown"],
-                inp["example_annotator_row_dropdown"],
-                inp["example_annotator_col_dropdown"],
-                inp["example_subset_dropdown"],
-                state["votes_dicts"],
-            },
-            outputs=example_viewer_all_components,
-            show_progress="hidden",
+    for component in example_viewer_inputs:
+        component.input(
+            callbacks["update_example_viewer_options"],
+            inputs=example_viewer_inputs | external_example_viewer_inputs,
+            outputs=example_viewer_inputs,
         )
 
     # Display example when any input changes
-    for component in [
-        inp["example_dataset_dropdown"],
-        inp["example_annotator_row_dropdown"],
-        inp["example_annotator_col_dropdown"],
-        inp["example_subset_dropdown"],
-        inp["example_index_slider"],
-    ]:
-        component.change(
+    for component in example_viewer_inputs:
+        component.input(
             callbacks["display_example"],
-            inputs={
-                inp["example_dataset_dropdown"],
-                inp["example_annotator_row_dropdown"],
-                inp["example_annotator_col_dropdown"],
-                inp["example_subset_dropdown"],
-                inp["example_index_slider"],
-                state["votes_dicts"],
-            },
+            inputs=example_viewer_inputs | external_example_viewer_inputs,
             outputs=example_viewer_all_components,
             show_progress="hidden",
         )
+
+    inp["load_btn"].click(
+        callbacks["update_example_viewer_options"],
+        inputs=example_viewer_inputs | external_example_viewer_inputs,
+        outputs=example_viewer_all_components,
+    )
 
     # finally add callbacks that run on start of app
     demo.load(
@@ -307,4 +271,11 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
         + [inp["active_datasets_dropdown"]]
         + [state["app_url"]],
         trigger_mode="always_last",
+    )
+
+    # Initialize example viewer on page load
+    demo.load(
+        callbacks["update_example_viewer_options"],
+        inputs=example_viewer_inputs | external_example_viewer_inputs,
+        outputs=example_viewer_all_components,
     )
