@@ -30,7 +30,7 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
         out["example_annotator_row_result"],
         out["example_annotator_col_result"],
         out["example_metadata"],
-        out["example_no_examples_message"],
+        out["example_message"],
         out["example_details_group"],
     }
 

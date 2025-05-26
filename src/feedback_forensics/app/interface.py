@@ -5,6 +5,7 @@ from feedback_forensics.app.constants import (
     NONE_SELECTED_VALUE,
     VERSION,
     PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS,
+    EXAMPLE_VIEWER_NO_DATA_MESSAGE,
 )
 from feedback_forensics.data.datasets import (
     get_available_datasets,
@@ -298,11 +299,14 @@ def _create_example_viewer(inp: dict, out: dict):
         with gr.Group():
             gr.Markdown("### Controls")
 
+            # dataset dropdown is hidden by default
+            # to simplify the interface
             inp["example_dataset_dropdown"] = gr.Dropdown(
                 label="📊 Dataset",
                 choices=[],
                 value=None,
                 interactive=True,
+                visible=False,
             )
 
             with gr.Row():
@@ -344,8 +348,8 @@ def _create_example_viewer(inp: dict, out: dict):
             )
 
         # Output displays
-        out["example_no_examples_message"] = gr.Markdown(
-            "⚠️ No examples found",
+        out["example_message"] = gr.Markdown(
+            EXAMPLE_VIEWER_NO_DATA_MESSAGE,
             visible=False,
         )
         out["example_details_group"] = gr.Group(

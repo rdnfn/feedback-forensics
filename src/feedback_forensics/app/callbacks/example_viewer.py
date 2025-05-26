@@ -4,6 +4,11 @@ import pandas as pd
 import gradio as gr
 from loguru import logger
 
+from feedback_forensics.app.constants import (
+    EXAMPLE_VIEWER_NO_DATA_MESSAGE,
+    EXAMPLE_VIEWER_MULTIPLE_DATASETS_MESSAGE,
+)
+
 
 def generate(inp: dict, state: dict, out: dict) -> dict:
     """Generate callbacks for the example viewer."""
@@ -13,10 +18,19 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
 
     def _get_empty_viewer_option_dict():
         return {
-            inp["example_dataset_dropdown"]: gr.Dropdown(choices=[], value=None),
-            inp["example_annotator_row_dropdown"]: gr.Dropdown(choices=[], value=None),
-            inp["example_annotator_col_dropdown"]: gr.Dropdown(choices=[], value=None),
+            inp["example_dataset_dropdown"]: gr.Dropdown(
+                choices=[], value=None, interactive=False
+            ),
+            inp["example_annotator_row_dropdown"]: gr.Dropdown(
+                choices=[], value=None, interactive=False
+            ),
+            inp["example_annotator_col_dropdown"]: gr.Dropdown(
+                choices=[], value=None, interactive=False
+            ),
             inp["example_index_slider"]: _generate_non_functional_slider(),
+            inp["example_subset_dropdown"]: gr.Dropdown(
+                choices=[], value=None, interactive=False
+            ),
         }
 
     def _get_dataset_col_name(
@@ -53,6 +67,14 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
 
         if isinstance(dataset_names, str):
             dataset_names = [dataset_names]
+
+        if len(dataset_names) > 1:
+            return {
+                **_empty_example_display(
+                    out, message=EXAMPLE_VIEWER_MULTIPLE_DATASETS_MESSAGE
+                ),
+                **_get_empty_viewer_option_dict(),
+            }
 
         if not selected_dataset or selected_dataset not in dataset_names:
             selected_dataset = dataset_names[0]
@@ -99,10 +121,6 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
         data[inp["example_annotator_row_dropdown"]] = annotator_row
         data[inp["example_annotator_col_dropdown"]] = annotator_col
         data[inp["example_index_slider"]] = slider_value
-
-        logger.info(f"Updating example viewer")
-        logger.info(f"Selected dataset: {selected_dataset}")
-        logger.info(f"Dataset names: {dataset_names}")
 
         return {
             inp["example_dataset_dropdown"]: gr.Dropdown(
@@ -230,7 +248,7 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
             out["example_annotator_row_result"]: annotator_row_result,
             out["example_annotator_col_result"]: annotator_col_result,
             out["example_metadata"]: metadata,
-            out["example_no_examples_message"]: gr.Markdown(visible=False),
+            out["example_message"]: gr.Markdown(visible=False, value=""),
             out["example_details_group"]: gr.Group(visible=True),
         }
 
@@ -305,7 +323,9 @@ def _filter_dataframe(
     return df[mask].reset_index(drop=True)
 
 
-def _empty_example_display(out: dict) -> dict:
+def _empty_example_display(
+    out: dict, message: str = EXAMPLE_VIEWER_NO_DATA_MESSAGE
+) -> dict:
     """Return empty example display values."""
     gr.Warning("No examples found")
     return {
@@ -316,6 +336,6 @@ def _empty_example_display(out: dict) -> dict:
         out["example_annotator_row_result"]: "",
         out["example_annotator_col_result"]: "",
         out["example_metadata"]: {},
-        out["example_no_examples_message"]: gr.Markdown(visible=True),
+        out["example_message"]: gr.Markdown(visible=True, value=message),
         out["example_details_group"]: gr.Group(visible=False),
     }
