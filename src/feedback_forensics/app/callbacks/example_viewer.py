@@ -25,10 +25,6 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
         if isinstance(dataset_names, str):
             dataset_names = [dataset_names]
 
-        logger.info(f"Getting dataset col name for {dataset_name}")
-        logger.info(f"Dataset names: {dataset_names}")
-        logger.info(f"Votes dicts: {list(votes_dicts.keys())}")
-
         if len(dataset_names) >= 2:
             dataset_col_name = [
                 col_name for col_name in votes_dicts.keys() if dataset_name in col_name
@@ -58,7 +54,7 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
         if isinstance(dataset_names, str):
             dataset_names = [dataset_names]
 
-        if not selected_dataset:
+        if not selected_dataset or selected_dataset not in dataset_names:
             selected_dataset = dataset_names[0]
 
         selected_dataset_col_name = _get_dataset_col_name(
@@ -102,6 +98,10 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
         data[inp["example_annotator_row_dropdown"]] = annotator_row
         data[inp["example_annotator_col_dropdown"]] = annotator_col
         data[inp["example_index_slider"]] = slider_value
+
+        logger.info(f"Updating example viewer")
+        logger.info(f"Selected dataset: {selected_dataset}")
+        logger.info(f"Dataset names: {dataset_names}")
 
         return {
             inp["example_dataset_dropdown"]: gr.Dropdown(
