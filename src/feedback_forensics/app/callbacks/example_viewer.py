@@ -279,16 +279,12 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
         annotator_rows = data[inp["annotator_rows_dropdown"]]
         df_values: gr.DataFrame = data[out["annotator_table"]].values
 
-        print(f"df_values: {df_values}")
-
-        print(f"Event _data: {evt._data}")
-
-        empty_return = {out["example_comparison_id"]: gr.Textbox(visible=True)}
+        empty_return = {out["annotator_table"]: gr.DataFrame()}
 
         index = evt._data["index"]
         y_idx = index[0]
         x_idx = index[1]
-        if index[1] == 0:
+        if index[1] == 0 or not data[inp["enable_dataviewer_checkbox"]]:
             return empty_return
         else:
             selected_annotator_col = annotator_cols[x_idx - 1]

@@ -5,6 +5,7 @@
 
 import pathlib
 import gradio as gr
+from loguru import logger
 
 from feedback_forensics.data.loader import add_virtual_annotators, get_votes_dict
 from feedback_forensics.data.dataset_utils import (
@@ -265,6 +266,7 @@ def generate(inp: dict, state: dict, out: dict, utils_callbacks: dict) -> dict:
             inp["split_col_selected_vals_dropdown"],
             inp["multi_dataset_warning_md"],
             inp["enable_multiple_datasets_checkbox"],
+            inp["enable_dataviewer_checkbox"],
         ]
 
         if analysis_type == "model_analysis":
@@ -277,7 +279,7 @@ def generate(inp: dict, state: dict, out: dict, utils_callbacks: dict) -> dict:
         return {
             block: (
                 gr.Dropdown(visible=block in shown_blocks)
-                if block != inp["enable_multiple_datasets_checkbox"]
+                if not isinstance(block, gr.Checkbox)
                 else gr.Checkbox(visible=block in shown_blocks)
             )
             for block in all_config_blocks
@@ -309,7 +311,7 @@ def generate(inp: dict, state: dict, out: dict, utils_callbacks: dict) -> dict:
             )
         }
 
-    def update_results_view(data):
+    def toggle_results_view(data):
         """Update the visibility of results view components based on radio selection."""
         results_view = data[inp["results_view_radio"]]
 
@@ -322,6 +324,28 @@ def generate(inp: dict, state: dict, out: dict, utils_callbacks: dict) -> dict:
             ),
         }
 
+    def toggle_dataviewer_availability(data):
+        """Toggle the availability of the dataviewer based on the checkbox."""
+
+        enable_dataviewer = data[inp["enable_dataviewer_checkbox"]]
+
+        if enable_dataviewer:
+            results_view = data[inp["results_view_radio"]]
+            results_view_changable = True
+        else:
+            results_view = "numerical_results"
+            results_view_changable = False
+
+        data[inp["results_view_radio"]] = results_view
+
+        return {
+            inp["results_view_radio"]: gr.Radio(
+                value=results_view,
+                visible=results_view_changable,
+            ),
+            **toggle_results_view(data),
+        }
+
     return {
         "update_single_dataset_menus": update_single_dataset_menus,
         "update_col_split_value_dropdown": update_col_split_value_dropdown,
@@ -331,5 +355,6 @@ def generate(inp: dict, state: dict, out: dict, utils_callbacks: dict) -> dict:
         "set_annotation_analysis_from_advanced_settings": set_annotation_analysis_from_advanced_settings,
         "update_analysis_type_from_radio": update_analysis_type_from_radio,
         "update_dataset_dropdown_multiselect": update_dataset_dropdown_multiselect,
-        "update_results_view": update_results_view,
+        "toggle_results_view": toggle_results_view,
+        "toggle_dataviewer_availability": toggle_dataviewer_availability,
     }

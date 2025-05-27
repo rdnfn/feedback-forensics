@@ -168,6 +168,16 @@ def _create_configuration_panel(inp: dict, state: dict):
                     interactive=True,
                     visible=False,
                 )
+
+                # Enable dataviewer checkbox
+                inp["enable_dataviewer_checkbox"] = gr.Checkbox(
+                    label="Enable dataviewer (experimental)",
+                    info="Enable the dataviewer to view individual datapoints by clicking on the annotator table. This is experimental.",
+                    value=False,
+                    interactive=True,
+                    visible=False,
+                )
+
                 inp["split_col_dropdown"] = gr.Dropdown(
                     label="🗃️ Group dataset by column",
                     info="Create separate results for data subsets grouped by this column's values. If no column is selected, entire original dataset will be analyzed. ",

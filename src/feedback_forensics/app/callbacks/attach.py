@@ -51,6 +51,7 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
         inp["models_to_compare_dropdown"],
         inp["annotations_to_compare_dropdown"],
         inp["enable_multiple_datasets_checkbox"],
+        inp["enable_dataviewer_checkbox"],
         state["app_url"],
         state["cache"],
         inp["metric_name_dropdown"],
@@ -113,6 +114,7 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
         inp["split_col_dropdown"],
         inp["split_col_selected_vals_dropdown"],
         inp["enable_multiple_datasets_checkbox"],
+        inp["enable_dataviewer_checkbox"],
     }
 
     annotation_table_outputs = [
@@ -226,7 +228,7 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
 
     # update visible results view when results view radio is changed
     inp["results_view_radio"].change(
-        callbacks["update_results_view"],
+        callbacks["toggle_results_view"],
         inputs={inp["results_view_radio"]},
         outputs={
             inp["numerical_results_col"],
@@ -235,9 +237,38 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
         show_progress="hidden",
     )
 
+    # update dataviewer availability when checkbox is toggled
+    inp["enable_dataviewer_checkbox"].change(
+        callbacks["toggle_dataviewer_availability"],
+        inputs={
+            inp["enable_dataviewer_checkbox"],
+            inp["results_view_radio"],
+        },
+        outputs={
+            inp["results_view_radio"],
+            inp["numerical_results_col"],
+            inp["example_view_col"],
+        },
+        show_progress="hidden",
+    )
+
+    demo.load(
+        callbacks["toggle_dataviewer_availability"],
+        inputs={
+            inp["enable_dataviewer_checkbox"],
+            inp["results_view_radio"],
+        },
+        outputs={
+            inp["results_view_radio"],
+            inp["numerical_results_col"],
+            inp["example_view_col"],
+        },
+        show_progress="hidden",
+    )
+
     # set initial results view visibility on page load
     demo.load(
-        callbacks["update_results_view"],
+        callbacks["toggle_results_view"],
         inputs={inp["results_view_radio"]},
         outputs={
             inp["numerical_results_col"],
@@ -251,12 +282,17 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
     # allow clicking on table to launch example viewer
     out["annotator_table"].select(
         callbacks["launch_example_viewer_from_annotator_table"],
-        inputs=all_inputs | {out["annotator_table"]},
+        inputs=all_inputs
+        | {
+            out["annotator_table"],
+            inp["enable_dataviewer_checkbox"],
+        },
         outputs=example_viewer_all_components
         | {
             out["example_details_group"],
             inp["numerical_results_col"],
             inp["results_view_radio"],
+            out["annotator_table"],
         },
         scroll_to_output=True,
     )
