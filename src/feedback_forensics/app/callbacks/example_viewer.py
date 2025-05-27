@@ -314,9 +314,6 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
             else:
                 selected_annotator_row = selected_annotator_row_potential_name[0]
 
-        print(f"Selected annotator col: {selected_annotator_col}")
-        print(f"Selected annotator row: {selected_annotator_row}")
-
         data[inp["example_annotator_1"]] = selected_annotator_row
         data[inp["example_annotator_2"]] = selected_annotator_col
 
