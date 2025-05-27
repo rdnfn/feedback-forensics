@@ -1,50 +1,8 @@
 """Call backs to be used in the app."""
 
 import pathlib
-import copy
-import gradio as gr
-import pandas as pd
 
-from loguru import logger
-
-from feedback_forensics.data.loader import add_virtual_annotators, get_votes_dict
-import feedback_forensics.app.plotting
-from feedback_forensics.data.dataset_utils import (
-    get_annotators_by_type,
-    get_available_models,
-)
-from feedback_forensics.app.utils import (
-    get_csv_columns,
-    load_json_file,
-)
-from feedback_forensics.app.constants import (
-    NONE_SELECTED_VALUE,
-    APP_BASE_URL,
-    DEFAULT_ANNOTATOR_VISIBLE_NAME,
-    MODEL_IDENTITY_ANNOTATOR_TYPE,
-    PRINCIPLE_ANNOTATOR_TYPE,
-    PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS,
-    PREFIX_MODEL_IDENTITY_ANNOTATORS,
-)
-from feedback_forensics.data.datasets import (
-    get_available_datasets_names,
-    get_default_dataset_names,
-)
-
-from feedback_forensics.app.url_parser import (
-    get_config_from_query_params,
-    get_url_with_query_params,
-    get_list_member_from_url_string,
-    transfer_url_str_to_nonurl_str,
-    transfer_url_list_to_nonurl_list,
-    parse_list_param,
-)
-from feedback_forensics.data.handler import (
-    DatasetHandler,
-    _get_annotator_df_col_names,
-)
-
-from feedback_forensics.app.metrics import DEFAULT_METRIC_NAME
+from feedback_forensics.data.loader import get_votes_dict
 
 
 def generate(inp: dict, state: dict, out: dict) -> dict:
