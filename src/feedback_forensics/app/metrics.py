@@ -204,14 +204,9 @@ def compute_annotator_metrics(
 
         annotator_name = annotator_metadata[annotator_col]["annotator_in_row_name"]
 
-        # Ensure both columns have the same set of categories (annotations)
-        joint_categories = set(votes_df[annotator_col].cat.categories).union(
-            set(votes_df[ref_annotator_col].cat.categories)
+        votes_df = ensure_categories_identical(
+            df=votes_df, col_a=annotator_col, col_b=ref_annotator_col
         )
-        for col in [annotator_col, ref_annotator_col]:
-            votes_df[col] = votes_df[col].cat.set_categories(
-                list(joint_categories), rename=False
-            )
 
         valid_votes_mask = votes_df[annotator_col].isin(["text_a", "text_b"])
         agree_mask = (
@@ -333,3 +328,16 @@ def get_overall_metrics(votes_df: pd.DataFrame, ref_annotator_col: str) -> dict:
         "Avg len rejected text (chars)": average_length_rejected_text,
         "Prop selecting longer text": proportion_longer_text_preferred,
     }
+
+
+def ensure_categories_identical(
+    df: pd.DataFrame, col_a: str, col_b: str
+) -> pd.DataFrame:
+    # Ensure both columns have the same set of categories (annotations)
+    joint_categories = set(df[col_a].cat.categories).union(
+        set(df[col_b].cat.categories)
+    )
+    for col in [col_a, col_b]:
+        df[col] = df[col].cat.set_categories(list(joint_categories), rename=False)
+
+    return df

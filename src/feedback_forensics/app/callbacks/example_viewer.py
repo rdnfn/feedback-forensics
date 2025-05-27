@@ -9,6 +9,8 @@ from feedback_forensics.app.constants import (
     EXAMPLE_VIEWER_MULTIPLE_DATASETS_MESSAGE,
 )
 
+from feedback_forensics.app.metrics import ensure_categories_identical
+
 
 def generate(inp: dict, state: dict, out: dict) -> dict:
     """Generate callbacks for the example viewer."""
@@ -293,8 +295,10 @@ def _filter_dataframe(
     if not row_col_name or not col_col_name:
         return df
 
-    if row_col_name not in df.columns or col_col_name not in df.columns:
+    if row_col_name not in list(df.columns) or col_col_name not in list(df.columns):
         return df
+
+    df = ensure_categories_identical(df=df, col_a=row_col_name, col_b=col_col_name)
 
     # Create filter masks
     if subset_filter == "agree":
