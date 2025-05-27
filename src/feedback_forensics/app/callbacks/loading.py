@@ -3,6 +3,7 @@
 import pathlib
 import gradio as gr
 import pandas as pd
+from loguru import logger
 
 from feedback_forensics.data.loader import add_virtual_annotators, get_votes_dict
 import feedback_forensics.app.plotting
@@ -14,6 +15,7 @@ from feedback_forensics.app.constants import (
     NONE_SELECTED_VALUE,
     APP_BASE_URL,
     PREFIX_MODEL_IDENTITY_ANNOTATORS,
+    PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS,
 )
 from feedback_forensics.data.datasets import (
     get_available_datasets_names,
@@ -283,6 +285,14 @@ def generate(
                 # May take seconds, but is necessary. Caching ensures we only pay this cost once.
                 dataset_config = data[state["avail_datasets"]][config["datasets"][0]]
                 results_dir = pathlib.Path(dataset_config.path)
+                handler = DatasetHandler(
+                    cache=data[state["cache"]],
+                    avail_datasets=data[state["avail_datasets"]],
+                    reference_models=reference_models,
+                )
+                handler.load_data_from_names([config["datasets"][0]])
+
+                base_votes_dict = handler.first_handler.votes_dict
                 base_votes_dict = get_votes_dict(
                     results_dir, cache=data[state["cache"]]
                 )
@@ -362,6 +372,25 @@ def generate(
                     return_dict[inp["models_to_compare_dropdown"]] = gr.Dropdown(
                         choices=sorted(all_available_model_annotator_names),
                         value=selected_model_annotator_names,
+                    )
+
+                    # also update annotation analysis tab
+                    selected_annotation_annotator_names = [
+                        name
+                        for name in annotator_cols
+                        if PREFIX_MODEL_IDENTITY_ANNOTATORS not in name
+                        and PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS not in name
+                    ]
+                    all_available_annotation_annotator_names = [
+                        name
+                        for name in all_available_annotators
+                        if PREFIX_MODEL_IDENTITY_ANNOTATORS not in name
+                        and PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS not in name
+                    ]
+
+                    return_dict[inp["annotations_to_compare_dropdown"]] = gr.Dropdown(
+                        choices=sorted(all_available_annotation_annotator_names),
+                        value=selected_annotation_annotator_names,
                     )
 
         # Split dataset by column if specified in URL

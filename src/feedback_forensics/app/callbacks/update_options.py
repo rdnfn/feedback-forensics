@@ -94,7 +94,7 @@ def generate(inp: dict, state: dict, out: dict, utils_callbacks: dict) -> dict:
             ),
             inp["annotations_to_compare_dropdown"]: gr.Dropdown(
                 choices=sorted(regular_annotator_names),
-                value=[],
+                value=[DEFAULT_ANNOTATOR_VISIBLE_NAME],
                 interactive=True,
             ),
         }
