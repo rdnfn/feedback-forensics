@@ -37,6 +37,8 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
         out["example_details_group"],
     }
 
+    example_viewer_all_components = example_viewer_inputs | example_viewer_outputs
+
     all_inputs = {
         inp["active_datasets_dropdown"],
         state["avail_datasets"],
@@ -244,77 +246,11 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
         show_progress="hidden",
     )
 
-    def test_fn(evt: gr.EventData, data):
-        annotator_cols = data[inp["annotator_cols_dropdown"]]
-        annotator_rows = data[inp["annotator_rows_dropdown"]]
-        df_values: gr.DataFrame = data[out["annotator_table"]].values
+    ### Example viewer callbacks ###
 
-        print(f"df_values: {df_values}")
-
-        print(f"Event _data: {evt._data}")
-
-        empty_return = {out["example_comparison_id"]: gr.Textbox(visible=True)}
-
-        index = evt._data["index"]
-        y_idx = index[0]
-        x_idx = index[1]
-        if index[1] == 0:
-            return empty_return
-        else:
-            selected_annotator_col = annotator_cols[x_idx - 1]
-            selected_annotator_row_shown_name = df_values[y_idx][0]
-            selected_annotator_row_potential_name = [
-                annotator
-                for annotator in annotator_rows
-                if selected_annotator_row_shown_name in annotator
-            ]
-            if len(selected_annotator_row_potential_name) == 0:
-                logger.warning(
-                    (
-                        f"Selected annotator row {selected_annotator_row_shown_name} not "
-                        "found in annotator rows ({annotator_rows})"
-                    )
-                )
-                return empty_return
-            elif len(selected_annotator_row_potential_name) > 1:
-                logger.warning(
-                    (
-                        f"Selected annotator row {selected_annotator_row_shown_name} "
-                        "found multiple times in annotator rows ({annotator_rows})"
-                        " Annotator names shown in table are not unique."
-                    )
-                )
-                return empty_return
-            else:
-                selected_annotator_row = selected_annotator_row_potential_name[0]
-
-        print(f"Selected annotator col: {selected_annotator_col}")
-        print(f"Selected annotator row: {selected_annotator_row}")
-
-        data[inp["example_annotator_1"]] = selected_annotator_row
-        data[inp["example_annotator_2"]] = selected_annotator_col
-
-        subset_val = "agree"
-        data[inp["example_subset_dropdown"]] = subset_val
-
-        gr.Info(
-            f"Showing example datapoints where annotations by '{selected_annotator_row}' and '{selected_annotator_col}' agree."
-        )
-
-        return {
-            inp["results_view_radio"]: "example_viewer",
-            out["example_details_group"]: gr.Group(visible=True),
-            inp["numerical_results_col"]: gr.Column(visible=False),
-            inp["example_subset_dropdown"]: gr.Dropdown(
-                value=subset_val,
-            ),
-            **callbacks["update_example_viewer_options"](data),
-        }
-
-    example_viewer_all_components = example_viewer_inputs | example_viewer_outputs
-
+    # allow clicking on table to launch example viewer
     out["annotator_table"].select(
-        test_fn,
+        callbacks["launch_example_viewer_from_annotator_table"],
         inputs=all_inputs | {out["annotator_table"]},
         outputs=example_viewer_all_components
         | {
@@ -325,9 +261,8 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
         scroll_to_output=True,
     )
 
-    # Example viewer callbacks
-    # Update example viewer options when data is loaded
-
+    # update example viewer options when viewer configs change
+    # (only on user input, not other changes)
     for component in example_viewer_inputs:
         component.input(
             callbacks["update_example_viewer_options"],
@@ -336,13 +271,15 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
             show_progress="hidden",
         )
 
+    # load example viewer alongside other data loading
     inp["load_btn"].click(
         callbacks["update_example_viewer_options"],
         inputs=example_viewer_inputs | external_example_viewer_inputs,
         outputs=example_viewer_all_components,
     )
 
-    # finally add callbacks that run on start of app
+    ### Add initial loading from url query params ###
+
     demo.load(
         callbacks["load_from_query_params"],
         inputs=all_inputs,
