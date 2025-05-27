@@ -23,10 +23,10 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
             inp["example_dataset_dropdown"]: gr.Dropdown(
                 choices=[], value=None, interactive=False
             ),
-            inp["example_annotator_row_dropdown"]: gr.Dropdown(
+            inp["example_annotator_1"]: gr.Dropdown(
                 choices=[], value=None, interactive=False
             ),
-            inp["example_annotator_col_dropdown"]: gr.Dropdown(
+            inp["example_annotator_2"]: gr.Dropdown(
                 choices=[], value=None, interactive=False
             ),
             inp["example_index_slider"]: _generate_non_functional_slider(),
@@ -59,8 +59,8 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
         votes_dicts = data.get(state["votes_dicts"], {})
         dataset_names = data[inp["active_datasets_dropdown"]]
         selected_dataset = data[inp["example_dataset_dropdown"]]
-        annotator_row = data[inp["example_annotator_row_dropdown"]]
-        annotator_col = data[inp["example_annotator_col_dropdown"]]
+        annotator_row = data[inp["example_annotator_1"]]
+        annotator_col = data[inp["example_annotator_2"]]
         subset_filter = data[inp["example_subset_dropdown"]]
         slider_value = data[inp["example_index_slider"]]
 
@@ -120,20 +120,20 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
             slider_value = min(slider_value, max_examples)
 
         data[inp["example_dataset_dropdown"]] = selected_dataset
-        data[inp["example_annotator_row_dropdown"]] = annotator_row
-        data[inp["example_annotator_col_dropdown"]] = annotator_col
+        data[inp["example_annotator_1"]] = annotator_row
+        data[inp["example_annotator_2"]] = annotator_col
         data[inp["example_index_slider"]] = slider_value
 
         return {
             inp["example_dataset_dropdown"]: gr.Dropdown(
                 choices=dataset_names, value=selected_dataset, interactive=True
             ),
-            inp["example_annotator_row_dropdown"]: gr.Dropdown(
+            inp["example_annotator_1"]: gr.Dropdown(
                 choices=annotator_choices,
                 value=annotator_row,
                 interactive=True,
             ),
-            inp["example_annotator_col_dropdown"]: gr.Dropdown(
+            inp["example_annotator_2"]: gr.Dropdown(
                 choices=annotator_choices,
                 value=annotator_col,
                 interactive=True,
@@ -150,8 +150,8 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
     def display_example(data):
         """Display the selected example details."""
         selected_dataset = data[inp["example_dataset_dropdown"]]
-        annotator_row = data[inp["example_annotator_row_dropdown"]]
-        annotator_col = data[inp["example_annotator_col_dropdown"]]
+        annotator_row = data[inp["example_annotator_1"]]
+        annotator_col = data[inp["example_annotator_2"]]
         subset_filter = data[inp["example_subset_dropdown"]]
         example_index = int(data[inp["example_index_slider"]])
         votes_dicts = data.get(state["votes_dicts"], {})

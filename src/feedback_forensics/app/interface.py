@@ -310,15 +310,15 @@ def _create_example_viewer(inp: dict, out: dict):
             )
 
             with gr.Row():
-                inp["example_annotator_row_dropdown"] = gr.Dropdown(
-                    label="👥↓ Annotator (Row)",
+                inp["example_annotator_1"] = gr.Dropdown(
+                    label="👥 Annotator 1",
                     choices=[],
                     value=None,
                     interactive=True,
                 )
 
-                inp["example_annotator_col_dropdown"] = gr.Dropdown(
-                    label="👥→ Annotator (Column)",
+                inp["example_annotator_2"] = gr.Dropdown(
+                    label="👥 Annotator 2",
                     choices=[],
                     value=None,
                     interactive=True,

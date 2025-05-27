@@ -11,8 +11,8 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
 
     example_viewer_inputs = {
         inp["example_dataset_dropdown"],
-        inp["example_annotator_row_dropdown"],
-        inp["example_annotator_col_dropdown"],
+        inp["example_annotator_1"],
+        inp["example_annotator_2"],
         inp["example_index_slider"],
         inp["example_subset_dropdown"],
     }
