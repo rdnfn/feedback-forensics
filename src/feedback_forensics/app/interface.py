@@ -147,7 +147,7 @@ def _create_configuration_panel(inp: dict, state: dict):
                     label="🔎 Analysis mode",
                     choices=[
                         ("🤖 Model analysis", "model_analysis"),
-                        ("👥 Feedback data analysis", "annotation_analysis"),
+                        ("👥 Human/AI feedback analysis", "annotation_analysis"),
                         ("🔧 Advanced settings", "advanced_settings"),
                     ],
                     value="model_analysis",
@@ -196,12 +196,14 @@ def _create_configuration_panel(inp: dict, state: dict):
                 )
                 inp["models_to_compare_dropdown"] = gr.Dropdown(
                     label="📌 Select models to compare",
+                    info="Analyse personality traits exhibited by different models",
                     choices=None,
                     value=None,
                     multiselect=True,
                 )
                 inp["annotations_to_compare_dropdown"] = gr.Dropdown(
-                    label="📌 Select feedback annotations to compare (AI or human)",
+                    label="🗂️ Select feedback annotations to compare (AI or human)",
+                    info="Analyse personality traits encouraged by different pairwise feedback annotations",
                     choices=None,
                     value=None,
                     multiselect=True,
