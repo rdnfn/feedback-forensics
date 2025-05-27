@@ -59,8 +59,8 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
         votes_dicts = data.get(state["votes_dicts"], {})
         dataset_names = data[inp["active_datasets_dropdown"]]
         selected_dataset = data[inp["example_dataset_dropdown"]]
-        annotator_row = data[inp["example_annotator_1"]]
-        annotator_col = data[inp["example_annotator_2"]]
+        annotator_1 = data[inp["example_annotator_1"]]
+        annotator_2 = data[inp["example_annotator_2"]]
         subset_filter = data[inp["example_subset_dropdown"]]
         slider_value = data[inp["example_index_slider"]]
 
@@ -95,14 +95,14 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
         ]
         annotator_choices = annotator_visible_names
 
-        if annotator_row is None:
-            annotator_row = annotator_choices[0]
+        if annotator_1 is None:
+            annotator_1 = annotator_choices[0]
 
-        if annotator_col is None:
+        if annotator_2 is None:
             if len(annotator_choices) > 1:
-                annotator_col = annotator_choices[1]
+                annotator_2 = annotator_choices[1]
             else:
-                annotator_col = annotator_choices[0]
+                annotator_2 = annotator_choices[0]
 
         # Get number of examples for slider
         max_examples = 0
@@ -112,16 +112,16 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
             filtered_df = _filter_dataframe(
                 df=df,
                 votes_dict=votes_dict,
-                annotator_row=annotator_row,
-                annotator_col=annotator_col,
+                annotator_1=annotator_1,
+                annotator_2=annotator_2,
                 subset_filter=subset_filter,
             )
             max_examples = max(0, len(filtered_df) - 1)
             slider_value = min(slider_value, max_examples)
 
         data[inp["example_dataset_dropdown"]] = selected_dataset
-        data[inp["example_annotator_1"]] = annotator_row
-        data[inp["example_annotator_2"]] = annotator_col
+        data[inp["example_annotator_1"]] = annotator_1
+        data[inp["example_annotator_2"]] = annotator_2
         data[inp["example_index_slider"]] = slider_value
 
         return {
@@ -130,12 +130,12 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
             ),
             inp["example_annotator_1"]: gr.Dropdown(
                 choices=annotator_choices,
-                value=annotator_row,
+                value=annotator_1,
                 interactive=True,
             ),
             inp["example_annotator_2"]: gr.Dropdown(
                 choices=annotator_choices,
-                value=annotator_col,
+                value=annotator_2,
                 interactive=True,
             ),
             inp["example_index_slider"]: gr.Slider(
@@ -150,8 +150,8 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
     def display_example(data):
         """Display the selected example details."""
         selected_dataset = data[inp["example_dataset_dropdown"]]
-        annotator_row = data[inp["example_annotator_1"]]
-        annotator_col = data[inp["example_annotator_2"]]
+        annotator_1 = data[inp["example_annotator_1"]]
+        annotator_2 = data[inp["example_annotator_2"]]
         subset_filter = data[inp["example_subset_dropdown"]]
         example_index = int(data[inp["example_index_slider"]])
         votes_dicts = data.get(state["votes_dicts"], {})
@@ -179,7 +179,7 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
 
         # Filter dataframe based on subset selection
         filtered_df = _filter_dataframe(
-            df, votes_dict, annotator_row, annotator_col, subset_filter
+            df, votes_dict, annotator_1, annotator_2, subset_filter
         )
 
         if len(filtered_df) == 0 or example_index >= len(filtered_df):
@@ -216,23 +216,23 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
                     text_b = str(row.get(col, "N/A"))
 
         # Get annotator results
-        annotator_row_result = "N/A"
-        annotator_col_result = "N/A"
+        annotator_1_result = "N/A"
+        annotator_2_result = "N/A"
 
-        if annotator_row and annotator_col:
+        if annotator_1 and annotator_2:
             # Find annotator column names from visible names
             row_col_name = _get_annotator_col_from_visible_name(
-                annotator_metadata, annotator_row
+                annotator_metadata, annotator_1
             )
             col_col_name = _get_annotator_col_from_visible_name(
-                annotator_metadata, annotator_col
+                annotator_metadata, annotator_2
             )
 
             if row_col_name and row_col_name in row:
-                annotator_row_result = str(row[row_col_name])
+                annotator_1_result = str(row[row_col_name])
 
             if col_col_name and col_col_name in row:
-                annotator_col_result = str(row[col_col_name])
+                annotator_2_result = str(row[col_col_name])
 
         # Extract metadata (exclude main columns)
         metadata_keys = ["comparison_id", "prompt", "text_a", "text_b"] + list(
@@ -252,16 +252,16 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
             out["example_response_a"]: text_a,
             out["example_response_b"]: text_b,
             out["example_annotator_1_result"]: gr.Textbox(
-                label=f"Annotator 1 preference ({annotator_row})",
-                value=annotator_row_result,
+                label=f"Annotator 1 preference ({annotator_1})",
+                value=annotator_1_result,
                 interactive=False,
-                text_align="right" if annotator_row_result == "text_b" else "left",
+                text_align="right" if annotator_1_result == "text_b" else "left",
             ),
             out["example_annotator_2_result"]: gr.Textbox(
-                label=f"Annotator 2 preference ({annotator_col})",
-                value=annotator_col_result,
+                label=f"Annotator 2 preference ({annotator_2})",
+                value=annotator_2_result,
                 interactive=False,
-                text_align="right" if annotator_col_result == "text_b" else "left",
+                text_align="right" if annotator_2_result == "text_b" else "left",
             ),
             out["example_metadata"]: metadata,
             out["example_message"]: gr.Markdown(visible=False, value=""),
@@ -287,24 +287,20 @@ def _get_annotator_col_from_visible_name(
 def _filter_dataframe(
     df: pd.DataFrame,
     votes_dict: dict,
-    annotator_row: str,
-    annotator_col: str,
+    annotator_1: str,
+    annotator_2: str,
     subset_filter: str,
 ) -> pd.DataFrame:
     """Filter dataframe based on subset selection."""
     if subset_filter == "all":
         return df
 
-    if not annotator_row or not annotator_col:
+    if not annotator_1 or not annotator_2:
         return df
 
     annotator_metadata = votes_dict.get("annotator_metadata", {})
-    row_col_name = _get_annotator_col_from_visible_name(
-        annotator_metadata, annotator_row
-    )
-    col_col_name = _get_annotator_col_from_visible_name(
-        annotator_metadata, annotator_col
-    )
+    row_col_name = _get_annotator_col_from_visible_name(annotator_metadata, annotator_1)
+    col_col_name = _get_annotator_col_from_visible_name(annotator_metadata, annotator_2)
 
     if not row_col_name or not col_col_name:
         return df
