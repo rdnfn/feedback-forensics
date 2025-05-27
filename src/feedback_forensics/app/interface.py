@@ -46,9 +46,7 @@ def _create_header():
             image = f'<img src="{image_path}" alt="Logo" width="330">'
             spacer = f'<span style="{text_style}"> | </span>'
             text_powered_by = f'<span style="{text_style}">Powered by the <a href="https://github.com/rdnfn/icai" style="opacity: 0.9; color: var(--body-text-color);">Inverse Constitutional AI</a> (ICAI) pipeline</span>'
-            text_version = (
-                f'<span style="{text_style}">v{VERSION} (Alpha Preview)</span>'
-            )
+            text_version = f'<span style="{text_style}">v{VERSION}</span>'
             link_github = f'<a href="https://github.com/rdnfn/feedback-forensics" style="{link_style}">📁&nbsp;GitHub</a>'
             link_report_bug = f'<a href="https://github.com/rdnfn/feedback-forensics/issues/new?template=Blank+issue" style="{link_style}">✍️&nbsp;Report&nbsp;bug</a>'
             link_get_in_touch = f'<a href="mailto:forensics@arduin.io" style="{link_style}">✉️&nbsp;Get&nbsp;in&nbsp;touch</a>'
