@@ -160,19 +160,18 @@ def _create_configuration_panel(inp: dict, state: dict):
                     visible=True,
                     container=True,
                 )
-                # Add the multiple dataset selection setting in advanced settings
-                inp["enable_multiple_datasets_checkbox"] = gr.Checkbox(
-                    label="Enable multiple dataset selection",
-                    info="Allow selecting multiple datasets simultaneously. Some features (like column grouping) only work with single datasets.",
+
+                inp["enable_dataviewer_checkbox"] = gr.Checkbox(
+                    label="Enable dataviewer (experimental)",
+                    info="Enable the dataviewer to view individual datapoints by clicking on the annotator table. This is experimental.",
                     value=False,
                     interactive=True,
                     visible=False,
                 )
 
-                # Enable dataviewer checkbox
-                inp["enable_dataviewer_checkbox"] = gr.Checkbox(
-                    label="Enable dataviewer (experimental)",
-                    info="Enable the dataviewer to view individual datapoints by clicking on the annotator table. This is experimental.",
+                inp["enable_multiple_datasets_checkbox"] = gr.Checkbox(
+                    label="Enable multiple dataset selection",
+                    info="Allow selecting multiple datasets simultaneously. Some features (like column grouping) only work with single datasets.",
                     value=False,
                     interactive=True,
                     visible=False,
