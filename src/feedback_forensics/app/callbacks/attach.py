@@ -294,7 +294,7 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
             inp["results_view_radio"],
             out["annotator_table"],
         },
-        scroll_to_output=True,
+        scroll_to_output=False,
     )
 
     # update example viewer options when viewer configs change
