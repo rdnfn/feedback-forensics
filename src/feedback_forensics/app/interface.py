@@ -269,6 +269,7 @@ def _create_numerical_results_panel(inp: dict, out: dict):
             out["annotator_table"] = gr.Dataframe(
                 value=pd.DataFrame(),
                 headers=["No data loaded"],
+                interactive=False,
             )
 
 
