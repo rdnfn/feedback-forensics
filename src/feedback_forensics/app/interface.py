@@ -365,7 +365,9 @@ def _create_example_viewer(inp: dict, out: dict):
                 label="💬 Prompt",
                 value="",
                 interactive=False,
-                lines=3,
+                type="text",
+                lines=5,
+                max_lines=20,
             )
 
             with gr.Row():
@@ -373,11 +375,13 @@ def _create_example_viewer(inp: dict, out: dict):
                     label="🤖 Model A",
                     value="",
                     interactive=False,
+                    type="text",
                 )
                 out["example_response_b_model"] = gr.Textbox(
                     label="🤖 Model B",
                     value="",
                     interactive=False,
+                    type="text",
                 )
 
             with gr.Row():
@@ -385,14 +389,18 @@ def _create_example_viewer(inp: dict, out: dict):
                     label="📝 Response A",
                     value="",
                     interactive=False,
-                    lines=5,
+                    type="text",
+                    lines=10,
+                    max_lines=20,
                 )
 
                 out["example_response_b"] = gr.Textbox(
                     label="📝 Response B",
                     value="",
                     interactive=False,
-                    lines=5,
+                    type="text",
+                    lines=10,
+                    max_lines=20,
                 )
 
             out["example_annotator_1_result"] = gr.Textbox(

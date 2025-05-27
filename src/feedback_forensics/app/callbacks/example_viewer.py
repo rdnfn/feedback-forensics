@@ -246,11 +246,17 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
 
         return {
             out["example_comparison_id"]: comparison_id,
-            out["example_prompt"]: prompt,
+            out["example_prompt"]: gr.Textbox(
+                value=prompt,
+            ),
             out["example_response_a_model"]: model_a,
             out["example_response_b_model"]: model_b,
-            out["example_response_a"]: text_a,
-            out["example_response_b"]: text_b,
+            out["example_response_a"]: gr.Textbox(
+                value=text_a,
+            ),
+            out["example_response_b"]: gr.Textbox(
+                value=text_b,
+            ),
             out["example_annotator_1_result"]: gr.Textbox(
                 label=f"Annotator 1 preference ({annotator_1})",
                 value=annotator_1_result,

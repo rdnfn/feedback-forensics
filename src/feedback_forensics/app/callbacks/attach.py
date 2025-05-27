@@ -306,7 +306,7 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
             out["example_details_group"]: gr.Group(visible=True),
             inp["numerical_results_col"]: gr.Column(visible=False),
             inp["example_subset_dropdown"]: gr.Dropdown(
-                value=subset_val, interactive=False
+                value=subset_val,
             ),
             **callbacks["update_example_viewer_options"](data),
         }
