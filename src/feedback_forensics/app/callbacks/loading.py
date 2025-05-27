@@ -453,6 +453,27 @@ def generate(
                 interactive=True,
             )
 
+        # Config of analysis mode
+        if "analysis_mode" in config:
+            # Validate that the analysis mode is one of the valid options
+            valid_analysis_modes = [
+                "model_analysis",
+                "annotation_analysis",
+                "advanced_settings",
+            ]
+            analysis_mode = config["analysis_mode"]
+            if analysis_mode in valid_analysis_modes:
+                data[inp["analysis_type_radio"]] = analysis_mode
+                return_dict[inp["analysis_type_radio"]] = gr.Radio(
+                    value=analysis_mode,
+                    interactive=True,
+                )
+            else:
+                gr.Warning(
+                    f"URL problem: analysis mode '{analysis_mode}' is not valid. Valid options are: {valid_analysis_modes}. Using default 'model_analysis'.",
+                    duration=15,
+                )
+
         return_dict = {**return_dict, **load_data(data)}
         return return_dict
 
@@ -487,6 +508,7 @@ def generate(
         sort_ascending = data[inp["sort_order_dropdown"]] == "Ascending"
         default_sort_by = "Max diff"
         default_sort_ascending = False
+        default_analysis_mode = "model_analysis"
 
         # Normalize datasets to always be a list and filter out None values
         datasets = data[inp["active_datasets_dropdown"]]
@@ -507,6 +529,11 @@ def generate(
                 else "Ascending" if sort_ascending else "Descending"
             ),
             "reference_models": data[inp["reference_models_dropdown"]],
+            "analysis_mode": (
+                None
+                if data[inp["analysis_type_radio"]] == default_analysis_mode
+                else data[inp["analysis_type_radio"]]
+            ),
         }
 
         # See if the selected annotator rows and columns

@@ -86,6 +86,7 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
             inp["models_to_compare_dropdown"],
             inp["annotations_to_compare_dropdown"],
             inp["reference_models_dropdown"],
+            inp["analysis_type_radio"],
             out["share_link"],
             out["overall_metrics_table"],
             out["annotator_table"],

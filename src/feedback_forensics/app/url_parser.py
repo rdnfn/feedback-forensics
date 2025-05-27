@@ -47,6 +47,8 @@ def get_config_from_query_params(request: gr.Request) -> dict:
         config["sort_by"] = params["sort_by"]
     if "sort_order" in params:
         config["sort_order"] = params["sort_order"]
+    if "analysis_mode" in params:
+        config["analysis_mode"] = params["analysis_mode"]
     return config
 
 
@@ -65,6 +67,7 @@ def get_url_with_query_params(
     metric: str = None,
     sort_by: str = None,
     sort_order: str = None,
+    analysis_mode: str = None,
 ) -> str:
     available_datasets = get_available_datasets()
 
@@ -110,6 +113,9 @@ def get_url_with_query_params(
 
     if sort_order is not None:
         url += f"&sort_order={sort_order}"
+
+    if analysis_mode is not None:
+        url += f"&analysis_mode={analysis_mode}"
 
     return url
 
