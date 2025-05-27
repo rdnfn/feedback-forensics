@@ -229,6 +229,8 @@ def _create_numerical_results_panel(inp: dict, out: dict):
 
     with inp["numerical_results_col"]:
 
+        gr.Markdown("## Numerical overview")
+
         gr.Markdown("### Overall metrics")
         out["overall_metrics_table"] = gr.Dataframe(
             value=pd.DataFrame(),
@@ -286,6 +288,9 @@ def _create_example_viewer(inp: dict, out: dict):
 
     inp["example_view_col"] = gr.Column(variant="panel")
     with inp["example_view_col"]:
+
+        gr.Markdown("## Datapoint viewer")
+
         gr.Markdown("### Controls")
         # Input controls
         with gr.Group():
@@ -415,8 +420,8 @@ def _create_results_panel(inp: dict, out: dict):
         inp["results_view_radio"] = gr.Radio(
             label="🎛️ View",
             choices=[
-                ("📊 Numerical results", "numerical_results"),
-                ("👀 Example viewer", "example_viewer"),
+                ("📊 Numerical overview", "numerical_results"),
+                ("🔎 Datapoint viewer", "example_viewer"),
             ],
             value="numerical_results",
             interactive=True,
