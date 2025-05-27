@@ -25,6 +25,8 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
     example_viewer_outputs = {
         out["example_comparison_id"],
         out["example_prompt"],
+        out["example_response_a_model"],
+        out["example_response_b_model"],
         out["example_response_a"],
         out["example_response_b"],
         out["example_annotator_row_result"],

@@ -372,6 +372,18 @@ def _create_example_viewer(inp: dict, out: dict):
             )
 
             with gr.Row():
+                out["example_response_a_model"] = gr.Textbox(
+                    label="🤖 Model A",
+                    value="",
+                    interactive=False,
+                )
+                out["example_response_b_model"] = gr.Textbox(
+                    label="🤖 Model B",
+                    value="",
+                    interactive=False,
+                )
+
+            with gr.Row():
                 out["example_response_a"] = gr.Textbox(
                     label="📝 Response A",
                     value="",

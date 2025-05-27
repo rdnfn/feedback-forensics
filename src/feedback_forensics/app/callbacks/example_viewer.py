@@ -196,6 +196,8 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
         # Extract basic information
         comparison_id = str(row.get("comparison_id", "N/A"))
         prompt = str(row.get("prompt", "N/A"))
+        model_a = str(row.get("model_a", "N/A"))
+        model_b = str(row.get("model_b", "N/A"))
 
         # Handle both format versions (1.0 and 2.0)
         text_a = "N/A"
@@ -245,6 +247,8 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
         return {
             out["example_comparison_id"]: comparison_id,
             out["example_prompt"]: prompt,
+            out["example_response_a_model"]: model_a,
+            out["example_response_b_model"]: model_b,
             out["example_response_a"]: text_a,
             out["example_response_b"]: text_b,
             out["example_annotator_row_result"]: annotator_row_result,
@@ -335,6 +339,8 @@ def _empty_example_display(
     return {
         out["example_comparison_id"]: "",
         out["example_prompt"]: "",
+        out["example_response_a_model"]: "",
+        out["example_response_b_model"]: "",
         out["example_response_a"]: "",
         out["example_response_b"]: "",
         out["example_annotator_row_result"]: "",
