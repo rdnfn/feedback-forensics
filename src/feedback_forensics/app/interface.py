@@ -398,14 +398,14 @@ def _create_example_viewer(inp: dict, out: dict):
                     lines=5,
                 )
 
-            out["example_annotator_row_result"] = gr.Textbox(
-                label="👥↓ Annotator Row Result",
+            out["example_annotator_1_result"] = gr.Textbox(
+                label="👥 Annotator 1 preference",
                 value="",
                 interactive=False,
             )
 
-            out["example_annotator_col_result"] = gr.Textbox(
-                label="👥→ Annotator Column Result",
+            out["example_annotator_2_result"] = gr.Textbox(
+                label="👥 Annotator 2 preference",
                 value="",
                 interactive=False,
             )
