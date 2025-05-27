@@ -228,15 +228,6 @@ def _create_numerical_results_panel(inp: dict, out: dict):
     inp["numerical_results_col"] = gr.Column(scale=1, variant="panel")
 
     with inp["numerical_results_col"]:
-        with gr.Group():
-            out["share_link"] = gr.Textbox(
-                label="🔗 Share link",
-                value="",
-                show_copy_button=True,
-                scale=1,
-                interactive=True,
-                show_label=True,
-            )
 
         gr.Markdown("### Overall metrics")
         out["overall_metrics_table"] = gr.Dataframe(
@@ -295,9 +286,9 @@ def _create_example_viewer(inp: dict, out: dict):
 
     inp["example_view_col"] = gr.Column(variant="panel")
     with inp["example_view_col"]:
+        gr.Markdown("### Controls")
         # Input controls
         with gr.Group():
-            gr.Markdown("### Controls")
 
             # dataset dropdown is hidden by default
             # to simplify the interface
@@ -348,6 +339,7 @@ def _create_example_viewer(inp: dict, out: dict):
             )
 
         # Output displays
+        gr.Markdown("### Datapoint")
         out["example_message"] = gr.Markdown(
             EXAMPLE_VIEWER_NO_DATA_MESSAGE,
             visible=False,
@@ -356,7 +348,6 @@ def _create_example_viewer(inp: dict, out: dict):
             visible=False,
         )
         with out["example_details_group"]:
-            gr.Markdown("### Example Details")
 
             out["example_comparison_id"] = gr.Textbox(
                 label="🏷️ Comparison ID",
@@ -420,15 +411,24 @@ def _create_results_panel(inp: dict, out: dict):
 
     _add_title_row("Results")
 
-    inp["results_view_radio"] = gr.Radio(
-        label="🎛️ View",
-        choices=[
-            ("📊 Numerical results", "numerical_results"),
-            ("👀 Example viewer", "example_viewer"),
-        ],
-        value="numerical_results",
-        interactive=True,
-    )
+    with gr.Row():
+        inp["results_view_radio"] = gr.Radio(
+            label="🎛️ View",
+            choices=[
+                ("📊 Numerical results", "numerical_results"),
+                ("👀 Example viewer", "example_viewer"),
+            ],
+            value="numerical_results",
+            interactive=True,
+        )
+        out["share_link"] = gr.Textbox(
+            label="🔗 Share link",
+            value="",
+            show_copy_button=True,
+            scale=2,
+            interactive=True,
+            show_label=True,
+        )
 
     _create_numerical_results_panel(inp, out)
     _create_example_viewer(inp, out)
