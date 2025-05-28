@@ -456,7 +456,6 @@ def generate(
                         choices=avail_values,
                         value=selected_vals,
                         interactive=True,
-                        visible=True,
                     )
 
         # Config of table (metric, sort_by, sort_order)

@@ -81,21 +81,34 @@ def get_annotator_table_df(
 
     initial_dataset = list(annotator_metrics.keys())[0]
     metric = metric_name  # Use the provided metric_name instead of hardcoded "strength"
+    all_annotator_keys = set()
+    for _, dataset_dict in annotator_metrics.items():
+        all_annotator_keys.update(list(dataset_dict["metrics"][metric].keys()))
+    all_annotator_keys = list(all_annotator_keys)
+
     metric_columns = {
-        dataset_name: list(dataset_dict["metrics"][metric].values())
+        dataset_name: [
+            dataset_dict["metrics"][metric].get(annotator_key, None)
+            for annotator_key in all_annotator_keys
+        ]
         for dataset_name, dataset_dict in annotator_metrics.items()
     }
-    annotator_keys = list(annotator_metrics[initial_dataset]["metrics"][metric].keys())
 
     headers = ["Annotator"] + list(metric_columns.keys())
 
     # sanity check
-    for dataset_name, dataset_dict in annotator_metrics.items():
-        assert list(dataset_dict["metrics"][metric].keys()) == annotator_keys
+    # for dataset_name, dataset_dict in annotator_metrics.items():
+    #    assert list(dataset_dict["metrics"][metric].keys()) == annotator_keys, (
+    #        f"Annotator keys mismatch for dataset {dataset_name}. "
+    #        f"Expected: {annotator_keys}, "
+    #        f"Found: {list(dataset_dict['metrics'][metric].keys())}"
+    #        f"Dataset: {dataset_name}"
+    #        f"Difference: {set(dataset_dict['metrics'][metric].keys()) - set(annotator_keys)}"
+    #    )
 
     shown_df = pd.DataFrame(
         {
-            "annotator": annotator_keys,
+            "annotator": all_annotator_keys,
             **metric_columns,
         }
     )

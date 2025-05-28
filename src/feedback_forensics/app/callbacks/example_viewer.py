@@ -175,7 +175,9 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
 
         if df is None or len(df) == 0:
             logger.warning("Example viewer: df is None or empty")
-            return _empty_example_display(out)
+            return _empty_example_display(
+                out,
+            )
 
         # Filter dataframe based on subset selection
         filtered_df = _filter_dataframe(
@@ -188,7 +190,10 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
                 f"filtered_df: {filtered_df}"
                 f"example_index: {example_index}"
             )
-            return _empty_example_display(out)
+            return _empty_example_display(
+                out,
+                gr_warning_message="No examples found.",
+            )
 
         # Get the selected row
         row = filtered_df.iloc[example_index]
@@ -221,18 +226,18 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
 
         if annotator_1 and annotator_2:
             # Find annotator column names from visible names
-            row_col_name = _get_annotator_col_from_visible_name(
+            ann1_col_name = _get_annotator_col_from_visible_name(
                 annotator_metadata, annotator_1
             )
-            col_col_name = _get_annotator_col_from_visible_name(
+            ann2_col_name = _get_annotator_col_from_visible_name(
                 annotator_metadata, annotator_2
             )
 
-            if row_col_name and row_col_name in row:
-                annotator_1_result = str(row[row_col_name])
+            if ann1_col_name and ann1_col_name in row:
+                annotator_1_result = str(row[ann1_col_name])
 
-            if col_col_name and col_col_name in row:
-                annotator_2_result = str(row[col_col_name])
+            if ann2_col_name and ann2_col_name in row:
+                annotator_2_result = str(row[ann2_col_name])
 
         # Extract metadata (exclude main columns)
         metadata_keys = ["comparison_id", "prompt", "text_a", "text_b"] + list(
@@ -281,10 +286,32 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
 
         empty_return = {out["annotator_table"]: gr.DataFrame()}
 
+        is_multiple_datasets = (
+            not isinstance(data[inp["active_datasets_dropdown"]], str)
+            and len(list(data[inp["active_datasets_dropdown"]])) > 1
+        )
+        if is_multiple_datasets:
+            gr.Warning(
+                "Data viewer: multiple datasets are active. "
+                "Data viewer is currently not supported for multiple datasets. "
+                "Please select a single dataset to view examples."
+            )
+            return empty_return
+
+        if not data[inp["enable_dataviewer_checkbox"]]:
+            gr.Info(
+                "Data viewer currently not enabled. "
+                "Set 'Enable dataviewer' checkbox in "
+                "advanced settings to view datapoints."
+            )
+            return empty_return
+
         index = evt._data["index"]
+        value = evt._data["value"]
         y_idx = index[0]
         x_idx = index[1]
-        if index[1] == 0 or not data[inp["enable_dataviewer_checkbox"]]:
+        if index[1] == 0:
+            # selected annotator column, skipping going to example viewer
             return empty_return
         else:
             selected_annotator_col = annotator_cols[x_idx - 1]
@@ -298,7 +325,7 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
                 logger.warning(
                     (
                         f"Selected annotator row {selected_annotator_row_shown_name} not "
-                        "found in annotator rows ({annotator_rows})"
+                        f"found in annotator rows ({annotator_rows})"
                     )
                 )
                 return empty_return
@@ -306,7 +333,7 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
                 logger.warning(
                     (
                         f"Selected annotator row {selected_annotator_row_shown_name} "
-                        "found multiple times in annotator rows ({annotator_rows})"
+                        f"found multiple times in annotator rows ({annotator_rows})"
                         " Annotator names shown in table are not unique."
                     )
                 )
@@ -317,11 +344,15 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
         data[inp["example_annotator_1"]] = selected_annotator_row
         data[inp["example_annotator_2"]] = selected_annotator_col
 
-        subset_val = "agree"
+        if value >= 0:
+            subset_val = "agree"
+        else:
+            subset_val = "disagree"
+
         data[inp["example_subset_dropdown"]] = subset_val
 
         gr.Info(
-            f"Showing example datapoints where annotations by '{selected_annotator_row}' and '{selected_annotator_col}' agree."
+            f"Showing example datapoints where annotations by '{selected_annotator_row}' and '{selected_annotator_col}' {subset_val}."
         )
 
         return {
@@ -366,37 +397,41 @@ def _filter_dataframe(
         return df
 
     annotator_metadata = votes_dict.get("annotator_metadata", {})
-    row_col_name = _get_annotator_col_from_visible_name(annotator_metadata, annotator_1)
-    col_col_name = _get_annotator_col_from_visible_name(annotator_metadata, annotator_2)
+    ann1_col_name = _get_annotator_col_from_visible_name(
+        annotator_metadata, annotator_1
+    )
+    ann2_col_name = _get_annotator_col_from_visible_name(
+        annotator_metadata, annotator_2
+    )
 
-    if not row_col_name or not col_col_name:
+    if not ann1_col_name or not ann2_col_name:
         return df
 
-    if row_col_name not in list(df.columns) or col_col_name not in list(df.columns):
+    if ann1_col_name not in list(df.columns) or ann2_col_name not in list(df.columns):
         return df
 
-    df = ensure_categories_identical(df=df, col_a=row_col_name, col_b=col_col_name)
+    df = ensure_categories_identical(df=df, col_a=ann1_col_name, col_b=ann2_col_name)
 
     # Create filter masks
     if subset_filter == "agree":
-        mask = df[row_col_name] == df[col_col_name]
+        mask = df[ann1_col_name] == df[ann2_col_name]
     elif subset_filter == "disagree":
         mask = (
-            (df[row_col_name] != df[col_col_name])
-            & (df[row_col_name].isin(["text_a", "text_b"]))
-            & (df[col_col_name].isin(["text_a", "text_b"]))
+            (df[ann1_col_name] != df[ann2_col_name])
+            & (df[ann1_col_name].isin(["text_a", "text_b"]))
+            & (df[ann2_col_name].isin(["text_a", "text_b"]))
         )
-    elif subset_filter == "only annotator row does not apply":
-        mask = (~df[row_col_name].isin(["text_a", "text_b"])) & (
-            df[col_col_name].isin(["text_a", "text_b"])
+    elif subset_filter == "only annotator 1 does not apply":
+        mask = (~df[ann1_col_name].isin(["text_a", "text_b"])) & (
+            df[ann2_col_name].isin(["text_a", "text_b"])
         )
-    elif subset_filter == "only annotator column does not apply":
-        mask = (df[row_col_name].isin(["text_a", "text_b"])) & (
-            ~df[col_col_name].isin(["text_a", "text_b"])
+    elif subset_filter == "only annotator 2 does not apply":
+        mask = (df[ann1_col_name].isin(["text_a", "text_b"])) & (
+            ~df[ann2_col_name].isin(["text_a", "text_b"])
         )
     elif subset_filter == "neither apply":
-        mask = (~df[row_col_name].isin(["text_a", "text_b"])) & (
-            ~df[col_col_name].isin(["text_a", "text_b"])
+        mask = (~df[ann1_col_name].isin(["text_a", "text_b"])) & (
+            ~df[ann2_col_name].isin(["text_a", "text_b"])
         )
     else:
         return df
@@ -405,10 +440,13 @@ def _filter_dataframe(
 
 
 def _empty_example_display(
-    out: dict, message: str = EXAMPLE_VIEWER_NO_DATA_MESSAGE
+    out: dict,
+    message: str = EXAMPLE_VIEWER_NO_DATA_MESSAGE,
+    gr_warning_message: str = None,
 ) -> dict:
     """Return empty example display values."""
-    gr.Warning("No examples found")
+    if gr_warning_message:
+        gr.Warning(gr_warning_message)
     return {
         out["example_comparison_id"]: "",
         out["example_prompt"]: "",
