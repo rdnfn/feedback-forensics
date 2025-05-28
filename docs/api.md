@@ -43,14 +43,3 @@ options:
                         Version of standard principles to test (default: v2)
 ```
 
-## Configuration
-
-### API Keys
-Set up API keys in `secrets.toml` to be able to annotate data:
-
-```toml
-[secrets]
-OPENAI_API_KEY = "your-key-here"
-ANTHROPIC_API_KEY = "your-key-here"
-```
-
