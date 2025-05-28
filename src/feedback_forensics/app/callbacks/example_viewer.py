@@ -438,7 +438,7 @@ def _empty_example_display(
     out: dict, message: str = EXAMPLE_VIEWER_NO_DATA_MESSAGE
 ) -> dict:
     """Return empty example display values."""
-    gr.Warning("No examples found")
+    # gr.Warning("No examples found")
     return {
         out["example_comparison_id"]: "",
         out["example_prompt"]: "",

@@ -51,7 +51,7 @@ def _create_header():
             text_version = f'<span style="{text_style}">v{VERSION}</span>'
             link_github = f'<a href="https://github.com/rdnfn/feedback-forensics" style="{link_style}">🌟&nbsp;Star&nbsp;on&nbsp;GitHub</a>'
             link_report_bug = f'<a href="https://github.com/rdnfn/feedback-forensics/issues/new?template=Blank+issue" style="{link_style}">✍️&nbsp;Report&nbsp;bug</a>'
-            link_get_in_touch = f'<a href="mailto:forensics@arduin.io" style="{link_style}">✉️&nbsp;Get&nbsp;in&nbsp;touch</a>'
+            link_get_in_touch = f'<a href="mailto:forensics@arduin.io" style="{link_style}">📮&nbsp;Get&nbsp;in&nbsp;touch</a>'
             gr.HTML(
                 image
                 + '<div style="margin-left: 20px; margin-top: 5px; padding-bottom: 10px; font-size: 1.2em; line-height: 1.8;">'
