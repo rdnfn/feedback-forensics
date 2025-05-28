@@ -17,8 +17,9 @@ VERSION = importlib.metadata.version("feedback_forensics")
 # get env var with github token
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 HF_TOKEN = os.getenv("HF_TOKEN")
-APP_BASE_URL = os.getenv("FF_APP_BASE_URL")
+APP_BASE_URL = os.getenv("FF_APP_BASE_URL", "")
 DEFAULT_DATASET_NAMES = json.loads(os.getenv("FF_DEFAULT_DATASET_NAMES", "[]"))
+ENABLE_EXAMPLE_VIEWER = os.getenv("FF_ENABLE_EXAMPLE_VIEWER", "false").lower() == "true"
 
 # App username and password
 # Will block app behind login if env vars are set
@@ -69,63 +70,10 @@ DEFAULT_ANNOTATOR_COL_NAME = "preferred_text"
 DEFAULT_ANNOTATOR_VISIBLE_NAME = PREFIX_DEFAULT_ANNOTATOR + DEFAULT_ANNOTATOR_COL_NAME
 DEFAULT_ANNOTATOR_HASH = hash_string(DEFAULT_ANNOTATOR_DESCRIPTION)
 
+DISABLE_SKLEARN_WARNINGS = True
 
-# Plotly config
-# values to be removed from the modebar]
-# (tool bar that has no use for us, but is difficult to
-# remove when working with Gradio and Plotly combined)
-PLOTLY_MODEBAR_POSSIBLE_VALUES = [
-    "autoScale2d",
-    "autoscale",
-    "editInChartStudio",
-    "editinchartstudio",
-    "hoverCompareCartesian",
-    "hovercompare",
-    "lasso",
-    "lasso2d",
-    "orbitRotation",
-    "orbitrotation",
-    "pan",
-    "pan2d",
-    "pan3d",
-    "reset",
-    "resetCameraDefault3d",
-    "resetCameraLastSave3d",
-    "resetGeo",
-    "resetSankeyGroup",
-    "resetScale2d",
-    "resetViewMap",
-    "resetViewMapbox",
-    "resetViews",
-    "resetcameradefault",
-    "resetcameralastsave",
-    "resetsankeygroup",
-    "resetscale",
-    "resetview",
-    "resetviews",
-    "select",
-    "select2d",
-    "sendDataToCloud",
-    "senddatatocloud",
-    "tableRotation",
-    "tablerotation",
-    "toImage",
-    "toggleHover",
-    "toggleSpikelines",
-    "togglehover",
-    "togglespikelines",
-    "toimage",
-    "zoom",
-    "zoom2d",
-    "zoom3d",
-    "zoomIn2d",
-    "zoomInGeo",
-    "zoomInMap",
-    "zoomInMapbox",
-    "zoomOut2d",
-    "zoomOutGeo",
-    "zoomOutMap",
-    "zoomOutMapbox",
-    "zoomin",
-    "zoomout",
-]
+
+EXAMPLE_VIEWER_NO_DATA_MESSAGE = "⚠️ No examples found"
+EXAMPLE_VIEWER_MULTIPLE_DATASETS_MESSAGE = (
+    "⚠️ Multiple datasets selected. Select single dataset to view examples."
+)

@@ -1,6 +1,6 @@
 """Module for creating information texts in app."""
 
-from feedback_forensics.app.data.datasets import BuiltinDataset
+from feedback_forensics.data.datasets import BuiltinDataset
 
 
 def get_datasets_description(datasets: list[BuiltinDataset]) -> str:

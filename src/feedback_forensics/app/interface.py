@@ -1,13 +1,15 @@
 import gradio as gr
 import pandas as pd
 
-from feedback_forensics.app.callbacks import generate_callbacks, attach_callbacks
 from feedback_forensics.app.constants import (
     NONE_SELECTED_VALUE,
     VERSION,
     PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS,
+    EXAMPLE_VIEWER_NO_DATA_MESSAGE,
+    ENABLE_EXAMPLE_VIEWER,
+    APP_BASE_URL,
 )
-from feedback_forensics.app.data.datasets import (
+from feedback_forensics.data.datasets import (
     get_available_datasets,
     get_default_dataset_names,
     get_available_datasets_names,
@@ -20,6 +22,7 @@ from feedback_forensics.app.info_texts import (
 from feedback_forensics.app.styling import CUSTOM_CSS, THEME
 from feedback_forensics.app.utils import get_gradio_image_path
 from feedback_forensics.app.metrics import METRIC_COL_OPTIONS
+import feedback_forensics.app.callbacks
 
 
 def _add_title_row(title: str):
@@ -45,12 +48,10 @@ def _create_header():
             image = f'<img src="{image_path}" alt="Logo" width="330">'
             spacer = f'<span style="{text_style}"> | </span>'
             text_powered_by = f'<span style="{text_style}">Powered by the <a href="https://github.com/rdnfn/icai" style="opacity: 0.9; color: var(--body-text-color);">Inverse Constitutional AI</a> (ICAI) pipeline</span>'
-            text_version = (
-                f'<span style="{text_style}">v{VERSION} (Alpha Preview)</span>'
-            )
-            link_github = f'<a href="https://github.com/rdnfn/feedback-forensics" style="{link_style}">📁&nbsp;GitHub</a>'
+            text_version = f'<span style="{text_style}">v{VERSION}</span>'
+            link_github = f'<a href="https://github.com/rdnfn/feedback-forensics" style="{link_style}">🌟&nbsp;Star&nbsp;on&nbsp;GitHub</a>'
             link_report_bug = f'<a href="https://github.com/rdnfn/feedback-forensics/issues/new?template=Blank+issue" style="{link_style}">✍️&nbsp;Report&nbsp;bug</a>'
-            link_get_in_touch = f'<a href="mailto:forensics@arduin.io" style="{link_style}">✉️&nbsp;Get&nbsp;in&nbsp;touch</a>'
+            link_get_in_touch = f'<a href="mailto:forensics@arduin.io" style="{link_style}">📮&nbsp;Get&nbsp;in&nbsp;touch</a>'
             gr.HTML(
                 image
                 + '<div style="margin-left: 20px; margin-top: 5px; padding-bottom: 10px; font-size: 1.2em; line-height: 1.8;">'
@@ -73,20 +74,20 @@ def _create_getting_started_section():
     button_size = "sm"
     with gr.Accordion("👋 Getting started: pre-configured examples", open=True):
         with gr.Row(equal_height=True):
-            tutorial_domain = "https://app.feedbackforensics.com"  # make this "" to use local instance
+            tutorial_domain = APP_BASE_URL  # make this "" to use local instance
             gr.Button(
-                "🤖 Example 1: How is GPT-4o different to other models?",
+                "🤖 Example 1: Compare GPT-4o's personality to other models",
                 size=button_size,
-                link=f"{tutorial_domain}?data=chatbot_arena&col=winner_model&col_vals=gpt4o20240513,claude35sonnet20240620,gemini15proapi0514,mistrallarge2407,deepseekv2api0628",
+                link=f"{tutorial_domain}?data=chatbot_arena&ann_cols=model_gpt4o20240513,model_claude35sonnet20240620,model_gemini15proapi0514,model_mistrallarge2407,model_deepseekv2api0628",
             )
             gr.Button(
-                "📚 Example 2: How do popular preference datasets differ?",
+                "📚 Example 2: Personality traits encouraged by feedback datasets",
                 size=button_size,
                 link=f"{tutorial_domain}?data=chatbot_arena,alpacaeval,prism,anthropic_helpful,anthropic_harmless",
             )
             gr.Button(
-                "📝 Example 3: How do user preferences vary across writing tasks?",
-                link=f"{tutorial_domain}?data=chatbot_arena&col=narrower_category&col_vals=songwriting_prompts,resume_and_cover_letter_writing,professional_email_communication,creative_writing_prompts",
+                "📝 Example 3: Preferred personality traits across writing tasks",
+                link=f"{tutorial_domain}?data=chatbot_arena&col=narrower_category&col_vals=songwriting_prompts,resume_and_cover_letter_writing,professional_email_communication,creative_writing_prompts&analysis_mode=advanced_settings",
                 size=button_size,
             )
 
@@ -119,18 +120,21 @@ def _create_configuration_panel(inp: dict, state: dict):
 
     with gr.Row(variant="panel", render=True):
         with gr.Column():
-            with gr.Group():
-                # Get dataset names and set default value safely
-                dataset_names = get_available_datasets_names()
-                default_datasets = get_default_dataset_names()
+            # Get dataset names and set default value safely
+            dataset_names = get_available_datasets_names()
+            default_datasets = get_default_dataset_names()
 
+            with gr.Group():
                 inp["active_datasets_dropdown"] = gr.Dropdown(
-                    label="💽 Active datasets",
+                    label="💽 Dataset selection",
                     choices=dataset_names,
-                    value=default_datasets,
+                    value=(
+                        default_datasets[0] if default_datasets else None
+                    ),  # Single selection by default
                     interactive=True,
-                    multiselect=True,
+                    multiselect=False,  # Default to single selection
                 )
+
                 with gr.Accordion("ℹ️ Dataset details", open=False):
                     datasets = get_available_datasets()
                     inp["dataset_info_v2"] = gr.Markdown(
@@ -138,12 +142,41 @@ def _create_configuration_panel(inp: dict, state: dict):
                         container=True,
                     )
 
+            with gr.Group():
+                inp["analysis_type_radio"] = gr.Radio(
+                    label="🔎 Analysis mode",
+                    choices=[
+                        ("🤖 Model analysis", "model_analysis"),
+                        ("👥 Human/AI feedback analysis", "annotation_analysis"),
+                        ("🔧 Advanced settings", "advanced_settings"),
+                    ],
+                    value="model_analysis",
+                    interactive=True,
+                )
+
                 # single dataset configuration
-                inp["split_col_non_available_md"] = gr.Markdown(
-                    value="<div style='opacity: 0.6'><i>Some configuration options (grouping by column, selecting annotators) are only available when selecting a single dataset. Select a single dataset to use these features.</i></div>",
+                inp["multi_dataset_warning_md"] = gr.Markdown(
+                    value="<div style='opacity: 0.6'>⚠️ <i>Some configuration options (grouping by column, selecting multiple col annotators) only work correctly when selecting a single dataset. Select a single dataset to use these features.</i></div>",
                     visible=True,
                     container=True,
                 )
+
+                inp["enable_dataviewer_checkbox"] = gr.Checkbox(
+                    label="Enable dataviewer (experimental)",
+                    info="Enable the dataviewer to view individual datapoints by clicking on the annotator table. This is experimental.",
+                    value=ENABLE_EXAMPLE_VIEWER,
+                    interactive=True,
+                    visible=False,
+                )
+
+                inp["enable_multiple_datasets_checkbox"] = gr.Checkbox(
+                    label="Enable multiple dataset selection",
+                    info="Allow selecting multiple datasets simultaneously. Some features (like column grouping) only work with single datasets.",
+                    value=False,
+                    interactive=True,
+                    visible=False,
+                )
+
                 inp["split_col_dropdown"] = gr.Dropdown(
                     label="🗃️ Group dataset by column",
                     info="Create separate results for data subsets grouped by this column's values. If no column is selected, entire original dataset will be analyzed. ",
@@ -154,56 +187,60 @@ def _create_configuration_panel(inp: dict, state: dict):
                 )
                 inp["split_col_selected_vals_dropdown"] = gr.Dropdown(
                     label="🏷️ Column values to show",
-                    info="For each selected value, separate results will be created. If no values selected, all values will be used.",
+                    info="For each selected value, separate results will be created. If no values selected, all values will be used. Requires column to be selected above.",
                     choices=[],
                     value=None,
                     multiselect=True,
                     interactive=False,
                     visible=False,
                 )
-                inp["advanced_settings_accordion"] = gr.Accordion(
-                    "🔧 Advanced settings", open=False
+                inp["models_to_compare_dropdown"] = gr.Dropdown(
+                    label="📌 Select models to compare",
+                    info="Analyse personality traits exhibited by different models",
+                    choices=None,
+                    value=None,
+                    multiselect=True,
                 )
-                with inp["advanced_settings_accordion"]:
-                    inp["annotator_cols_dropdown"] = gr.Dropdown(
-                        label="👥→ Annotator columns",
-                        info="Select the annotators to be included as a column in the results table. By default only a single (ground-truth) annotator is included.",
-                        choices=None,
-                        value=None,
-                        multiselect=True,
-                    )
-                    inp["annotator_rows_dropdown"] = gr.Dropdown(
-                        label="👥↓ Annotator rows",
-                        info=f'Select the annotators to be included as a row in the results table. By default only objective-following AI annotators are included (named as "{PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS} \<OBJECTIVE\>").',
-                        choices=None,
-                        value=None,
-                        multiselect=True,
-                    )
-                    inp["reference_models_dropdown"] = gr.Dropdown(
-                        label="🔍 Reference models for model annotators",
-                        info="Select which models should be used as references for model-identity annotators. If none are selected, all models will be used as references.",
-                        choices=None,
-                        value=None,
-                        multiselect=True,
-                    )
+                inp["annotations_to_compare_dropdown"] = gr.Dropdown(
+                    label="🗂️ Select feedback annotations to compare (AI or human)",
+                    info="Analyse personality traits encouraged by different pairwise feedback annotations",
+                    choices=None,
+                    value=None,
+                    multiselect=True,
+                )
+                inp["annotator_cols_dropdown"] = gr.Dropdown(
+                    label="👥→ Annotator columns",
+                    info="Select the annotators to be included as a column in the results table. By default only a single (ground-truth) annotator is included.",
+                    choices=None,
+                    value=None,
+                    multiselect=True,
+                )
+                inp["annotator_rows_dropdown"] = gr.Dropdown(
+                    label="👥↓ Annotator rows",
+                    info=f'Select the annotators to be included as a row in the results table. By default only objective-following AI annotators are included (named as "{PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS} \\<OBJECTIVE\\>").',
+                    choices=None,
+                    value=None,
+                    multiselect=True,
+                )
+                inp["reference_models_dropdown"] = gr.Dropdown(
+                    label="🔍 Reference models for model annotators",
+                    info="Select which models should be used as references for model-identity annotators. If none are selected, all models will be used as references.",
+                    choices=None,
+                    value=None,
+                    multiselect=True,
+                )
 
-                # final button to run analysis
-                inp["load_btn"] = gr.Button("Run analysis", variant="secondary")
+            # final button to run analysis
+            inp["load_btn"] = gr.Button("Run analysis", variant="secondary")
 
 
-def _create_results_panel(inp: dict, out: dict):
+def _create_numerical_results_panel(inp: dict, out: dict):
 
-    _add_title_row("Results")
-    with gr.Column(scale=1, variant="panel"):
-        with gr.Group():
-            out["share_link"] = gr.Textbox(
-                label="🔗 Share link",
-                value="",
-                show_copy_button=True,
-                scale=1,
-                interactive=True,
-                show_label=True,
-            )
+    inp["numerical_results_col"] = gr.Column(scale=1, variant="panel")
+
+    with inp["numerical_results_col"]:
+
+        gr.Markdown("## Numerical overview")
 
         gr.Markdown("### Overall metrics")
         out["overall_metrics_table"] = gr.Dataframe(
@@ -243,7 +280,178 @@ def _create_results_panel(inp: dict, out: dict):
             out["annotator_table"] = gr.Dataframe(
                 value=pd.DataFrame(),
                 headers=["No data loaded"],
+                interactive=False,
             )
+
+
+def _create_example_viewer(inp: dict, out: dict):
+    """Create viewer for individual datapoints as examples."""
+
+    inp["example_view_col"] = gr.Column(variant="panel")
+    with inp["example_view_col"]:
+
+        gr.Markdown("## Datapoint viewer")
+
+        gr.Markdown("### Controls")
+        # Input controls
+        with gr.Group():
+
+            # dataset dropdown is hidden by default
+            # to simplify the interface
+            inp["example_dataset_dropdown"] = gr.Dropdown(
+                label="📊 Dataset",
+                choices=[],
+                value=None,
+                interactive=True,
+                visible=False,
+            )
+
+            with gr.Row():
+                inp["example_annotator_1"] = gr.Dropdown(
+                    label="👥 Annotator 1",
+                    choices=[],
+                    value=None,
+                    interactive=True,
+                )
+
+                inp["example_annotator_2"] = gr.Dropdown(
+                    label="👥 Annotator 2",
+                    choices=[],
+                    value=None,
+                    interactive=True,
+                )
+
+            inp["example_subset_dropdown"] = gr.Dropdown(
+                label="🔍 Filter subset",
+                choices=[
+                    ("All", "all"),
+                    ("Agree", "agree"),
+                    ("Disagree", "disagree"),
+                    (
+                        "Only annotator 1 does not apply",
+                        "only annotator 1 does not apply",
+                    ),
+                    (
+                        "Only annotator 2 does not apply",
+                        "only annotator 2 does not apply",
+                    ),
+                    ("Neither apply", "neither apply"),
+                ],
+                value="all",
+                interactive=True,
+            )
+
+            inp["example_index_slider"] = gr.Slider(
+                label="📋 Example index",
+                minimum=0,
+                maximum=100,
+                step=1,
+                value=0,
+                interactive=True,
+            )
+
+        # Output displays
+        gr.Markdown("### Datapoint")
+        out["example_message"] = gr.Markdown(
+            EXAMPLE_VIEWER_NO_DATA_MESSAGE,
+            visible=False,
+        )
+        out["example_details_group"] = gr.Group(
+            visible=False,
+        )
+        with out["example_details_group"]:
+
+            out["example_comparison_id"] = gr.Textbox(
+                label="🏷️ Comparison ID",
+                value="",
+                interactive=False,
+            )
+
+            out["example_prompt"] = gr.Textbox(
+                label="💬 Prompt",
+                value="",
+                interactive=False,
+                type="text",
+                lines=5,
+                max_lines=20,
+            )
+
+            with gr.Row():
+                out["example_response_a_model"] = gr.Textbox(
+                    label="🤖 Model A",
+                    value="",
+                    interactive=False,
+                    type="text",
+                )
+                out["example_response_b_model"] = gr.Textbox(
+                    label="🤖 Model B",
+                    value="",
+                    interactive=False,
+                    type="text",
+                )
+
+            with gr.Row():
+                out["example_response_a"] = gr.Textbox(
+                    label="📝 Response A",
+                    value="",
+                    interactive=False,
+                    type="text",
+                    lines=10,
+                    max_lines=20,
+                )
+
+                out["example_response_b"] = gr.Textbox(
+                    label="📝 Response B",
+                    value="",
+                    interactive=False,
+                    type="text",
+                    lines=10,
+                    max_lines=20,
+                )
+
+            out["example_annotator_1_result"] = gr.Textbox(
+                label="👥 Annotator 1 preference",
+                value="",
+                interactive=False,
+            )
+
+            out["example_annotator_2_result"] = gr.Textbox(
+                label="👥 Annotator 2 preference",
+                value="",
+                interactive=False,
+            )
+
+            out["example_metadata"] = gr.JSON(
+                label="📋 Metadata",
+                value={},
+            )
+
+
+def _create_results_panel(inp: dict, out: dict):
+
+    _add_title_row("Results")
+
+    with gr.Row():
+        inp["results_view_radio"] = gr.Radio(
+            label="🎛️ View",
+            choices=[
+                ("📊 Numerical overview", "numerical_results"),
+                ("🔎 Datapoint viewer", "example_viewer"),
+            ],
+            value="numerical_results",
+            interactive=True,
+        )
+        out["share_link"] = gr.Textbox(
+            label="🔗 Share link",
+            value="",
+            show_copy_button=True,
+            scale=2,
+            interactive=True,
+            show_label=True,
+        )
+
+    _create_numerical_results_panel(inp, out)
+    _create_example_viewer(inp, out)
 
 
 def _force_dark_theme(block):
@@ -280,7 +488,7 @@ def generate():
         with gr.Row():
             gr.HTML(f"<center>Feedback Forensics app v{VERSION}</center>")
 
-        callbacks = generate_callbacks(inp, state, out)
-        attach_callbacks(inp, state, out, callbacks, demo)
+        callbacks = feedback_forensics.app.callbacks.generate(inp, state, out)
+        feedback_forensics.app.callbacks.attach(inp, state, out, callbacks, demo)
 
     return demo

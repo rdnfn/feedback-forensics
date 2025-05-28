@@ -2,7 +2,7 @@ import gradio as gr
 from loguru import logger
 import re
 
-from feedback_forensics.app.data.datasets import (
+from feedback_forensics.data.datasets import (
     get_available_datasets,
     get_stringname_from_urlname,
     get_urlname_from_stringname,
@@ -47,6 +47,8 @@ def get_config_from_query_params(request: gr.Request) -> dict:
         config["sort_by"] = params["sort_by"]
     if "sort_order" in params:
         config["sort_order"] = params["sort_order"]
+    if "analysis_mode" in params:
+        config["analysis_mode"] = params["analysis_mode"]
     return config
 
 
@@ -65,11 +67,25 @@ def get_url_with_query_params(
     metric: str = None,
     sort_by: str = None,
     sort_order: str = None,
+    analysis_mode: str = None,
 ) -> str:
     available_datasets = get_available_datasets()
+
+    # Handle empty datasets list or filter out None values
+    if not datasets:
+        # Return base URL if no datasets are specified
+        return base_url
+
     datasets_url_names = [
         get_urlname_from_stringname(dataset, available_datasets) for dataset in datasets
     ]
+    # Filter out None values that might occur if dataset name is not found
+    datasets_url_names = [name for name in datasets_url_names if name is not None]
+
+    if not datasets_url_names:
+        # Return base URL if no valid dataset URL names are found
+        return base_url
+
     url = f"{base_url}?data={','.join(datasets_url_names)}"
     if col is not None and col != NONE_SELECTED_VALUE and col != "":
         url += f"&col={col}"
@@ -98,6 +114,9 @@ def get_url_with_query_params(
     if sort_order is not None:
         url += f"&sort_order={sort_order}"
 
+    if analysis_mode is not None:
+        url += f"&analysis_mode={analysis_mode}"
+
     return url
 
 
@@ -114,6 +133,13 @@ def get_list_member_from_url_string(
     return urlified_list_members_dict.get(url_string, None)
 
 
+def transfer_url_str_to_nonurl_str(url_str: str, nonurl_list: list[str]) -> str:
+    urlified_generic_list_dict = {
+        make_str_url_ready(text): text for text in nonurl_list
+    }
+    return urlified_generic_list_dict.get(url_str, None)
+
+
 def transfer_url_list_to_nonurl_list(
     url_list: list[str], nonurl_list: list[str]
 ) -> list[str]:
@@ -125,3 +151,34 @@ def transfer_url_list_to_nonurl_list(
         for url in url_list
         if url in urlified_generic_list_dict
     ]
+
+
+def parse_list_param(
+    url_list: list[str], avail_nonurl_list: list[str], param_name: str
+) -> list[str]:
+    """Parse a list parameter from url to nonurl list.
+
+    Args:
+        url_list: List of strings from URL parameter.
+        avail_nonurl_list: List of available non-URL strings to match against.
+            These will eventually be used in the code.
+        param_name: Name of the parameter being parsed (for error messages).
+
+    Returns:
+        List of strings that match between url_list and avail_nonurl_list.
+    """
+
+    nonurl_list = transfer_url_list_to_nonurl_list(
+        url_list=url_list,
+        nonurl_list=avail_nonurl_list,
+    )
+    logger.debug(f"URL list param {param_name} parsed: {url_list} -> {nonurl_list}")
+
+    if len(nonurl_list) != len(url_list):
+        gr.Warning(
+            f"URL problem: not all values for '{param_name}' in URL ({url_list}) could be read successfully. "
+            f"Requested {param_name}: {url_list}, "
+            f"retrieved {param_name}: {nonurl_list}.",
+            duration=15,
+        )
+    return nonurl_list

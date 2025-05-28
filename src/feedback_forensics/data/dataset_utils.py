@@ -26,7 +26,7 @@ def get_available_models(df: pd.DataFrame) -> list:
 
     model_a_values = set(x for x in df["model_a"].unique() if pd.notna(x))
     model_b_values = set(x for x in df["model_b"].unique() if pd.notna(x))
-    return model_a_values.union(model_b_values)
+    return list(model_a_values.union(model_b_values))
 
 
 def add_annotators_to_votes_dict(
@@ -57,7 +57,7 @@ def add_annotators_to_votes_dict(
 
 
 def get_annotators_by_type(
-    votes_dict: Dict[str, Any]
+    votes_dict: Dict[str, Any],
 ) -> Dict[str, Dict[str, List[str]]]:
     """
     Extract all annotators grouped by their type from a votes_dict.

@@ -9,7 +9,7 @@ from pathlib import Path
 from loguru import logger
 import pandas as pd
 
-from feedback_forensics.app.data.loader import add_virtual_annotators, get_votes_dict
+from feedback_forensics.data.loader import add_virtual_annotators, get_votes_dict
 from feedback_forensics.app.metrics import (
     get_overall_metrics,
     compute_annotator_metrics,
@@ -406,6 +406,14 @@ class DatasetHandler:
             for col_name in avail_annotator_cols
         }
 
+    def get_available_annotator_visible_names(self):
+        """Get the visible names of the available annotators."""
+        avail_annotators = self.get_available_annotators()
+        return [
+            avail_annotators[col_name]["annotator_visible_name"]
+            for col_name in avail_annotators.keys()
+        ]
+
     def set_annotator_rows(
         self,
         annotator_visible_names: list[str] | None = None,
@@ -477,7 +485,7 @@ class DatasetHandler:
 
         assert len(annotator_visible_names) == len(
             annotator_keys
-        ), "annotator_visible_names and annotator_keys must have the same length"
+        ), f"annotator_visible_names ({annotator_visible_names}) and annotator_keys ({annotator_keys}) must have the same length"
 
         multi_annotator_cols_mode = False
 
@@ -512,15 +520,30 @@ class DatasetHandler:
                 handler.votes_dict for handler in self._col_handlers.values()
             ]
 
+        has_different_datasets = len(set(dataset_names)) > 1
+
+        if has_different_datasets:
+            vote_dict_keys = [
+                f"{dataset_name}\n({annotator_name})"
+                for annotator_name, dataset_name in zip(
+                    annotator_visible_names, dataset_names
+                )
+            ]
+        else:
+            vote_dict_keys = [
+                f"{annotator_name}" for annotator_name in annotator_visible_names
+            ]
+
         # create new votes_dicts with the new annotator columns
         votes_dicts = {
-            f"{dataset_name}\n({annotator_name.replace('-', ' ')})": {
+            vote_dict_key: {
                 "df": votes_dict["df"],
                 "annotator_metadata": votes_dict["annotator_metadata"],
                 "reference_annotator_col": annotator_key,
                 "shown_annotator_rows": votes_dict["shown_annotator_rows"],
             }
-            for annotator_key, annotator_name, dataset_name, votes_dict in zip(
+            for vote_dict_key, annotator_key, annotator_name, dataset_name, votes_dict in zip(
+                vote_dict_keys,
                 annotator_keys,
                 annotator_visible_names,
                 dataset_names,
