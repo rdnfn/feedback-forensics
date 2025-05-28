@@ -299,7 +299,7 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
                 logger.warning(
                     (
                         f"Selected annotator row {selected_annotator_row_shown_name} not "
-                        "found in annotator rows ({annotator_rows})"
+                        f"found in annotator rows ({annotator_rows})"
                     )
                 )
                 return empty_return
@@ -307,7 +307,7 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
                 logger.warning(
                     (
                         f"Selected annotator row {selected_annotator_row_shown_name} "
-                        "found multiple times in annotator rows ({annotator_rows})"
+                        f"found multiple times in annotator rows ({annotator_rows})"
                         " Annotator names shown in table are not unique."
                     )
                 )
