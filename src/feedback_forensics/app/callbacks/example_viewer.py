@@ -281,11 +281,32 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
 
         empty_return = {out["annotator_table"]: gr.DataFrame()}
 
+        is_multiple_datasets = (
+            not isinstance(data[inp["active_datasets_dropdown"]], str)
+            and len(list(data[inp["active_datasets_dropdown"]])) > 1
+        )
+        if is_multiple_datasets:
+            gr.Warning(
+                "Data viewer: multiple datasets are active. "
+                "Data viewer is currently not supported for multiple datasets. "
+                "Please select a single dataset to view examples."
+            )
+            return empty_return
+
+        if not data[inp["enable_dataviewer_checkbox"]]:
+            gr.Info(
+                "Data viewer currently not enabled. "
+                "Set 'Enable dataviewer' checkbox in "
+                "advanced settings to view datapoints."
+            )
+            return empty_return
+
         index = evt._data["index"]
         value = evt._data["value"]
         y_idx = index[0]
         x_idx = index[1]
-        if index[1] == 0 or not data[inp["enable_dataviewer_checkbox"]]:
+        if index[1] == 0:
+            # selected annotator column, skipping going to example viewer
             return empty_return
         else:
             selected_annotator_col = annotator_cols[x_idx - 1]
