@@ -81,6 +81,7 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
             inp["split_col_dropdown"],
             inp["split_col_selected_vals_dropdown"],
             inp["multi_dataset_warning_md"],
+            inp["enable_multiple_datasets_checkbox"],
             inp["annotator_rows_dropdown"],
             inp["annotator_cols_dropdown"],
             inp["models_to_compare_dropdown"],
