@@ -6,6 +6,7 @@ from feedback_forensics.app.constants import (
     VERSION,
     PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS,
     EXAMPLE_VIEWER_NO_DATA_MESSAGE,
+    ENABLE_EXAMPLE_VIEWER,
 )
 from feedback_forensics.data.datasets import (
     get_available_datasets,
@@ -162,7 +163,7 @@ def _create_configuration_panel(inp: dict, state: dict):
                 inp["enable_dataviewer_checkbox"] = gr.Checkbox(
                     label="Enable dataviewer (experimental)",
                     info="Enable the dataviewer to view individual datapoints by clicking on the annotator table. This is experimental.",
-                    value=False,
+                    value=ENABLE_EXAMPLE_VIEWER,
                     interactive=True,
                     visible=False,
                 )
