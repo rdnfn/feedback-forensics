@@ -43,6 +43,15 @@ dev = [
     "bump-my-version",
     "huggingface_hub",
 ]
+docs = [
+    "jupyter-book>=0.15.1",
+    "sphinx>=4.0.0",
+    "myst-parser>=0.18.0",
+    "sphinx-book-theme>=1.0.0",
+    "sphinx-copybutton",
+    "sphinx-design",
+    "sphinxcontrib-bibtex",
+]
 
 [build-system]
 requires = ["hatchling"]

@@ -1,0 +1,20 @@
+# Table of contents
+# Learn more at https://jupyterbook.org/customize/toc.html
+
+format: jb-book
+root: index
+options:
+  numbered: false
+chapters:
+- file: installation
+  title: Installation ↓
+- file: guide/index
+  title: "Getting started 🚀"
+  sections:
+    - file: guide/feedback
+      title: Measure personality encouraged by feedback 🗣️
+    - file: guide/models
+      title: Measure your model's personality 🤖
+- file: method/index
+- file: api
+- file: contributing
