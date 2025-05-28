@@ -1,0 +1,63 @@
+# Book settings
+title: Feedback Forensics Docs
+author: rdnfn, timokau
+copyright: "2025"
+logo: ../src/feedback_forensics/assets/feedback_forensics_logo.png
+
+# Force re-execution of notebooks on each build.
+# See https://jupyterbook.org/content/execute.html
+execute:
+  execute_notebooks: cache
+
+# Define the name of the latex output file for PDF builds
+latex:
+  latex_documents:
+    targetname: feedback-forensics-docs.tex
+
+# Add a bibtex file so that we can create citations
+# bibtex_bibfiles:
+#   - references.bib
+
+# Information about where the book exists on the web
+repository:
+  url: https://github.com/rdnfn/feedback-forensics
+  path_to_book: docs
+  branch: main
+
+# Add GitHub buttons to your book
+# See https://jupyterbook.org/customize/config.html#add-a-link-to-your-repository
+html:
+  use_issues_button: true
+  use_repository_button: true
+  use_edit_page_button: true
+  edit_page_button_text: "Edit this page"
+
+# Launch button configuration
+launch_buttons:
+  notebook_interface: classic
+  binderhub_url: ""
+  jupyterhub_url: ""
+  thebe: false
+
+# Parse and render settings
+parse:
+  myst_enable_extensions:
+    - colon_fence
+    - deflist
+    - dollarmath
+    - html_admonition
+    - html_image
+    - linkify
+    - replacements
+    - smartquotes
+    - substitution
+    - tasklist
+
+# Define the name of the latex output file for PDF builds
+sphinx:
+  config:
+    html_theme_options:
+      repository_url: https://github.com/rdnfn/feedback-forensics
+      use_repository_button: true
+      use_issues_button: true
+      use_edit_page_button: true
