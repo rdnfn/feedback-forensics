@@ -326,7 +326,7 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
         data[inp["example_subset_dropdown"]] = subset_val
 
         gr.Info(
-            f"Showing example datapoints where annotations by '{selected_annotator_row}' and '{selected_annotator_col}' agree."
+            f"Showing example datapoints where annotations by '{selected_annotator_row}' and '{selected_annotator_col}' {subset_val}."
         )
 
         return {
