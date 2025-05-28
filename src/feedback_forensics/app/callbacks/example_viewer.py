@@ -282,6 +282,7 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
         empty_return = {out["annotator_table"]: gr.DataFrame()}
 
         index = evt._data["index"]
+        value = evt._data["value"]
         y_idx = index[0]
         x_idx = index[1]
         if index[1] == 0 or not data[inp["enable_dataviewer_checkbox"]]:
@@ -317,7 +318,11 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
         data[inp["example_annotator_1"]] = selected_annotator_row
         data[inp["example_annotator_2"]] = selected_annotator_col
 
-        subset_val = "agree"
+        if value >= 0:
+            subset_val = "agree"
+        else:
+            subset_val = "disagree"
+
         data[inp["example_subset_dropdown"]] = subset_val
 
         gr.Info(
