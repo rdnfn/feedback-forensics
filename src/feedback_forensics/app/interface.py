@@ -87,7 +87,7 @@ def _create_getting_started_section():
             )
             gr.Button(
                 "📝 Example 3: How do user preferences vary across writing tasks?",
-                link=f"{tutorial_domain}?data=chatbot_arena&col=narrower_category&col_vals=songwriting_prompts,resume_and_cover_letter_writing,professional_email_communication,creative_writing_prompts",
+                link=f"{tutorial_domain}?data=chatbot_arena&col=narrower_category&col_vals=songwriting_prompts,resume_and_cover_letter_writing,professional_email_communication,creative_writing_prompts&analysis_mode=advanced_settings",
                 size=button_size,
             )
 
