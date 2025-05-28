@@ -175,7 +175,9 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
 
         if df is None or len(df) == 0:
             logger.warning("Example viewer: df is None or empty")
-            return _empty_example_display(out)
+            return _empty_example_display(
+                out,
+            )
 
         # Filter dataframe based on subset selection
         filtered_df = _filter_dataframe(
@@ -188,7 +190,10 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
                 f"filtered_df: {filtered_df}"
                 f"example_index: {example_index}"
             )
-            return _empty_example_display(out)
+            return _empty_example_display(
+                out,
+                gr_warning_message="No examples found.",
+            )
 
         # Get the selected row
         row = filtered_df.iloc[example_index]
@@ -435,10 +440,13 @@ def _filter_dataframe(
 
 
 def _empty_example_display(
-    out: dict, message: str = EXAMPLE_VIEWER_NO_DATA_MESSAGE
+    out: dict,
+    message: str = EXAMPLE_VIEWER_NO_DATA_MESSAGE,
+    gr_warning_message: str = None,
 ) -> dict:
     """Return empty example display values."""
-    # gr.Warning("No examples found")
+    if gr_warning_message:
+        gr.Warning(gr_warning_message)
     return {
         out["example_comparison_id"]: "",
         out["example_prompt"]: "",
