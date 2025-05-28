@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 from pathlib import Path
 
-from feedback_forensics.app.data.loader import (
+from feedback_forensics.data.loader import (
     load_json_file,
     convert_vote_to_string,
     get_votes_dict,

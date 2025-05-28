@@ -1,3 +1,3 @@
-from feedback_forensics.app.data.handler import DatasetHandler
+from feedback_forensics.data.handler import DatasetHandler
 
 __all__ = ["DatasetHandler"]

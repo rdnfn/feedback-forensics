@@ -5,7 +5,7 @@ from loguru import logger
 
 import feedback_forensics.app.interface as interface
 from feedback_forensics.app.constants import USERNAME, PASSWORD, HF_TOKEN
-import feedback_forensics.app.data.datasets
+import feedback_forensics.data.datasets
 
 # make gradio work offline
 gradio.themes.utils.fonts.GoogleFont.stylesheet = lambda self: None
@@ -19,20 +19,20 @@ def run():
 
     # Try to load local dataset if provided
     if args.datapath:
-        local_dataset = feedback_forensics.app.data.datasets.create_local_dataset(
+        local_dataset = feedback_forensics.data.datasets.create_local_dataset(
             args.datapath
         )
-        feedback_forensics.app.data.datasets.add_dataset(local_dataset)
+        feedback_forensics.data.datasets.add_dataset(local_dataset)
         logger.info(f"Added local dataset to available datasets ({args.datapath}).")
 
     if HF_TOKEN:
         logger.info("HF_TOKEN found. Attempting to load HuggingFace datasets...")
-        loaded_count = feedback_forensics.app.data.datasets.load_datasets_from_hf()
+        loaded_count = feedback_forensics.data.datasets.load_datasets_from_hf()
     else:
         logger.info("Note: only local datasets will be loaded.")
 
     # Get the current available datasets
-    available_datasets = feedback_forensics.app.data.datasets.get_available_datasets()
+    available_datasets = feedback_forensics.data.datasets.get_available_datasets()
 
     if len(available_datasets) == 0:
         logger.error(

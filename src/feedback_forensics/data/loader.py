@@ -15,7 +15,7 @@ from feedback_forensics.app.constants import (
     PREFIX_OTHER_ANNOTATOR_WITH_VARIANT,
     PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS,
 )
-from feedback_forensics.app.data.dataset_utils import (
+from feedback_forensics.data.dataset_utils import (
     add_annotators_to_votes_dict,
 )
 from feedback_forensics.app.model_annotators import generate_model_identity_annotators

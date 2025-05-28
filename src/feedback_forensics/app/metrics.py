@@ -7,6 +7,13 @@ import sklearn.metrics
 
 from loguru import logger
 
+from feedback_forensics.app.constants import DISABLE_SKLEARN_WARNINGS
+
+if DISABLE_SKLEARN_WARNINGS:
+    import warnings
+
+    warnings.filterwarnings("ignore", category=RuntimeWarning)
+
 
 DEFAULT_METRIC_NAME = "strength"
 
@@ -180,7 +187,7 @@ def compute_annotator_metrics(
     if not all(votes_df[ref_annotator_col].isin(["text_a", "text_b"])):
         values = ", ".join([str(v) for v in list(votes_df[ref_annotator_col].unique())])
         logger.warning(
-            f"Reference annotator column '{ref_annotator_col}' contains values other than 'text_a' or 'text_b'(Values: {values}). Metrics will be computed on the subset of votes where the reference annotator is 'text_a' or 'text_b'."
+            f"Reference annotator column '{ref_annotator_col}' contains values other than 'text_a' or 'text_b' (Values: {values}). Metrics will be computed on the subset of votes where the reference annotator is 'text_a' or 'text_b'."
         )
         votes_df = votes_df[
             votes_df[ref_annotator_col].isin(["text_a", "text_b"])
@@ -197,14 +204,9 @@ def compute_annotator_metrics(
 
         annotator_name = annotator_metadata[annotator_col]["annotator_in_row_name"]
 
-        # Ensure both columns have the same set of categories (annotations)
-        joint_categories = set(votes_df[annotator_col].cat.categories).union(
-            set(votes_df[ref_annotator_col].cat.categories)
+        votes_df = ensure_categories_identical(
+            df=votes_df, col_a=annotator_col, col_b=ref_annotator_col
         )
-        for col in [annotator_col, ref_annotator_col]:
-            votes_df[col] = votes_df[col].cat.set_categories(
-                list(joint_categories), rename=False
-            )
 
         valid_votes_mask = votes_df[annotator_col].isin(["text_a", "text_b"])
         agree_mask = (
@@ -269,7 +271,7 @@ def get_overall_metrics(votes_df: pd.DataFrame, ref_annotator_col: str) -> dict:
     non_unique_comparison_ids = comparison_id_counts[comparison_id_counts > 1]
     if len(non_unique_comparison_ids) > 0:
         logger.warning(
-            f"Comparison_id is not unique. non-unique values:\n{non_unique_comparison_ids}"
+            f"Comparison_id is not unique. non-unique values:{list(non_unique_comparison_ids.index)}"
         )
         # limiting to unique comparison_ids, always only leaving in the first occurrence
         votes_df = votes_df.drop_duplicates(subset=["comparison_id"])
@@ -326,3 +328,16 @@ def get_overall_metrics(votes_df: pd.DataFrame, ref_annotator_col: str) -> dict:
         "Avg len rejected text (chars)": average_length_rejected_text,
         "Prop selecting longer text": proportion_longer_text_preferred,
     }
+
+
+def ensure_categories_identical(
+    df: pd.DataFrame, col_a: str, col_b: str
+) -> pd.DataFrame:
+    # Ensure both columns have the same set of categories (annotations)
+    joint_categories = set(df[col_a].cat.categories).union(
+        set(df[col_b].cat.categories)
+    )
+    for col in [col_a, col_b]:
+        df[col] = df[col].cat.set_categories(list(joint_categories), rename=False)
+
+    return df
