@@ -17,7 +17,7 @@ VERSION = importlib.metadata.version("feedback_forensics")
 # get env var with github token
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 HF_TOKEN = os.getenv("HF_TOKEN")
-APP_BASE_URL = os.getenv("FF_APP_BASE_URL")
+APP_BASE_URL = os.getenv("FF_APP_BASE_URL", "")
 DEFAULT_DATASET_NAMES = json.loads(os.getenv("FF_DEFAULT_DATASET_NAMES", "[]"))
 ENABLE_EXAMPLE_VIEWER = os.getenv("FF_ENABLE_EXAMPLE_VIEWER", "false").lower() == "true"
 
