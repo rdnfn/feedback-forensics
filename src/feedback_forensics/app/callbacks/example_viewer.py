@@ -221,18 +221,18 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
 
         if annotator_1 and annotator_2:
             # Find annotator column names from visible names
-            row_col_name = _get_annotator_col_from_visible_name(
+            ann1_col_name = _get_annotator_col_from_visible_name(
                 annotator_metadata, annotator_1
             )
-            col_col_name = _get_annotator_col_from_visible_name(
+            ann2_col_name = _get_annotator_col_from_visible_name(
                 annotator_metadata, annotator_2
             )
 
-            if row_col_name and row_col_name in row:
-                annotator_1_result = str(row[row_col_name])
+            if ann1_col_name and ann1_col_name in row:
+                annotator_1_result = str(row[ann1_col_name])
 
-            if col_col_name and col_col_name in row:
-                annotator_2_result = str(row[col_col_name])
+            if ann2_col_name and ann2_col_name in row:
+                annotator_2_result = str(row[ann2_col_name])
 
         # Extract metadata (exclude main columns)
         metadata_keys = ["comparison_id", "prompt", "text_a", "text_b"] + list(
@@ -366,37 +366,41 @@ def _filter_dataframe(
         return df
 
     annotator_metadata = votes_dict.get("annotator_metadata", {})
-    row_col_name = _get_annotator_col_from_visible_name(annotator_metadata, annotator_1)
-    col_col_name = _get_annotator_col_from_visible_name(annotator_metadata, annotator_2)
+    ann1_col_name = _get_annotator_col_from_visible_name(
+        annotator_metadata, annotator_1
+    )
+    ann2_col_name = _get_annotator_col_from_visible_name(
+        annotator_metadata, annotator_2
+    )
 
-    if not row_col_name or not col_col_name:
+    if not ann1_col_name or not ann2_col_name:
         return df
 
-    if row_col_name not in list(df.columns) or col_col_name not in list(df.columns):
+    if ann1_col_name not in list(df.columns) or ann2_col_name not in list(df.columns):
         return df
 
-    df = ensure_categories_identical(df=df, col_a=row_col_name, col_b=col_col_name)
+    df = ensure_categories_identical(df=df, col_a=ann1_col_name, col_b=ann2_col_name)
 
     # Create filter masks
     if subset_filter == "agree":
-        mask = df[row_col_name] == df[col_col_name]
+        mask = df[ann1_col_name] == df[ann2_col_name]
     elif subset_filter == "disagree":
         mask = (
-            (df[row_col_name] != df[col_col_name])
-            & (df[row_col_name].isin(["text_a", "text_b"]))
-            & (df[col_col_name].isin(["text_a", "text_b"]))
+            (df[ann1_col_name] != df[ann2_col_name])
+            & (df[ann1_col_name].isin(["text_a", "text_b"]))
+            & (df[ann2_col_name].isin(["text_a", "text_b"]))
         )
-    elif subset_filter == "only annotator row does not apply":
-        mask = (~df[row_col_name].isin(["text_a", "text_b"])) & (
-            df[col_col_name].isin(["text_a", "text_b"])
+    elif subset_filter == "only annotator 1 does not apply":
+        mask = (~df[ann1_col_name].isin(["text_a", "text_b"])) & (
+            df[ann2_col_name].isin(["text_a", "text_b"])
         )
-    elif subset_filter == "only annotator column does not apply":
-        mask = (df[row_col_name].isin(["text_a", "text_b"])) & (
-            ~df[col_col_name].isin(["text_a", "text_b"])
+    elif subset_filter == "only annotator 2 does not apply":
+        mask = (df[ann1_col_name].isin(["text_a", "text_b"])) & (
+            ~df[ann2_col_name].isin(["text_a", "text_b"])
         )
     elif subset_filter == "neither apply":
-        mask = (~df[row_col_name].isin(["text_a", "text_b"])) & (
-            ~df[col_col_name].isin(["text_a", "text_b"])
+        mask = (~df[ann1_col_name].isin(["text_a", "text_b"])) & (
+            ~df[ann2_col_name].isin(["text_a", "text_b"])
         )
     else:
         return df

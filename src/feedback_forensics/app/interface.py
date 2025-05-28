@@ -283,18 +283,7 @@ def _create_numerical_results_panel(inp: dict, out: dict):
 
 
 def _create_example_viewer(inp: dict, out: dict):
-    # Inputs:
-    # Dataset, Annotator row, Annotator column,
-    # Subset: ["all", "agree", "disagree", "only annotator row does not apply", "only annotator column does not apply", "neither apply"]
-    # Index: slider between 0 and num_examples
-
-    # Output:
-    # Comparion id
-    # Prompt
-    # Response A, Response B
-    # Annotator row
-    # Annotator column
-    # Metadata
+    """Create viewer for individual datapoints as examples."""
 
     inp["example_view_col"] = gr.Column(variant="panel")
     with inp["example_view_col"]:
@@ -333,12 +322,18 @@ def _create_example_viewer(inp: dict, out: dict):
             inp["example_subset_dropdown"] = gr.Dropdown(
                 label="🔍 Filter subset",
                 choices=[
-                    "all",
-                    "agree",
-                    "disagree",
-                    "only annotator row does not apply",
-                    "only annotator column does not apply",
-                    "neither apply",
+                    ("All", "all"),
+                    ("Agree", "agree"),
+                    ("Disagree", "disagree"),
+                    (
+                        "Only annotator 1 does not apply",
+                        "only annotator 1 does not apply",
+                    ),
+                    (
+                        "Only annotator 2 does not apply",
+                        "only annotator 2 does not apply",
+                    ),
+                    ("Neither apply", "neither apply"),
                 ],
                 value="all",
                 interactive=True,
