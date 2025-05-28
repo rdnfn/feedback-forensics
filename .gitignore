@@ -185,3 +185,5 @@ data/output
 notebooks/output
 
 *.tex
+
+tmp/
