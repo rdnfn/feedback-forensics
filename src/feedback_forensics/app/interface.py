@@ -78,7 +78,7 @@ def _create_getting_started_section():
             gr.Button(
                 "🤖 Example 1: How is GPT-4o different to other models?",
                 size=button_size,
-                link=f"{tutorial_domain}?data=chatbot_arena&col=winner_model&col_vals=gpt4o20240513,claude35sonnet20240620,gemini15proapi0514,mistrallarge2407,deepseekv2api0628",
+                link=f"{tutorial_domain}?data=chatbot_arena&ann_cols=model_gpt4o20240513,model_claude35sonnet20240620,model_gemini15proapi0514,model_mistrallarge2407,model_deepseekv2api0628",
             )
             gr.Button(
                 "📚 Example 2: How do popular preference datasets differ?",
