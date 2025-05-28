@@ -89,7 +89,7 @@ def get_cohens_kappa(
             labels=["text_a", "text_b"],
         )
     except ValueError:
-        logger.warning(
+        logger.debug(
             f"Cohen's kappa could not be computed because the annotators have no agreement. Returning 0."
         )
         kappa = 0
