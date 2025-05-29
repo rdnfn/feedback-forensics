@@ -6,38 +6,38 @@ from loguru import logger
 
 
 def run():
-    """Run the ICAI experiment CLI with simplified parameters."""
+    """Annotate your data using the ICAI experiment pipeline with simplified parameters."""
     # parse command line arguments
     parser = argparse.ArgumentParser(
-        description="Run an ICAI experiment with simplified parameters"
+        description="CLI command for annotating datasets for Feedback Forensics with ICAI pipeline."
     )
     parser.add_argument(
-        "--datapath",
         "-d",
+        "--datapath",
         type=str,
         required=True,
         help="Path to dataset CSV file with columns text_a, text_b, and preferred_text",
     )
     parser.add_argument(
-        "--principles-version",
         "-p",
+        "--principles-version",
         type=str,
         default="v4",
         help="Version of standard principles to test (default: v2)",
     )
     parser.add_argument(
-        "--output-dir",
         "-o",
+        "--output-dir",
         type=str,
         default=None,
         help="Path to output directory (default: exp/outputs/DATETIME)",
     )
     parser.add_argument(
-        "--model",
         "-m",
+        "--model",
         type=str,
         default="openrouter/openai/gpt-4o-mini-2024-07-18",
-        help="Model to use for to annotate the data",
+        help="Model to use to annotate the data (default: openrouter/openai/gpt-4o-mini-2024-07-18)",
     )
 
     args = parser.parse_args()
