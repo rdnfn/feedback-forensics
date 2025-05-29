@@ -32,6 +32,13 @@ def run():
         default=None,
         help="Path to output directory (default: exp/outputs/DATETIME)",
     )
+    parser.add_argument(
+        "--model",
+        "-m",
+        type=str,
+        default="openrouter/openai/openai/gpt-4o-mini-2024-07-18",
+        help="Model to use for to annotate the data",
+    )
 
     args = parser.parse_args()
 
@@ -50,6 +57,9 @@ def run():
 
     if args.output_dir is not None:
         icai_cmd.append(f'hydra.run.dir="{args.output_dir}"')
+
+    if args.model is not None:
+        icai_cmd.append(f'alg_model="{args.model}"')
 
     cmd_str = " ".join(icai_cmd)
 
