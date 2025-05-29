@@ -18,7 +18,7 @@ pip install -e .
 
 ## API Configuration (secrets.toml)
 
-To use Feedback Forensics for annotating your own datasets, you need to configure API keys for the AI models used in the annotation process. This is done through a `secrets.toml` file.
+To use Feedback Forensics for annotating your own datasets, you need to configure API keys for the AI models used in the annotation process. This can either be done through a `secrets.toml` file or by setting environment variables (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `OPENROUTER_API_KEY`) whenever running annotations.
 
 ### Setting up secrets.toml
 
