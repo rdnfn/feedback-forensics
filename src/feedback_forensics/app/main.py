@@ -13,8 +13,10 @@ gradio.themes.utils.fonts.GoogleFont.stylesheet = lambda self: None
 
 def run():
     # parse command line arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--datapath", "-d", type=str, help="Path to dataset")
+    parser = argparse.ArgumentParser(
+        description="Launch the Feedback Forensics visualisation app."
+    )
+    parser.add_argument("-d", "--datapath", type=str, help="Path to dataset to analyse")
     args = parser.parse_args()
 
     # Try to load local dataset if provided

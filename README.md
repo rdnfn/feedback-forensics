@@ -11,21 +11,25 @@
   <a href="https://pypi.org/project/feedback-forensics/">
   <img alt="PyPI" src="https://img.shields.io/pypi/v/feedback-forensics?logo=python&logoColor=f59e0d&labelColor=black&color=52525b"></a>
   <a href="https://github.com/rdnfn/feedback-forensics/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/pypi/l/feedback-forensics?labelColor=black&color=52525b"></a>
+  <a href="https://feedback-forensics.readthedocs.io/en/latest/">
+  <img alt="Read the Docs" src="https://img.shields.io/readthedocs/feedback-forensics?labelColor=black&logo=readthedocs&logoColor=white"></a>
+  <a href="https://github.com/rdnfn/feedback-forensics/deployments/pypi">
+  <img alt="GitHub deployments" src="https://img.shields.io/github/deployments/rdnfn/feedback-forensics/pypi?label=package%20build&labelColor=black&logo=github&logoColor=white"></a>
 </p>
 
 
-**Feedback Forensics is a tool to investigate pairwise feedback data used for AI training and evaluation:** when used for training, what is the data teaching our models? When used for evaluation, towards what kind of models is the feedback leading us? Is this feedback asking for more lists or more ethically considerate responses? Feedback Forensics enables answering these kind of questions, building on the [Inverse Constitutional AI](https://github.com/rdnfn/icai) (ICAI) pipeline to automatically detect and measure the *implicit objectives* of annotations. Feedback Forensics is an [open-source](https://github.com/rdnfn/feedback-forensics/blob/main/LICENSE) [Gradio](https://www.gradio.app/) app that can be used both [online](https://app.feedbackforensics.com) and [locally](#local-installation).
+**Feedback Forensics is an open-source toolkit to measure AI personality changes**. Beyond raw capabilities, *model personality traits*, such as tone and sycophancy, also matter to users. Feedback Forensics can help you track *(1) personality changes encouraged by your human (or AI) feedback datasets* ([tutorial](https://feedback-forensics.readthedocs.io/en/latest/guide/feedback.html)), and *(2) personality traits exhibited by your AI models* ([tutorial](https://feedback-forensics.readthedocs.io/en/latest/guide/models.html)).
 
-> *"Investigate your pairwise feedback data"* 🕵🏻‍♂️💬
+Feedback Forensics includes a *Python API*, an *annotation CLI*, and a *[Gradio](https://www.gradio.app/) visualisation app*. We also provide a corresponding [online platform](feedbackforensics.com) tracking personality traits in popular models and datasets.
 
 
 
 
 | Example use-cases | Screenshots |
 |----------|-------------|
-| **🗂️ Visualizing dataset differences**<br>*How does Chatbot Arena differ from Anthropic Helpful data?*<br><a href="https://app.feedbackforensics.com?data=chatbot_arena,anthropic_helpful"><img src="docs/img/run_demo_button.png" alt="run demo" width="100px"></a>| <img src="docs/img/example01_v5.png" alt="example_screenshot_01" width="1000px"> |
-| **🧑‍🎨🧑‍💼 Finding preference differences between task domains**<br>*How do preferences differ across writing tasks?*<br><a href="https://app.feedbackforensics.com?data=chatbot_arena&col=narrower_category&col_vals=songwriting_prompts,resume_and_cover_letter_writing,professional_email_communication,creative_writing_prompts"><img src="docs/img/run_demo_button.png" alt="run demo" width="100px"></a>  | <img src="docs/img/example02_v5.png" alt="example_screenshot_02" width="1000px"> |
-| **🤖 Discovering model strengths**<br>*How is GPT-4o different to other models?*<br><a href="https://app.feedbackforensics.com?data=chatbot_arena&col=winner_model&col_vals=gpt4o20240513,claude35sonnet20240620,gemini15proapi0514,mistrallarge2407,deepseekv2api0628"><img src="docs/img/run_demo_button.png" alt="run demo" width="100px"></a>|<img src="docs/img/example03_v5.png" alt="example_screenshot_03" width="1000px">|
+| **🤖 Discovering model personality**<br>*How is GPT-4o's personality different to other models?*<br><a href="https://app.feedbackforensics.com/?data=chatbot_arena&ann_cols=model_gpt4o20240513,model_claude35sonnet20240620,model_gemini15proapi0514,model_mistrallarge2407,model_deepseekv2api0628"><img src="docs/img/run_demo_button.png" alt="run demo" width="100px"></a>|<img src="docs/img/example03_v5.png" alt="example_screenshot_03" width="1000px">|
+| **🗂️ Visualizing dataset differences**<br>*What personality traits does Chatbot Arena encourage but not Anthropic Helpful data?*<br><a href="https://app.feedbackforensics.com?data=chatbot_arena,anthropic_helpful"><img src="docs/img/run_demo_button.png" alt="run demo" width="100px"></a>| <img src="docs/img/example01_v5.png" alt="example_screenshot_01" width="1000px"> |
+| **🧑‍🎨🧑‍💼 Finding preference differences between task domains**<br>*How does encouraged personality differ across tasks?*<br><a href="https://app.feedbackforensics.com?data=chatbot_arena&col=narrower_category&col_vals=songwriting_prompts,resume_and_cover_letter_writing,professional_email_communication,creative_writing_prompts&analysis_mode=advanced_settings"><img src="docs/img/run_demo_button.png" alt="run demo" width="100px"></a>  | <img src="docs/img/example02_v5.png" alt="example_screenshot_02" width="1000px"> |
 
 
 ## Local usage
