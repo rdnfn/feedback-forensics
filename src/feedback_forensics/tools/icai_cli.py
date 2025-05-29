@@ -36,7 +36,7 @@ def run():
         "--model",
         "-m",
         type=str,
-        default="openrouter/openai/openai/gpt-4o-mini-2024-07-18",
+        default="openrouter/openai/gpt-4o-mini-2024-07-18",
         help="Model to use for to annotate the data",
     )
 
