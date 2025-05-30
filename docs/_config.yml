@@ -61,3 +61,8 @@ sphinx:
       use_repository_button: true
       use_issues_button: true
       use_edit_page_button: true
+    autodoc2_packages:
+      - ../src/feedback_forensics
+    autodoc2_render_plugin: md
+  extra_extensions:
+    - autodoc2

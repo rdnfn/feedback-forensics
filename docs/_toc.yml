@@ -16,5 +16,13 @@ chapters:
     - file: guide/models
       title: Measure your model's personality 🤖
 - file: method/index
-- file: api
+- file: api/index
+  title: API Reference 🔌
+  sections:
+    - file: api/cli
+      title: Command Line Interface
+    - file: api/python
+      title: Python API Overview
+    - file: apidocs/index
+      title: Python API Reference
 - file: contributing
