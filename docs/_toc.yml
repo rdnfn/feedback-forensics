@@ -15,6 +15,8 @@ chapters:
       title: Measure personality encouraged by feedback 🗣️
     - file: guide/models
       title: Measure your model's personality 🤖
+    - file: guide/datasets
+      title: Work with datasets 🗂️
 - file: method/index
 - file: api
 - file: contributing
