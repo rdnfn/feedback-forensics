@@ -57,7 +57,7 @@ class TestDatasetHandler:
         assert "text_b" in col_handler.df.columns
 
     def test_add_data_from_path(self, setup_annotated_pairs_json):
-        """Test loading data from annotated pairs JSON."""
+        """Test loading data from AnnotatedPairs JSON."""
         json_file = setup_annotated_pairs_json
         handler = DatasetHandler()
 

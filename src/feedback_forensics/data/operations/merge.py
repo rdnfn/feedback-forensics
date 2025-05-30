@@ -1,4 +1,4 @@
-"""Merge operation for annotated pairs datasets."""
+"""Merge operation for AnnotatedPairs datasets."""
 
 from pathlib import Path
 from typing import Dict, List, Optional, Union, Any, Tuple
@@ -14,21 +14,21 @@ def merge_ap(
     dataset_name: Optional[str] = None,
     description: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Merge two annotated pairs datasets.
+    """Merge two AnnotatedPairs datasets.
 
     Args:
-        first_data: First annotated pairs dataset (takes precedence in conflicts)
-        second_data: Second annotated pairs dataset
+        first_data: First AnnotatedPairs dataset (takes precedence in conflicts)
+        second_data: Second AnnotatedPairs dataset
         dataset_name: Override dataset name for merged result
         description: Override description for merged result
 
     Returns:
-        Merged annotated pairs data structure
+        Merged AnnotatedPairs data structure
 
     Raises:
         ValueError: If inputs are invalid
     """
-    logger.info(f"Merging annotated pairs datasets")
+    logger.info(f"Merging AnnotatedPairs datasets")
     logger.info(
         f"First dataset: {len(first_data['comparisons'])} comparisons, {len(first_data['annotators'])} annotators"
     )

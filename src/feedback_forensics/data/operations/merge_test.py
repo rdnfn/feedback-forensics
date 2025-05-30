@@ -16,7 +16,7 @@ from feedback_forensics.data.operations.merge import (
 
 @pytest.fixture
 def sample_annotated_pairs_1():
-    """First sample annotated pairs dataset."""
+    """First sample AnnotatedPairs dataset."""
     return {
         "metadata": {
             "version": "2.0",
@@ -63,7 +63,7 @@ def sample_annotated_pairs_1():
 
 @pytest.fixture
 def sample_annotated_pairs_2():
-    """Second sample annotated pairs dataset."""
+    """Second sample AnnotatedPairs dataset."""
     return {
         "metadata": {
             "version": "2.0",

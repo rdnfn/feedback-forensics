@@ -1,4 +1,4 @@
-"""Data operations for annotated pairs datasets."""
+"""Data operations for AnnotatedPairs datasets."""
 
 from .core import load_ap, save_ap
 from .merge import merge_ap

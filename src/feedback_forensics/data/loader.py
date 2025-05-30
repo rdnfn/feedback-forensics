@@ -163,7 +163,7 @@ def get_votes_dict_from_annotated_pairs_json(results_path: pathlib.Path) -> dict
     format_version = json_data.get("metadata", {}).get("version", "1.0")
     major_version = format_version.split(".")[0]
     is_format_v2 = major_version == "2"
-    logger.info(f"Annotated pairs format version: {format_version}")
+    logger.info(f"AnnotatedPairs format version: {format_version}")
 
     # create dataframe from comparisons
     comparisons_data = []

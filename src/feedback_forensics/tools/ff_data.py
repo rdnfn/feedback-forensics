@@ -1,4 +1,4 @@
-"""Swiss army knife for annotated pairs datasets"""
+"""Swiss army knife for AnnotatedPairs datasets"""
 
 import argparse
 import sys
@@ -11,7 +11,7 @@ from feedback_forensics.data.operations import load_ap, save_ap, merge_ap
 
 def merge_command(args):
     """Handle merge subcommand."""
-    logger.info(f"Merging annotated pairs: {args.first} + {args.second}")
+    logger.info(f"Merging AnnotatedPairs: {args.first} + {args.second}")
 
     try:
         first_data = load_ap(args.first)
@@ -44,12 +44,12 @@ def merge_command(args):
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description="Swiss army knife for annotated pairs datasets", prog="ff-data"
+        description="Swiss army knife for AnnotatedPairs datasets", prog="ff-data"
     )
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     merge_parser = subparsers.add_parser(
-        "merge", help="Merge two annotated pairs datasets"
+        "merge", help="Merge two AnnotatedPairs datasets"
     )
     merge_parser.add_argument(
         "first", help="First dataset file (takes precedence in conflicts)"
