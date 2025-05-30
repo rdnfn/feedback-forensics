@@ -6,7 +6,9 @@ from typing import Dict, Union, Any
 from inverse_cai.data.annotated_pairs_format import (
     load_annotated_pairs_from_file,
     save_annotated_pairs_to_file,
+    create_annotated_pairs,
 )
+from inverse_cai.data.loader.standard import load
 
 
 def load_ap(file_path: Union[str, Path]) -> Dict[str, Any]:
@@ -36,3 +38,21 @@ def save_ap(data: Dict[str, Any], file_path: Union[str, Path]) -> None:
         ValueError: If data is not valid AnnotatedPairs format
     """
     save_annotated_pairs_to_file(data, Path(file_path))
+
+
+def csv_to_ap(csv_path: Union[str, Path], dataset_name: str) -> Dict[str, Any]:
+    """Convert CSV to AnnotatedPairs format.
+
+    Args:
+        csv_path: Path to CSV file with columns text_a, text_b, preferred_text
+        dataset_name: Name for the dataset
+
+    Returns:
+        AnnotatedPairs data structure
+
+    Raises:
+        FileNotFoundError: If CSV file doesn't exist
+        ValueError: If CSV is missing required columns
+    """
+    df = load(str(csv_path))
+    return create_annotated_pairs(df, dataset_name)
