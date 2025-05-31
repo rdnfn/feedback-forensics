@@ -82,11 +82,14 @@ def generate_model_identity_annotators(
         else:
             description = f"Always prefer {model} over reference models ({iter_to_trunc_str(other_refs, 3)})"
 
+        # remove openrouter prefix from model name
+        model_name = model.replace("openrouter/", "")
+
         annotator_metadata[annotator_id] = {
             "variant": MODEL_IDENTITY_ANNOTATOR_TYPE,
             "model_id": model,
             "reference_models": reference_models,
-            "annotator_visible_name": f"{PREFIX_MODEL_IDENTITY_ANNOTATORS}{model}",
+            "annotator_visible_name": f"{PREFIX_MODEL_IDENTITY_ANNOTATORS}{model_name}",
             "annotator_in_row_name": f"{model}-preference",
             "annotator_description": description,
         }
