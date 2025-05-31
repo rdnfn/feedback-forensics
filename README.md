@@ -18,18 +18,13 @@
 </p>
 
 
-**Feedback Forensics is an open-source toolkit to measure AI personality changes**. Beyond raw capabilities, *model personality traits*, such as tone and sycophancy, also matter to users. Feedback Forensics can help you track *(1) personality changes encouraged by your human (or AI) feedback datasets* ([tutorial](https://feedback-forensics.readthedocs.io/en/latest/guide/feedback.html)), and *(2) personality traits exhibited by your AI models* ([tutorial](https://feedback-forensics.readthedocs.io/en/latest/guide/models.html)).
-
-Feedback Forensics includes a *Python API*, an *annotation CLI*, and a *[Gradio](https://www.gradio.app/) visualisation app*. We also provide a corresponding [online platform](feedbackforensics.com) tracking personality traits in popular models and datasets.
+**Feedback Forensics is an open-source toolkit to measure AI personality changes**. Beyond raw capabilities, *model personality traits*, such as tone and sycophancy, also matter to users. Feedback Forensics can help you track *(1) personality changes encouraged by your human (or AI) feedback datasets* ([tutorial](https://feedback-forensics.readthedocs.io/en/latest/guide/feedback.html)), and *(2) personality traits exhibited by your AI models* ([tutorial](https://feedback-forensics.readthedocs.io/en/latest/guide/models.html)). Feedback Forensics includes a *Python API*, an *annotation CLI*, and a *[Gradio](https://www.gradio.app/) visualisation app*. We also provide a corresponding [online platform](feedbackforensics.com) tracking personality traits in popular models and datasets.
 
 
-
-
-| Example use-cases | Screenshots |
+| Use-case 1:<br>Finding personality changes encouraged<br>by feedback data| Use-case 2:<br>Measuring personality changes across models|
 |----------|-------------|
-| **🤖 Discovering model personality**<br>*How is GPT-4o's personality different to other models?*<br><a href="https://app.feedbackforensics.com/?data=chatbot_arena&ann_cols=model_gpt4o20240513,model_claude35sonnet20240620,model_gemini15proapi0514,model_mistrallarge2407,model_deepseekv2api0628"><img src="docs/img/run_demo_button.png" alt="run demo" width="100px"></a>|<img src="docs/img/example03_v5.png" alt="example_screenshot_03" width="1000px">|
-| **🗂️ Visualizing dataset differences**<br>*What personality traits does Chatbot Arena encourage but not Anthropic Helpful data?*<br><a href="https://app.feedbackforensics.com?data=chatbot_arena,anthropic_helpful"><img src="docs/img/run_demo_button.png" alt="run demo" width="100px"></a>| <img src="docs/img/example01_v5.png" alt="example_screenshot_01" width="1000px"> |
-| **🧑‍🎨🧑‍💼 Finding preference differences between task domains**<br>*How does encouraged personality differ across tasks?*<br><a href="https://app.feedbackforensics.com?data=chatbot_arena&col=narrower_category&col_vals=songwriting_prompts,resume_and_cover_letter_writing,professional_email_communication,creative_writing_prompts&analysis_mode=advanced_settings"><img src="docs/img/run_demo_button.png" alt="run demo" width="100px"></a>  | <img src="docs/img/example02_v5.png" alt="example_screenshot_02" width="1000px"> |
+|*What personality traits is Chatbot Arena encouraging?*|*What personality traits changed between Llama 3 and Llama 4?*|
+<a href="https://app.feedbackforensics.com/?data=chatbot_arena&ann_cols=model_gpt4o20240513,model_claude35sonnet20240620,model_gemini15proapi0514,model_mistrallarge2407,model_deepseekv2api0628"><img src="docs/img/run_demo_button.png" alt="run demo" width="100px"></a>|<a href="https://app.feedbackforensics.com?data=chatbot_arena,anthropic_helpful"><img src="docs/img/run_demo_button.png" alt="run demo" width="100px"></a>|
 
 
 ## Local usage
