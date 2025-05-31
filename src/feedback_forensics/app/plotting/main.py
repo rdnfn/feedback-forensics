@@ -197,10 +197,15 @@ def get_annotator_table_df(
         },
     }
 
+    column_widths = ["100px"] + ["60px"] * (len(headers) - 1)
+
     return gr.Dataframe(
-        value,
+        value=value,
+        headers=headers,
         datatype=["str"] + ["number"] * len(metric_columns),
-        # show_search="filter", TODO: reactivate once sorting issue by Gradio is fixed
+        # show_search="filter", # TODO: reactivate once sorting issue by Gradio is fixed, doesn't work in default Gradio version in HF spaces (5.20.1, works with some higher versions (tested 5.32.0))
         interactive=False,
         pinned_columns=1,
+        column_widths=column_widths,
+        wrap=True,
     )
