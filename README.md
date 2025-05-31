@@ -21,9 +21,9 @@
 **Feedback Forensics is an open-source toolkit to measure AI personality changes**. Beyond raw capabilities, *model personality traits*, such as tone and sycophancy, also matter to users. Feedback Forensics can help you track *(1) personality changes encouraged by your human (or AI) feedback datasets* ([tutorial](https://feedback-forensics.readthedocs.io/en/latest/guide/feedback.html)), and *(2) personality traits exhibited by your AI models* ([tutorial](https://feedback-forensics.readthedocs.io/en/latest/guide/models.html)). Feedback Forensics includes a *Python API*, an *annotation CLI*, and a *[Gradio](https://www.gradio.app/) visualisation app*. We also provide a corresponding [online platform](feedbackforensics.com) tracking personality traits in popular models and datasets.
 
 
-| Use-case 1:<br>Finding personality changes encouraged<br>by feedback data| Use-case 2:<br>Measuring personality changes across models|
-|----------|-------------|
-|*What personality traits is Chatbot Arena encouraging?*|*What personality traits changed between Llama 3 and Llama 4?*|
+| *Use-case 1:*<br>Finding personality changes encouraged by feedback data| *Use-case 2:*<br>Measuring personality changes across models|
+|:---:|:---:|
+|*What personality traits is Chatbot Arena encouraging?*<img src="docs/img/example_feedback_v1.png" alt="example_feedback" width="350px">|*What personality traits changed between Llama 3 and Llama 4?*<img src="docs/img/example_models_v1.png" alt="example_models" width="350px">|
 <a href="https://app.feedbackforensics.com/?data=chatbot_arena&ann_cols=model_gpt4o20240513,model_claude35sonnet20240620,model_gemini15proapi0514,model_mistrallarge2407,model_deepseekv2api0628"><img src="docs/img/run_demo_button.png" alt="run demo" width="100px"></a>|<a href="https://app.feedbackforensics.com?data=chatbot_arena,anthropic_helpful"><img src="docs/img/run_demo_button.png" alt="run demo" width="100px"></a>|
 
 
