@@ -57,12 +57,12 @@ def setup_test_data(tmp_path):
 
 @pytest.fixture
 def setup_annotated_pairs_json(tmp_path):
-    """Set up a temporary JSON file with annotated pairs data for testing."""
+    """Set up a temporary JSON file with AnnotatedPairs data for testing."""
     # Create test JSON data
     json_data = {
         "metadata": {
             "version": "1.0",
-            "description": "Annotated pairs dataset with annotations from ICAI",
+            "description": "AnnotatedPairs dataset with annotations from ICAI",
             "created_at": "2025-04-02T16:02:37Z",
             "dataset_name": "ICAI Dataset - 2025-04-02_16-02-05",
             "default_annotator": "d36860d4",
@@ -120,11 +120,11 @@ def setup_annotated_pairs_json(tmp_path):
 
 @pytest.fixture
 def setup_annotated_pairs_json_v2(tmp_path):
-    """Set up a temporary JSON file with annotated pairs data for testing format v2.0."""
+    """Set up a temporary JSON file with AnnotatedPairs data for testing format v2.0."""
     json_data = {
         "metadata": {
             "version": "2.0",
-            "description": "Annotated pairs dataset with annotations from ICAI",
+            "description": "AnnotatedPairs dataset with annotations from ICAI",
             "created_at": "2025-04-02T16:02:37Z",
             "dataset_name": "ICAI Dataset - 2025-04-02_16-02-05",
             "default_annotator": "d36860d4",

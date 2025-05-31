@@ -1,6 +1,6 @@
 [project]
 name = "feedback-forensics"
-version = "0.4.0"
+version = "0.4.1"
 authors = [
   { name="rdnfn", email="hi@arduin.io" },
   { name="timokau", email="timo.kaufmann@ifi.lmu.de"},
@@ -51,6 +51,7 @@ docs = [
     "sphinx-copybutton",
     "sphinx-design",
     "sphinxcontrib-bibtex",
+    "sphinx-autodoc2",
 ]
 
 [build-system]
@@ -64,7 +65,7 @@ packages = ["src/feedback_forensics"]
 "src/feedback_forensics/assets" = "feedback_forensics/assets"
 
 [tool.bumpversion]
-current_version = "0.4.0"
+current_version = "0.4.1"
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
 serialize = ["{major}.{minor}.{patch}"]
 search = "{current_version}"
@@ -89,6 +90,7 @@ post_commit_hooks = []
 feedback-forensics = "feedback_forensics.app.main:run"
 ff-annotate = "feedback_forensics.tools.icai_cli:run"
 ff-hfspace-rebuild = "feedback_forensics.tools.hf_spaces:main"
+ff-data = "feedback_forensics.tools.ff_data:run"
 
 [tool.pytest.ini_options]
 pythonpath = "."

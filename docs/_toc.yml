@@ -15,6 +15,16 @@ chapters:
       title: Measure personality encouraged by feedback 🗣️
     - file: guide/models
       title: Measure your model's personality 🤖
+    - file: guide/datasets
+      title: Work with datasets 🗂️
 - file: method/index
-- file: api
+- file: api/index
+  title: API Reference 🔌
+  sections:
+    - file: api/cli
+      title: Command Line Interface
+    - file: api/python
+      title: Python API Overview
+    - file: apidocs/index
+      title: Python API Reference
 - file: contributing

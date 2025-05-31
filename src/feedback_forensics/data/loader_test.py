@@ -113,7 +113,7 @@ class TestLoader:
             get_votes_dict(empty_dir, {})
 
     def test_get_votes_dict_from_annotated_pairs_json(self, setup_annotated_pairs_json):
-        """Test getting votes dict from annotated pairs JSON."""
+        """Test getting votes dict from AnnotatedPairs JSON."""
         json_file = setup_annotated_pairs_json
 
         # Get the votes dictionary
@@ -174,7 +174,7 @@ class TestLoader:
     def test_get_votes_dict_from_annotated_pairs_json_missing_pref(
         self, setup_annotated_pairs_json
     ):
-        """Test getting votes dict from annotated pairs JSON with missing preferences."""
+        """Test getting votes dict from AnnotatedPairs JSON with missing preferences."""
         json_file = setup_annotated_pairs_json
 
         # Modify the JSON to have a missing preference
@@ -202,7 +202,7 @@ class TestLoader:
     def test_get_votes_dict_from_annotated_pairs_json_with_metadata(
         self, setup_annotated_pairs_json
     ):
-        """Test getting votes dict from annotated pairs JSON with metadata."""
+        """Test getting votes dict from AnnotatedPairs JSON with metadata."""
         json_file = setup_annotated_pairs_json
 
         # Get the votes dictionary
@@ -224,7 +224,7 @@ class TestLoader:
     def test_get_votes_dict_from_annotated_pairs_json_v2(
         self, setup_annotated_pairs_json_v2
     ):
-        """Test getting votes dict from annotated pairs JSON with format v2.0."""
+        """Test getting votes dict from AnnotatedPairs JSON with format v2.0."""
         json_file = setup_annotated_pairs_json_v2
 
         # Get the votes dictionary

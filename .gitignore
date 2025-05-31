@@ -187,3 +187,4 @@ notebooks/output
 *.tex
 
 tmp/
+docs/apidocs/
