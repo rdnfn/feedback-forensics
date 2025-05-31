@@ -8,6 +8,7 @@ logo: ../src/feedback_forensics/assets/feedback_forensics_logo.png
 # See https://jupyterbook.org/content/execute.html
 execute:
   execute_notebooks: cache
+  timeout: 60
 
 # Define the name of the latex output file for PDF builds
 latex:
@@ -61,3 +62,8 @@ sphinx:
       use_repository_button: true
       use_issues_button: true
       use_edit_page_button: true
+    autodoc2_packages:
+      - ../src/feedback_forensics
+    autodoc2_render_plugin: md
+  extra_extensions:
+    - autodoc2

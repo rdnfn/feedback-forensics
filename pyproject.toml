@@ -51,6 +51,7 @@ docs = [
     "sphinx-copybutton",
     "sphinx-design",
     "sphinxcontrib-bibtex",
+    "sphinx-autodoc2",
 ]
 
 [build-system]
