@@ -6,7 +6,7 @@
   <img src="docs/img/demo_v4.gif" alt="" width="650px"></a>
   <br>
   <a href="https://app.feedbackforensics.com/">
-  <img src="docs/img/run_demo_button.png" alt="Run demo" width="170px"></a>
+  <img src="docs/img/button_demo_v2.png" alt="Run demo" width="170px"></a>
   <br>
   <a href="https://pypi.org/project/feedback-forensics/">
   <img alt="PyPI" src="https://img.shields.io/pypi/v/feedback-forensics?logo=python&logoColor=f59e0d&labelColor=black&color=52525b"></a>
@@ -25,7 +25,7 @@
 |:---:|:---:|
 |*What personality traits is Chatbot Arena encouraging?*|*What personality traits changed between Llama 3 and Llama 4?*|
 |<img src="docs/img/example_feedback_v1.png" alt="example_feedback" width="350px">|<img src="docs/img/example_models_v1.png" alt="example_models" width="350px">|
-<a href="https://app.feedbackforensics.com?data=chatbot_arena,anthropic_helpful"><img src="docs/img/button_demo_v2.png" alt="Run demo" width="100px"></a>  <a href="https://app.feedbackforensics.com?data=chatbot_arena,anthropic_helpful"><img src="docs/img/button_tutorial.png" alt="Open tutorial" width="100px"></a>|<a href="https://app.feedbackforensics.com?data=chatbot_arena,anthropic_helpful"><img src="docs/img/button_demo_v2.png" alt="Run demo" width="100px"></a>  <a href="https://app.feedbackforensics.com?data=chatbot_arena,anthropic_helpful"><img src="docs/img/button_tutorial.png" alt="Open tutorial" width="100px"></a>|
+<a href="https://app.feedbackforensics.com?data=chatbot_arena"><img src="docs/img/button_demo_v2.png" alt="Run demo" width="110px"></a>  <a href="https://feedback-forensics.readthedocs.io/en/latest/guide/feedback.html"><img src="docs/img/button_tutorial.png" alt="Open tutorial" width="110px"></a>|<a href="https://app.feedbackforensics.com/?data=model_comparison&ann_cols=model_metallamallama370binstruct,model_metallamallama4maverick"><img src="docs/img/button_demo_v2.png" alt="Run demo" width="110px"></a>  <a href="https://feedback-forensics.readthedocs.io/en/latest/guide/models.html"><img src="docs/img/button_tutorial.png" alt="Open tutorial" width="110px"></a>|
 
 
 ## Local usage
