@@ -18,7 +18,7 @@
 </p>
 
 
-**Feedback Forensics is an open-source toolkit to measure AI personality changes**. Beyond raw capabilities, *model personality traits*, such as tone and sycophancy, also matter to users. Feedback Forensics can help you track *(1) personality changes encouraged by your human (or AI) feedback datasets* ([tutorial](https://feedback-forensics.readthedocs.io/en/latest/guide/feedback.html)), and *(2) personality traits exhibited by your AI models* ([tutorial](https://feedback-forensics.readthedocs.io/en/latest/guide/models.html)). Feedback Forensics includes a *Python API*, an *annotation CLI*, and a *[Gradio](https://www.gradio.app/) visualisation app*. We also provide a corresponding [online platform](feedbackforensics.com) tracking personality traits in popular models and datasets.
+**Feedback Forensics is an open-source toolkit to measure AI personality changes**. Beyond raw capabilities, *model personality traits*, such as tone and sycophancy, also matter to users. Feedback Forensics can help you track *(1) personality changes encouraged by your human (or AI) feedback datasets* ([tutorial](https://feedback-forensics.readthedocs.io/en/latest/guide/feedback.html)), and *(2) personality traits exhibited by your AI models* ([tutorial](https://feedback-forensics.readthedocs.io/en/latest/guide/models.html)). Feedback Forensics includes a *Python API*, an *annotation CLI*, and a *[Gradio](https://www.gradio.app/) visualisation app*. We also provide a corresponding [online platform](https://app.feedbackforensics.com) tracking personality traits in popular models and datasets.
 
 
 | *Use-case 1:*<br>Finding personality changes encouraged by feedback data| *Use-case 2:*<br>Measuring personality changes across models|
