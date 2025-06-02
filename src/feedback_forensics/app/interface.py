@@ -7,7 +7,7 @@ from feedback_forensics.app.constants import (
     PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS,
     EXAMPLE_VIEWER_NO_DATA_MESSAGE,
     ENABLE_EXAMPLE_VIEWER,
-    APP_BASE_URL,
+    EXAMPLE_BASE_URL,
 )
 from feedback_forensics.data.datasets import (
     get_available_datasets,
@@ -74,7 +74,7 @@ def _create_getting_started_section():
     button_size = "sm"
     with gr.Accordion("👋 Getting started: pre-configured examples", open=True):
         with gr.Row(equal_height=True):
-            tutorial_domain = APP_BASE_URL  # make this "" to use local instance
+            tutorial_domain = EXAMPLE_BASE_URL  # make this "" to use local instance
             gr.Button(
                 "🤖 Example 1: Compare GPT-4o's personality to other models",
                 size=button_size,
