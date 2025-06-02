@@ -164,7 +164,7 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
 
         if dataset_col_name not in votes_dicts:
             logger.warning(
-                "Example viewer: selected_dataset not in votes_dicts"
+                "Example datapoint viewer: selected_dataset not in votes_dicts"
                 f"selected_dataset: {dataset_col_name}, "
                 f"votes_dicts: {list(votes_dicts.keys())}"
             )
@@ -175,7 +175,7 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
         annotator_metadata = votes_dict.get("annotator_metadata", {})
 
         if df is None or len(df) == 0:
-            logger.warning("Example viewer: df is None or empty")
+            logger.warning("Example datapoint viewer: df is None or empty")
             return _empty_example_display(
                 out,
             )
@@ -187,7 +187,7 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
 
         if len(filtered_df) == 0 or example_index >= len(filtered_df):
             logger.warning(
-                "Example viewer: filtered_df is empty or example_index is out of range"
+                "Example datapoint viewer: filtered_df is empty or example_index is out of range"
                 f"filtered_df: {filtered_df}"
                 f"example_index: {example_index}"
             )
@@ -312,7 +312,7 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
             and data[inp["split_col_selected_vals_dropdown"]] is not None
         ):
             gr.Warning(
-                "Example viewer: currently not available when splitting by column."
+                "Example datapoint viewer: currently not available when splitting by column."
             )
             return empty_return
 

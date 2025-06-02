@@ -280,7 +280,7 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
         show_progress="hidden",
     )
 
-    ### Example viewer callbacks ###
+    ### Example datapoint viewer callbacks ###
 
     # allow clicking on table to launch example viewer
     out["annotator_table"].select(

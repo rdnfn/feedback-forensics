@@ -246,7 +246,9 @@ def _create_numerical_results_panel(inp: dict, out: dict):
             value=pd.DataFrame(),
             headers=["No data loaded"],
         )
-        gr.Markdown("### Annotation metrics")
+        gr.Markdown(
+            "---\n### Annotation metrics\n*Click on values to view example datapoints*"
+        )
 
         with gr.Group():
             # Add control dropdowns for the annotator table
