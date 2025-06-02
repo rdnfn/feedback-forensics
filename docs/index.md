@@ -13,7 +13,7 @@ Below are the first steps to analysing personality changes in your own datasets 
 3. 📏 [Learn how we measure personality](method/index.md)
 
 ```{seealso}
-If you want to skip local installation and experiments for now, see our online platform at [app.feedbackforensics.com](https://app.feedbackforensics.com/) for read-to-view personality results on popular datasets and models.
+If you want to skip local installation for now, see our online platform at [app.feedbackforensics.com](https://app.feedbackforensics.com/) for ready-to-view personality results on popular datasets and models.
 ```
 
 
