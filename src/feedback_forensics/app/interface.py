@@ -146,11 +146,11 @@ def _create_configuration_panel(inp: dict, state: dict):
                 inp["analysis_type_radio"] = gr.Radio(
                     label="🔎 Analysis mode",
                     choices=[
-                        ("🤖 Model analysis", "model_analysis"),
                         ("👥 Human/AI feedback analysis", "annotation_analysis"),
+                        ("🤖 Model analysis", "model_analysis"),
                         ("🔧 Advanced settings", "advanced_settings"),
                     ],
-                    value="model_analysis",
+                    value="annotation_analysis",
                     interactive=True,
                 )
 
@@ -160,7 +160,27 @@ def _create_configuration_panel(inp: dict, state: dict):
                     visible=True,
                     container=True,
                 )
-
+                inp["models_to_compare_dropdown"] = gr.Dropdown(
+                    label="📌 Select models to compare",
+                    info="Select model(s) to investigate in terms of personality traits.",
+                    choices=None,
+                    value=None,
+                    multiselect=True,
+                )
+                inp["reference_models_dropdown"] = gr.Dropdown(
+                    label="🧭 Select reference models",
+                    info="Select *reference* models to compare *selected* models to. Metrics can be interpreted as how much the selected model(s) exhibit(s) personality traits relative to the reference model(s). **If none are selected, all available models will be used as references.** *Example:* With GPT-4o as *reference* model, personality traits of selected models are computed relative to GPT-4o, i.e. only using datapoints directly comparing selected models with GPT-4o.",
+                    choices=None,
+                    value=None,
+                    multiselect=True,
+                )
+                inp["annotations_to_compare_dropdown"] = gr.Dropdown(
+                    label="🗂️ Select feedback annotations to compare (AI or human)",
+                    info="Analyse personality traits encouraged by different pairwise feedback annotations",
+                    choices=None,
+                    value=None,
+                    multiselect=True,
+                )
                 inp["enable_dataviewer_checkbox"] = gr.Checkbox(
                     label="Enable dataviewer (experimental)",
                     info="Enable the dataviewer to view individual datapoints by clicking on the annotator table. This is experimental.",
@@ -194,20 +214,6 @@ def _create_configuration_panel(inp: dict, state: dict):
                     interactive=False,
                     visible=False,
                 )
-                inp["models_to_compare_dropdown"] = gr.Dropdown(
-                    label="📌 Select models to compare",
-                    info="Analyse personality traits exhibited by different models",
-                    choices=None,
-                    value=None,
-                    multiselect=True,
-                )
-                inp["annotations_to_compare_dropdown"] = gr.Dropdown(
-                    label="🗂️ Select feedback annotations to compare (AI or human)",
-                    info="Analyse personality traits encouraged by different pairwise feedback annotations",
-                    choices=None,
-                    value=None,
-                    multiselect=True,
-                )
                 inp["annotator_cols_dropdown"] = gr.Dropdown(
                     label="👥→ Annotator columns",
                     info="Select the annotators to be included as a column in the results table. By default only a single (ground-truth) annotator is included.",
@@ -218,13 +224,6 @@ def _create_configuration_panel(inp: dict, state: dict):
                 inp["annotator_rows_dropdown"] = gr.Dropdown(
                     label="👥↓ Annotator rows",
                     info=f'Select the annotators to be included as a row in the results table. By default only objective-following AI annotators are included (named as "{PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS} \\<OBJECTIVE\\>").',
-                    choices=None,
-                    value=None,
-                    multiselect=True,
-                )
-                inp["reference_models_dropdown"] = gr.Dropdown(
-                    label="🔍 Reference models for model annotators",
-                    info="Select which models should be used as references for model-identity annotators. If none are selected, all models will be used as references.",
                     choices=None,
                     value=None,
                     multiselect=True,

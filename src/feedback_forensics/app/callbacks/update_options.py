@@ -270,7 +270,10 @@ def generate(inp: dict, state: dict, out: dict, utils_callbacks: dict) -> dict:
         ]
 
         if analysis_type == "model_analysis":
-            shown_blocks = [inp["models_to_compare_dropdown"]]
+            shown_blocks = [
+                inp["models_to_compare_dropdown"],
+                inp["reference_models_dropdown"],
+            ]
         elif analysis_type == "annotation_analysis":
             shown_blocks = [inp["annotations_to_compare_dropdown"]]
         elif analysis_type == "advanced_settings":

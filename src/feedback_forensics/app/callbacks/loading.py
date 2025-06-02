@@ -498,7 +498,7 @@ def generate(
                 )
             else:
                 gr.Warning(
-                    f"URL problem: analysis mode '{analysis_mode}' is not valid. Valid options are: {valid_analysis_modes}. Using default 'model_analysis'.",
+                    f"URL problem: analysis mode '{analysis_mode}' is not valid. Valid options are: {valid_analysis_modes}. Using default 'annotation_analysis'.",
                     duration=15,
                 )
 
@@ -536,7 +536,7 @@ def generate(
         sort_ascending = data[inp["sort_order_dropdown"]] == "Ascending"
         default_sort_by = "Max diff"
         default_sort_ascending = False
-        default_analysis_mode = "model_analysis"
+        default_analysis_mode = "annotation_analysis"
 
         # Normalize datasets to always be a list and filter out None values
         datasets = data[inp["active_datasets_dropdown"]]
