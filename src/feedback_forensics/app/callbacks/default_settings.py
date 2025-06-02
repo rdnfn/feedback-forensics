@@ -86,10 +86,11 @@ def generate(
     ) -> dict:
         """Set the default settings for all input, output and state components."""
         defaults = _get_default_values()
+        return_dict = {}
         for component_dict, category in zip([inp, state, out], ["inp", "state", "out"]):
             for key in defaults[category].items():
-                component_dict[key] = defaults[category][key]["value"]
+                return_dict[component_dict[key]] = defaults[category][key]["value"]
 
-        return inp, state, out
+        return {**inp, **state, **out}
 
     return {"set_default_settings": set_default_settings}
