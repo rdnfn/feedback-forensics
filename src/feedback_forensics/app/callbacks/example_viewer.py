@@ -7,6 +7,7 @@ from loguru import logger
 from feedback_forensics.app.constants import (
     EXAMPLE_VIEWER_NO_DATA_MESSAGE,
     EXAMPLE_VIEWER_MULTIPLE_DATASETS_MESSAGE,
+    NONE_SELECTED_VALUE,
 )
 
 from feedback_forensics.app.metrics import ensure_categories_identical
@@ -303,6 +304,15 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
                 "Data viewer currently not enabled. "
                 "Set 'Enable dataviewer' checkbox in "
                 "advanced settings to view datapoints."
+            )
+            return empty_return
+
+        if (
+            data[inp["split_col_dropdown"]] != NONE_SELECTED_VALUE
+            and data[inp["split_col_selected_vals_dropdown"]] is not None
+        ):
+            gr.Warning(
+                "Example viewer: currently not available when splitting by column."
             )
             return empty_return
 

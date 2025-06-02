@@ -132,10 +132,11 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
         outputs=load_data_outputs,
     )
 
-    # update single dataset menus when active dataset is changed
-    # (e.g. hiding this menu if multiple datasets are selected)
+    # update config options on dataset change
+    # (e.g. change the columns available to split on
+    # or the models available to compare)
     inp["active_datasets_dropdown"].input(
-        callbacks["update_single_dataset_menus"],
+        callbacks["update_config_on_dataset_change"],
         inputs=all_inputs,
         outputs=dataset_selection_outputs,
     )
@@ -288,6 +289,7 @@ def attach(inp: dict, state: dict, out: dict, callbacks: dict, demo: gr.Blocks) 
         | {
             out["annotator_table"],
             inp["enable_dataviewer_checkbox"],
+            inp["split_col_dropdown"],
         },
         outputs=example_viewer_all_components
         | {

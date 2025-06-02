@@ -48,8 +48,8 @@ def generate(
 ) -> dict:
     """Generate callbacks for loading data and plots."""
 
-    update_single_dataset_menus = update_options_callbacks[
-        "update_single_dataset_menus"
+    update_config_on_dataset_change = update_options_callbacks[
+        "update_config_on_dataset_change"
     ]
     update_col_split_value_dropdown = update_options_callbacks[
         "update_col_split_value_dropdown"
@@ -396,9 +396,9 @@ def generate(
         # Split dataset by column if specified in URL
         if "col" not in config:
             # update split col dropdowns even if no column is selected
-            split_col_interface_dict = update_single_dataset_menus(data)
+            base_updated_config_dict = update_config_on_dataset_change(data)
             return_dict = {
-                **split_col_interface_dict,
+                **base_updated_config_dict,
                 **update_col_split_value_dropdown(data),
                 **return_dict,
             }
@@ -428,9 +428,9 @@ def generate(
                 else:
                     data[inp["split_col_dropdown"]] = split_col
 
-                split_col_interface_dict = update_single_dataset_menus(data)
+                base_updated_config_dict = update_config_on_dataset_change(data)
                 return_dict = {
-                    **split_col_interface_dict,
+                    **base_updated_config_dict,
                     **update_col_split_value_dropdown(data),
                     **return_dict,
                 }
