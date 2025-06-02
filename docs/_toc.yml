@@ -12,11 +12,11 @@ chapters:
   title: "Getting started 🚀"
   sections:
     - file: guide/feedback
-      title: Measure personality encouraged by feedback 🗣️
+      title: Measure personality encouraged by feedback 🗣️
     - file: guide/models
-      title: Measure your model's personality 🤖
+      title: Measure your model's personality 🤖
     - file: guide/datasets
-      title: Work with datasets 🗂️
+      title: Work with datasets 🗂️
 - file: method/index
 - file: api/index
   title: API Reference 🔌
