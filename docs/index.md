@@ -4,11 +4,17 @@ Welcome to the docs for **Feedback Forensics: an open-source toolkit to measure 
 
 ## Getting Started
 
+Below are the first steps to analysing personality changes in your own datasets and models locally on your machine:
+
 1. ↓ [Install package](installation.md)
 2. 🚀 Get started measuring personality traits:
     * 🗣️ [Encouraged by feedback data](guide/feedback.ipynb)
     * 🤖 [Exhibited by your model](guide/models.ipynb)
 3. 📏 [Learn how we measure personality](method/index.md)
+
+```{seealso}
+If you want to skip local installation and experiments for now, see our [online platform](https://app.feedbackforensics.com/) for read-to-view personality results on popular datasets and models.
+```
 
 
 ## Getting Help
