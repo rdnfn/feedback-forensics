@@ -104,7 +104,7 @@ OLMO2_0325 = BuiltinDataset(
 MULTIPREF = BuiltinDataset(
     name="🔄 MultiPref",
     path=DATA_DIR / "v2/allenai_multipref.json",
-    description="10k preference pairs annotated by 4 human annotators, as well as GPT-4-based AI annotators.",
+    description="10k preference pairs, each annotated by 4 human annotators as well as GPT-4-based AI annotators. Whilst each pair is annotated by 4 human annotators, these annotators are not identical across all pairs (i.e. more than four annotators overall worked on the dataset).",
     source="https://huggingface.co/datasets/allenai/multipref",
 )
 
