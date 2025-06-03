@@ -24,7 +24,11 @@ chapters:
       title: "Tested personality traits ✍️"
     - file: advanced/datasets
       title: Dataset operations 🗂️
-- file: method/index
+- file: method/index.md
+  title: Method 📏
+  sections:
+    - file: method/core
+    - file: method/limitations
 - file: api/index
   title: API Reference 🔌
   sections:
