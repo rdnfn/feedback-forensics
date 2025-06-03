@@ -27,15 +27,15 @@
 |<img src="docs/img/example_feedback_v1.png" alt="example_feedback" width="350px">|<img src="docs/img/example_models_v1.png" alt="example_models" width="350px">|
 <a href="https://app.feedbackforensics.com?data=chatbot_arena"><img src="docs/img/button_demo_v2.png" alt="Run demo" width="110px"></a>  <a href="https://docs.feedbackforensics.com/en/latest/guide/feedback.html"><img src="docs/img/button_tutorial.png" alt="Open tutorial" width="110px"></a>|<a href="https://app.feedbackforensics.com/?data=model_comparison&ann_cols=model_metallamallama370binstruct,model_metallamallama4maverick"><img src="docs/img/button_demo_v2.png" alt="Run demo" width="110px"></a>  <a href="https://docs.feedbackforensics.com/en/latest/guide/models.html"><img src="docs/img/button_tutorial.png" alt="Open tutorial" width="110px"></a>|
 
-## Docs
+## Docs 📖
 
 See https://docs.feedbackforensics.com/
 
-## Online usage
+## Online usage 🌍
 
 See our [online platform](https://app.feedbackforensics.com) to track personality traits in popular models and datasets. No local installation required.
 
-## Local usage
+## Local usage 🌓
 
 To track personality traits in your own datasets and models, install Feedback Forensics locally.
 
@@ -77,7 +77,7 @@ overall_metrics = dataset.get_overall_metrics()
 annotator_metrics = dataset.get_annotator_metrics()
 ```
 
-## Citation
+## Citation ✍︎
 
 If you find Feedback Forensics useful in your research, please consider citing the project:
 
@@ -90,6 +90,6 @@ If you find Feedback Forensics useful in your research, please consider citing t
 }
 ```
 
-## License
+## License ✌︎
 
 [Apache 2.0](LICENSE)
