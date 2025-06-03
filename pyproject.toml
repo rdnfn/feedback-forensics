@@ -88,8 +88,8 @@ post_commit_hooks = []
 
 [project.scripts]
 feedback-forensics = "feedback_forensics.app.main:run"
-ff-annotate = "feedback_forensics.tools.icai_cli:run"
-ff-hfspace-rebuild = "feedback_forensics.tools.hf_spaces:main"
+ff-annotate = "feedback_forensics.tools.ff_annotate:run"
+ff-hfspace-rebuild = "feedback_forensics.tools.ff_hfspace_rebuild:main"
 ff-data = "feedback_forensics.tools.ff_data:run"
 
 [tool.pytest.ini_options]
