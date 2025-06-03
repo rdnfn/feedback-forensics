@@ -77,6 +77,19 @@ overall_metrics = dataset.get_overall_metrics()
 annotator_metrics = dataset.get_annotator_metrics()
 ```
 
+## Citation
+
+If you find Feedback Forensics useful in your research, please consider citing the project:
+
+```bibtex
+@software{feedbackforensics,
+  author =  author = {Findeis, Arduin and Kaufmann, Timo and H{\"u}llermeier, Eyke and Mullins, Robert},
+  title = {Feedback Forensics: An open-source toolkit to measure AI personality changes},
+  url = {https://github.com/rdnfn/feedback-forensics},
+  year = {2025}
+}
+```
+
 ## License
 
 [Apache 2.0](LICENSE)
