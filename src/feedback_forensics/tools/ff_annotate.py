@@ -1,8 +1,22 @@
 """CLI for running ICAI experiments with simplified parameters."""
 
 import argparse
+import json
 import subprocess
 from loguru import logger
+
+from inverse_cai.experiment.config import default_principles
+
+
+def get_default_principles(version: str = "v1") -> list[str]:
+    """Get the default principles."""
+    match version:
+        case "v1":
+            return default_principles.DEFAULT_PRINCIPLES["v4"]
+        case "null" | "None" | "":
+            return []
+        case _:
+            raise ValueError(f"Unknown principles version: {version}.")
 
 
 def run():
@@ -19,11 +33,26 @@ def run():
         help="Path to dataset CSV file with columns text_a, text_b, and preferred_text",
     )
     parser.add_argument(
-        "-p",
+        "-v",
         "--principles-version",
         type=str,
-        default="v4",
-        help="Version of standard principles to test (default: v2)",
+        default="v1",
+        help=(
+            "Version of standard principles to test (default: v1). "
+            "A principle is an instruction for the AI annotator to "
+            "select a text according to a given personality trait."
+        ),
+    )
+    parser.add_argument(
+        "-p",
+        "--principles",
+        type=json.loads,
+        default=None,
+        help=(
+            "List of custom principles to test (default: None). "
+            "E.g. \"['Select the response that is more confident', "
+            "'Select the response that is more friendly']\""
+        ),
     )
     parser.add_argument(
         "-o",
@@ -50,7 +79,6 @@ def run():
     icai_cmd = [
         "icai-exp",
         f'data_path="{args.datapath}"',
-        f's0_added_standard_principles_to_test="[{args.principles_version}]"',
         "annotator.skip=true",
         "s0_skip_principle_generation=true",
     ]
@@ -60,6 +88,18 @@ def run():
 
     if args.model is not None:
         icai_cmd.append(f'alg_model="{args.model}"')
+
+    # Collect principles to test
+    principles_to_test = []
+    if args.principles_version is not None:
+        principles_to_test.extend(get_default_principles(args.principles_version))
+    if args.principles is not None:
+        principles_to_test.extend(args.principles)
+
+    principle_str = json.dumps(principles_to_test, separators=(",", ":")).replace(
+        '"', '\\"'
+    )
+    icai_cmd.append(f'"s0_added_principles_to_test={principle_str}"')
 
     cmd_str = " ".join(icai_cmd)
 
