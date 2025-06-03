@@ -83,7 +83,7 @@ If you find Feedback Forensics useful in your research, please consider citing t
 
 ```bibtex
 @software{feedbackforensics,
-  author =  author = {Findeis, Arduin and Kaufmann, Timo and H{\"u}llermeier, Eyke and Mullins, Robert},
+  author = {Findeis, Arduin and Kaufmann, Timo and H{\"u}llermeier, Eyke and Mullins, Robert},
   title = {Feedback Forensics: An open-source toolkit to measure AI personality changes},
   url = {https://github.com/rdnfn/feedback-forensics},
   year = {2025}
