@@ -14,12 +14,21 @@ from inverse_cai.data.annotated_pairs_format import (
 VERSION = importlib.metadata.version("feedback_forensics")
 
 # Constants from environment vars
-# get env var with github token
+# Github token
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+# Hugging Face token
 HF_TOKEN = os.getenv("HF_TOKEN")
+
+# Base url used for share link
 APP_BASE_URL = os.getenv("FF_APP_BASE_URL", "")
+# Base url used for example links
+# (setting this to hf space url can help avoid re-opening a new tab)
+EXAMPLE_BASE_URL = os.getenv("FF_EXAMPLE_BASE_URL", APP_BASE_URL)
+
+# Default dataset names
 DEFAULT_DATASET_NAMES = json.loads(os.getenv("FF_DEFAULT_DATASET_NAMES", "[]"))
-ENABLE_EXAMPLE_VIEWER = os.getenv("FF_ENABLE_EXAMPLE_VIEWER", "false").lower() == "true"
+# Whether to enable the example viewer
+ENABLE_EXAMPLE_VIEWER = os.getenv("FF_ENABLE_EXAMPLE_VIEWER", "true").lower() == "true"
 
 # App username and password
 # Will block app behind login if env vars are set
