@@ -39,6 +39,15 @@ def generate(inp: dict, state: dict, out: dict, utils_callbacks: dict) -> dict:
         if not isinstance(datasets, list):
             datasets = [datasets] if datasets is not None else []
 
+        # if not dataset is selected, abort
+        # (only possible in multidataset selection mode)
+        if len(datasets) == 0:
+            # need to return something to avoid errors
+            # thus returning a dict with no changes/effect
+            return {
+                inp["annotator_cols_dropdown"]: gr.Dropdown(),
+            }
+
         # Load the full dataset (needed to extract annotator names)
         # which may take a few seconds. Caching ensures this cost is paid only once.
         dataset_config = data[state["avail_datasets"]][datasets[0]]
@@ -161,37 +170,42 @@ def generate(inp: dict, state: dict, out: dict, utils_callbacks: dict) -> dict:
             ),
         }
 
-    def update_single_dataset_menus(data: dict):
-        """Update menus for single dataset analysis
+    def update_config_on_dataset_change(data: dict):
+        """Update config on dataset change.
 
-        Includes splitting dataset by column and selecting annotators."""
+        Primarily affects the config blocks that are only relevant
+        for single dataset analysis. Also resets the annotator cols
+        config if dataset is changed.
+        """
 
         datasets = data[inp["active_datasets_dropdown"]]
+        return_val = {}
 
         # Normalize datasets to always be a list for processing
         if not isinstance(datasets, list):
             datasets = [datasets] if datasets is not None else []
 
         if len(datasets) == 1:
-            menus_inactive = False
+            single_dataset_menus_active = True
         else:
-            menus_inactive = True
+            single_dataset_menus_active = False
 
-        if menus_inactive:
-            return {
-                inp["split_col_dropdown"]: gr.Dropdown(
-                    choices=[NONE_SELECTED_VALUE],
-                    value=NONE_SELECTED_VALUE,
-                    interactive=False,
-                    # visible=False,
-                ),
-                inp["split_col_selected_vals_dropdown"]: gr.Dropdown(
-                    choices=[],
-                    value=None,
-                    interactive=False,
-                    # visible=False,
-                ),
-            }
+        if not single_dataset_menus_active:
+            return_val.update(
+                {
+                    # make split col dropdowns inactive
+                    inp["split_col_dropdown"]: gr.Dropdown(
+                        choices=[NONE_SELECTED_VALUE],
+                        value=NONE_SELECTED_VALUE,
+                        interactive=False,
+                    ),
+                    inp["split_col_selected_vals_dropdown"]: gr.Dropdown(
+                        choices=[],
+                        value=None,
+                        interactive=False,
+                    ),
+                }
+            )
         else:
             split_col = data[inp["split_col_dropdown"]]
             avail_cols = get_columns_in_dataset(datasets[0], data)
@@ -201,27 +215,33 @@ def generate(inp: dict, state: dict, out: dict, utils_callbacks: dict) -> dict:
 
             tuple_avail_cols = [(col, col) for col in avail_cols]
 
-            return {
-                inp["split_col_dropdown"]: gr.Dropdown(
-                    choices=[
-                        (
-                            "(No grouping applied, click to select column)",
-                            NONE_SELECTED_VALUE,
-                        )
-                    ]
-                    + tuple_avail_cols,
-                    value=split_col,
-                    interactive=True,
-                    # visible=is_in_advanced_settings,
-                ),
-                inp["split_col_selected_vals_dropdown"]: gr.Dropdown(
-                    choices=[],
-                    value=[],
-                    interactive=False,
-                    # visible=False,
-                ),
-                **_get_default_annotator_cols_config(data),
-            }
+            return_val.update(
+                {
+                    inp["split_col_dropdown"]: gr.Dropdown(
+                        choices=[
+                            (
+                                "(No grouping applied, click to select column)",
+                                NONE_SELECTED_VALUE,
+                            )
+                        ]
+                        + tuple_avail_cols,
+                        value=split_col,
+                        interactive=True,
+                        # visible=is_in_advanced_settings,
+                    ),
+                    inp["split_col_selected_vals_dropdown"]: gr.Dropdown(
+                        choices=[],
+                        value=[],
+                        interactive=False,
+                        # visible=False,
+                    ),
+                }
+            )
+
+        # reset the annotator cols config if dataset is changed
+        return_val.update(_get_default_annotator_cols_config(data))
+
+        return return_val
 
     def update_col_split_value_dropdown(data: dict):
         """Update column split value dropdown."""
@@ -270,7 +290,10 @@ def generate(inp: dict, state: dict, out: dict, utils_callbacks: dict) -> dict:
         ]
 
         if analysis_type == "model_analysis":
-            shown_blocks = [inp["models_to_compare_dropdown"]]
+            shown_blocks = [
+                inp["models_to_compare_dropdown"],
+                inp["reference_models_dropdown"],
+            ]
         elif analysis_type == "annotation_analysis":
             shown_blocks = [inp["annotations_to_compare_dropdown"]]
         elif analysis_type == "advanced_settings":
@@ -347,7 +370,7 @@ def generate(inp: dict, state: dict, out: dict, utils_callbacks: dict) -> dict:
         }
 
     return {
-        "update_single_dataset_menus": update_single_dataset_menus,
+        "update_config_on_dataset_change": update_config_on_dataset_change,
         "update_col_split_value_dropdown": update_col_split_value_dropdown,
         "set_advanced_settings_from_model_analysis_tab": set_advanced_settings_from_model_analysis_tab,
         "set_model_analysis_from_advanced_settings": set_model_analysis_from_advanced_settings,

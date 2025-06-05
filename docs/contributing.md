@@ -1,83 +1,43 @@
-# Contributing 📮
+## Contributing 🌻
 
-## Getting Started
+### Setup
 
-### Development Setup
+If you want to contribute to Feedback Forensics, there are two options to set up the development environment:
 
-1. Clone the repository:
-```bash
-git clone https://github.com/rdnfn/feedback-forensics.git
-cd feedback-forensics
-```
+#### Option 1: Standard development setup
 
-2. Install development dependencies:
-```bash
-pip install -e ".[dev]"
-```
+1. Clone this repository
+2. Install the package with development dependencies:
+   ```bash
+   pip install -e ".[dev]"
+   ```
 
-### Development Container (Optional)
+#### Option 2: Development container
 
-Use dev container for consistent environment:
+For a consistent development environment, this repository includes a VS Code dev container configuration:
 
-1. Install 'Remote - Containers' extension
-2. Open repository in VS Code (or Cursor)
+1. Install the [Remote - Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+2. Open the repository in VS Code
 3. Click "Reopen in Container" when prompted
 
-## Development Workflow
+### Running test cases
 
-### Making Changes
+To run the tests for the package, run:
 
-1. Create a feature branch:
-```bash
-git checkout -b feature/your-feature-name
-```
-
-2. Make your changes
-3. Run tests:
 ```bash
 pytest ./src
 ```
 
-4. Format code:
-```bash
-black src/
+### Creating a PR
+
+First create a PR to the `staging` branch, from there the work will then be merged with the main branch. A merge (and push) in the `staging` branch will allow you to view the staged online version of Feedback Forensics app at https://rdnfn-ff-dev.hf.space.
+
+
+### Creating a new release
+
+Ensure that the current branch is up-to-date with main, and then bump the version (using `patch`, `minor`, or `major`):
+```
+bump-my-version bump patch
 ```
 
-5. Commit and push changes
-
-### Pull Request Process
-
-1. Create PR to `staging` branch first
-2. Ensure all tests pass
-3. Request review from maintainers
-4. Address feedback
-5. Merge to `staging`, then to `main`
-
-
-## Release Process
-
-### Version Bumping
-```bash
-bump-my-version bump patch  # or minor/major
-```
-
-### Creating Releases
-1. Ensure `main` branch is up to date
-2. Create GitHub release with version tag
-3. GitHub Actions will build and upload to PyPI
-
-
-## Documentation Development
-
-### Building Documentation
-```bash
-# Install Jupyter Book
-pip install -e ".[docs]"
-
-# Build documentation
-jupyter-book build docs/
-
-# View locally
-open docs/_build/html/index.html
-```
-
+Then on the GitHub website create a new release named after the new version (e.g. "v0.1.2"). As part of this release in the GitHub interface, create a new tag with the updated version. This release will trigger a GitHub action to build and upload the PyPI package.

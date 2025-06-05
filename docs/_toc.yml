@@ -9,15 +9,26 @@ chapters:
 - file: installation
   title: Installation ↓
 - file: guide/index
-  title: "Getting started 🚀"
+  title: "Getting started 🚀"
   sections:
     - file: guide/feedback
-      title: Measure personality encouraged by feedback 🗣️
+      title: Measure personality encouraged by feedback 🗣️
     - file: guide/models
-      title: Measure your model's personality 🤖
+      title: Measure your model's personality 🤖
     - file: guide/datasets
-      title: Work with datasets 🗂️
-- file: method/index
+      title: Work with datasets 🗂️
+- file: advanced/index.md
+  title: Advanced usage 🔧
+  sections:
+    - file: advanced/annotation
+      title: "Tested personality traits ✍️"
+    - file: advanced/datasets
+      title: Dataset operations 🗂️
+- file: method/index.md
+  title: Method 📏
+  sections:
+    - file: method/core
+    - file: method/limitations
 - file: api/index
   title: API Reference 🔌
   sections:
