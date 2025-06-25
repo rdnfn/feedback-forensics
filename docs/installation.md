@@ -1,5 +1,9 @@
 # Installation
 
+```{seealso}
+If you want to skip local installation for now, see our online platform at [app.feedbackforensics.com](https://app.feedbackforensics.com/) for ready-to-view personality results on popular datasets and models.
+```
+
 ## Install from PyPI
 
 This is the **recommended** installation method.
