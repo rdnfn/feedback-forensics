@@ -31,7 +31,7 @@ dependencies = [
   "nbconvert",
   "jupyter",
   "ipywidgets", # IProgress in jupyter notebooks
-  "gradio",
+  "gradio ==5.20.1",
   "msgspec",
   "adjustText",
 ]

@@ -36,8 +36,15 @@ First create a PR to the `staging` branch, from there the work will then be merg
 ### Creating a new release
 
 Ensure that the current branch is up-to-date with main, and then bump the version (using `patch`, `minor`, or `major`):
-```
+```bash
 bump-my-version bump patch
 ```
 
 Then on the GitHub website create a new release named after the new version (e.g. "v0.1.2"). As part of this release in the GitHub interface, create a new tag with the updated version. This release will trigger a GitHub action to build and upload the PyPI package.
+
+### Creating docs locally
+
+If you want to test and compile the docs locally, run:
+```bash
+jupyter-book build docs/
+```
