@@ -1,43 +1,12 @@
 # Metrics 📐
 
+## Annotation Metrics
 
+Our toolkit supports computing the following annotation metrics, used for comparing two sets of annotations:
 
-## Interpretation
+1. **Relevance.**  The proportion of annotations that are valid. We define the *relevance* of one set of annotations over a given set of datapoints as $\texttt{relevance} = n_{\text{valid}}/ n_{\text{total}}$, where $n_{\text{valid}}$ is the number of datapoints with valid votes selecting one response over the other (*response A* or *response B*). This number excludes *tie* (*both*/*neither*) and *invalid* votes. When comparing two sets of annotations ($A$ and $B$), the relevance of annotations $A$ (e.g. personality annotations selecting for more confident responses) over annotations $B$ (e.g. human preference annotations) is the proportion of valid votes over the set of all datapoints included in both annotation sets.
 
-Our main metric is *Strength*, depending on the use-case it can be interpreted as follows.
-
-**⇢ Measuring Personality Traits Encouraged by Human Feedback**
-
-```{figure}  ../img/metrics_strength_interp_casea.png
----
-alt: method
-width: 700px
-align: center
-name: fig-method
----
-**Interpretation of strength metric** comparing *human* and *personality trait* annotations
-```
-
-**⇢ Measuring Personality Traits Exhibited by Model**
-
-```{figure}  ../img/metrics_strength_interp_caseb.png
----
-alt: method
-width: 700px
-align: center
-name: fig-method
----
-**Interpretation of strength metric** comparing *target model* and *personality trait* annotations
-```
-
-
-## Calculation
-
-Our toolkit supports computing the following annotation metrics:
-
-1. **Relevance.** We define the *relevance* of one set of annotations over a given set of datapoints as $\texttt{relevance} = n_{\text{valid}}/ n_{\text{total}}$, where $n_{\text{valid}}$ is the number of datapoints with valid votes selecting one response over the other (*response A* or *response B*). This number excludes *tie* (*both*/*neither*) and *invalid* votes.
-
-2. **Cohen's kappa.** Cohen's kappa ($\kappa$) is a metric of inter-annotator agreement between two sets of annotations that measures agreement *beyond random chance*. It is defined as
+2. **Cohen's kappa ($\kappa$).** A metric of inter-annotator agreement between two sets of annotations that measures agreement *beyond random chance*. It is defined as
 
    $$\kappa = \frac{p_o - p_e}{1 - p_e},$$
 
@@ -51,4 +20,37 @@ Our toolkit supports computing the following annotation metrics:
 
    By weighting with relevance, we emphasize agreement that is widely applicable across the dataset. In our setting, this metric indicates whether a personality trait is widely relevant *and* highly correlated with the target annotations. See [above](#interpretation) for a guide on how to interpret this metric in the two main use-cases.
 
+   - **Interpretation A: Measuring Personality Traits Encouraged by Human Feedback**
+    ```{figure}  ../img/metrics_strength_interp_casea.png
+    ---
+    alt: method
+    width: 800px
+    align: center
+    name: fig-method
+    ---
+    **Interpretation of strength metric** comparing *human* and *personality trait* annotations
+    ```
 
+    - **Interpretation B: Measuring Personality Traits Exhibited by Model**
+
+    ```{figure}  ../img/metrics_strength_interp_caseb.png
+    ---
+    alt: method
+    width: 800px
+    align: center
+    name: fig-method
+    ---
+    **Interpretation of strength metric** comparing *target model* and *personality trait* annotations
+    ```
+
+## General Statistics
+
+Feedback Forensics also supports computing the following additional general statistics for each shown data(sub)set of annotations (include in `Overall statistics` table of interface):
+
+- `Number of preference pairs`: Full number of preference pairs included in data(sub)set
+- `Prop preferring text_a`: Proportion of datapoints that prefer the first response
+- `Avg len text_a`: Average length of first response
+- `Avg len text_b`: Average length of second response
+- `Avg len pref. text`: Average length of preferred response
+- `Avg len rej. text`: Average length of rejected response
+- `Prop preferring longer text`: Proportion of datapoints preferring longer text
