@@ -16,7 +16,6 @@ from feedback_forensics.data.datasets import (
 )
 from feedback_forensics.app.info_texts import (
     get_datasets_description,
-    METRICS_DESCRIPTION,
 )
 
 from feedback_forensics.app.styling import CUSTOM_CSS, THEME
@@ -241,13 +240,15 @@ def _create_numerical_results_panel(inp: dict, out: dict):
 
         gr.Markdown("## Numerical overview")
 
-        gr.Markdown("### Overall metrics")
+        gr.Markdown(
+            "### Overall statistics\nSee [guide here](https://feedback-forensics.readthedocs.io/en/latest/method/metrics#general-statistics) for metric details"
+        )
         out["overall_metrics_table"] = gr.Dataframe(
             value=pd.DataFrame(),
             headers=["No data loaded"],
         )
         gr.Markdown(
-            "---\n### Annotation metrics\n*Click on values to view example datapoints*"
+            "---\n### Annotation metrics\n*Click on values to view example datapoints.* See [guide here](https://feedback-forensics.readthedocs.io/en/latest/method/metrics.html) for how each metric is computed and can be interpreted."
         )
 
         with gr.Group():
@@ -270,12 +271,6 @@ def _create_numerical_results_panel(inp: dict, out: dict):
                     choices=["Descending", "Ascending"],
                     value="Descending",
                     interactive=True,
-                )
-
-            with gr.Accordion("ℹ️ Metrics explanation", open=False):
-                out["metrics_info"] = gr.Markdown(
-                    METRICS_DESCRIPTION,
-                    container=True,
                 )
 
             out["annotator_table"] = gr.Dataframe(

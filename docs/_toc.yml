@@ -18,19 +18,20 @@ chapters:
     - file: guide/datasets
       title: Work with datasets 🗂️
 - file: advanced/index.md
-  title: Advanced usage 🔧
   sections:
     - file: advanced/annotation
       title: "Tested personality traits ✍️"
     - file: advanced/datasets
       title: Dataset operations 🗂️
 - file: method/index.md
-  title: Method 📏
+  title: Method 📏
   sections:
-    - file: method/core
+    - file: method/overview
+      title: Overview ⚙️
+    - file: method/metrics
     - file: method/limitations
 - file: api/index
-  title: API Reference 🔌
+  title: API Reference 🔌
   sections:
     - file: api/cli
       title: Command Line Interface

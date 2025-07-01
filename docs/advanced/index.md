@@ -1,5 +1,5 @@
 
-# Advanced Usage
+# Advanced Usage 🔧
 
 Guides for advanced usage and configuration of Feedback Forensics.
 
