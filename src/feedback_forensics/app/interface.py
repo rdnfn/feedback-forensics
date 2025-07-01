@@ -241,7 +241,7 @@ def _create_numerical_results_panel(inp: dict, out: dict):
         gr.Markdown("## Numerical overview")
 
         gr.Markdown(
-            "### Overall statistics\nSee [guide here](https://feedback-forensics.readthedocs.io/en/latest/method/metrics#general-statistics) for details."
+            "### Overall statistics\nSee [guide here](https://feedback-forensics.readthedocs.io/en/latest/method/metrics#general-statistics) for metric details"
         )
         out["overall_metrics_table"] = gr.Dataframe(
             value=pd.DataFrame(),
