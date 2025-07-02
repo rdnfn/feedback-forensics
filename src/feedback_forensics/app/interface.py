@@ -250,7 +250,7 @@ def _create_numerical_results_panel(inp: dict, out: dict):
             headers=["No data loaded"],
         )
         gr.Markdown(
-            "---\n### Annotation metrics\n👉 *Click on values to view example datapoints* | See [guide here](https://feedback-forensics.readthedocs.io/en/latest/method/metrics.html) to learn how each metric is computed and can be interpreted."
+            "---\n### Annotation metrics\n👉 *Click on values to view example datapoints* | See [guide here](https://feedback-forensics.readthedocs.io/en/latest/method/metrics.html) to learn how each metric is computed and can be interpreted"
         )
 
         with gr.Group():
