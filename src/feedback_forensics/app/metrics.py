@@ -7,7 +7,10 @@ import sklearn.metrics
 
 from loguru import logger
 
-from feedback_forensics.app.constants import DISABLE_SKLEARN_WARNINGS
+from feedback_forensics.app.constants import (
+    DISABLE_SKLEARN_WARNINGS,
+    DEFAULT_AVAIL_METRICS,
+)
 
 if DISABLE_SKLEARN_WARNINGS:
     import warnings
@@ -16,39 +19,6 @@ if DISABLE_SKLEARN_WARNINGS:
 
 
 DEFAULT_METRIC_NAME = "strength"
-
-METRIC_COL_OPTIONS = {
-    "agreement": {
-        "name": "Agreement",
-        "short": "Agr.",
-        "descr": "Agreement: proportion of all votes that agree with original preferences",
-    },
-    "acc": {
-        "name": "Accuracy",
-        "short": "Acc.",
-        "descr": "Accuracy: proportion of non-irrelevant votes ('agree' or 'disagree')<br>that agree with original preferences",
-    },
-    "relevance": {
-        "name": "Relevance",
-        "short": "Rel.",
-        "descr": "Relevance: proportion of all votes that are not 'not applicable'",
-    },
-    "strength": {
-        "name": "Principle strength (Relevance-weighted Cohen's kappa)",
-        "short": "strength",
-        "descr": "Principle strength: relevance * Cohen's kappa, or relevance * 2 * (accuracy - 0.5)",
-    },
-    "cohens_kappa": {
-        "name": "Cohen's kappa",
-        "short": "kappa",
-        "descr": "Cohen's kappa: measures agreement beyond chance.",
-    },
-    "cohens_kappa_randomized": {
-        "name": "Cohen's kappa (randomized)",
-        "short": "kappa_randomized",
-        "descr": "Cohen's kappa: measures agreement beyond chance. Special version where we assume that at least one of the annotators had no access to order information, meaning random chance agreement has a probability of 0.5.",
-    },
-}
 
 
 def get_agreement(
@@ -160,6 +130,68 @@ def get_not_applicable(
     return value_counts.get("Not applicable", 0)
 
 
+def get_metrics():
+    return {
+        "agreement": {
+            "name": "Agreement",
+            "short": "Agr",
+            "descr": "Agreement: proportion of all votes that agree with original preferences",
+            "fn": get_agreement,
+        },
+        "acc": {
+            "name": "Accuracy",
+            "short": "Acc",
+            "descr": "Accuracy: proportion of non-irrelevant votes ('agree' or 'disagree')<br>that agree with original preferences",
+            "fn": get_acc,
+        },
+        "relevance": {
+            "name": "Relevance",
+            "short": "Relevance",
+            "descr": "Relevance: proportion of all votes that are not 'not applicable'",
+            "fn": get_relevance,
+        },
+        "strength": {
+            "name": "Principle strength (Relevance-weighted Cohen's kappa)",
+            "short": "Strength",
+            "descr": "Principle strength: relevance * Cohen's kappa, or relevance * 2 * (accuracy - 0.5)",
+            "fn": get_principle_strength,
+        },
+        "cohens_kappa_og": {
+            "name": "Cohen's kappa (non-adjusted)",
+            "short": "kappa",
+            "descr": "Cohen's kappa: measures agreement beyond chance. Does not account for randomization in response order during annotation.",
+            "fn": get_cohens_kappa,
+        },
+        "cohens_kappa": {
+            "name": "Cohen's kappa (adjusted)",
+            "short": "Cohen's kappa",
+            "descr": "Cohen's kappa: measures agreement beyond chance. Adjusted version where we assume that at least one of the annotators had no access to order information, meaning random chance agreement has a probability of 0.5.",
+            "fn": get_cohens_kappa_randomized,
+        },
+        "num_votes": {
+            "name": "Number of votes",
+            "short": "num votes",
+            "descr": "Overall number of votes.",
+            "fn": get_num_votes,
+        },
+        "agreed": {
+            "name": "Number of agreed votes",
+            "short": "num agreed",
+            "fn": get_agreed,
+        },
+        "disagreed": {
+            "name": "Number of disagreed votes",
+            "short": "num disagreed",
+            "fn": get_disagreed,
+        },
+        "not_applicable": {
+            "name": "Number of non-applicable votes",
+            "short": "num non-applicable",
+            "fn": get_not_applicable,
+        },
+    }
+
+
 def compute_annotator_metrics(
     votes_df: pd.DataFrame,
     annotator_metadata: dict,
@@ -170,18 +202,7 @@ def compute_annotator_metrics(
     # votes_df is a pd.DataFrame with one row
     # per vote, and columns "comparison_id", "principle", "vote"
 
-    metric_fns = {
-        "agreement": get_agreement,
-        "acc": get_acc,
-        "relevance": get_relevance,
-        "strength": get_principle_strength,
-        "cohens_kappa": get_cohens_kappa,
-        "cohens_kappa_randomized": get_cohens_kappa_randomized,
-        "num_votes": get_num_votes,
-        "agreed": get_agreed,
-        "disagreed": get_disagreed,
-        "not_applicable": get_not_applicable,
-    }
+    metric_dicts = get_metrics()
 
     # check that ref annotator col only contains "text_a" or "text_b"
     if not all(votes_df[ref_annotator_col].isin(["text_a", "text_b"])):
@@ -230,7 +251,8 @@ def compute_annotator_metrics(
         value_counts = agreement.value_counts(sort=False, dropna=False)
         value_counts = value_counts.fillna(0)
 
-        for metric_name, metric_fn in metric_fns.items():
+        for metric_name, metric_dict in metric_dicts.items():
+            metric_fn = metric_dict["fn"]
             if metric_name not in metrics:
                 metrics[metric_name] = {}
             metrics[metric_name][annotator_name] = metric_fn(
@@ -341,3 +363,23 @@ def ensure_categories_identical(
         df[col] = df[col].cat.set_categories(list(joint_categories), rename=False)
 
     return df
+
+
+def get_default_avail_metrics():
+    all_metrics = get_metrics()
+
+    # sanity check that metric config is valid
+    assert isinstance(
+        DEFAULT_AVAIL_METRICS, list
+    ), f"FF_AVAIL_METRICS setting is not json list ({DEFAULT_AVAIL_METRICS})"
+    for metric_name in DEFAULT_AVAIL_METRICS:
+        assert (
+            metric_name in all_metrics
+        ), f"metric '{metric_name}' set in FF_AVAIL_METRICS not in available metric names {list(all_metrics.keys())}"
+
+    dropdown_values = []
+
+    for metric_name in DEFAULT_AVAIL_METRICS:
+        dropdown_values.append((all_metrics[metric_name]["short"], metric_name))
+
+    return dropdown_values

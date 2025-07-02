@@ -8,6 +8,7 @@ from feedback_forensics.app.constants import (
     EXAMPLE_VIEWER_NO_DATA_MESSAGE,
     ENABLE_EXAMPLE_VIEWER,
     EXAMPLE_BASE_URL,
+    DEFAULT_SHOWN_METRIC,
 )
 from feedback_forensics.data.datasets import (
     get_available_datasets,
@@ -20,8 +21,9 @@ from feedback_forensics.app.info_texts import (
 
 from feedback_forensics.app.styling import CUSTOM_CSS, THEME
 from feedback_forensics.app.utils import get_gradio_image_path
-from feedback_forensics.app.metrics import METRIC_COL_OPTIONS
+from feedback_forensics.app.metrics import get_default_avail_metrics
 import feedback_forensics.app.callbacks
+from loguru import logger
 
 
 def _add_title_row(title: str):
@@ -256,8 +258,8 @@ def _create_numerical_results_panel(inp: dict, out: dict):
             with gr.Row():
                 inp["metric_name_dropdown"] = gr.Dropdown(
                     label="Metric",
-                    choices=list(METRIC_COL_OPTIONS.keys()),
-                    value="strength",
+                    choices=get_default_avail_metrics(),
+                    value=DEFAULT_SHOWN_METRIC,
                     interactive=True,
                 )
                 inp["sort_by_dropdown"] = gr.Dropdown(
