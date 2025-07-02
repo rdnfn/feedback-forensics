@@ -24,12 +24,12 @@ Finally, for our specific use-case, we combine *Cohen's kappa* with *relevance* 
 
 $$\texttt{strength} = \kappa \times \texttt{relevance}.$$
 
-By weighting with relevance, we emphasize agreement that is widely applicable across the dataset. In our setting, this metric indicates whether a personality trait is widely relevant *and* highly correlated with the target annotations. See [above](#interpretation) for a guide on how to interpret this metric in the two main use-cases.
+By weighting with relevance, we emphasize agreement that is widely applicable across the dataset. In our setting, this metric indicates whether a personality trait is widely relevant *and* highly correlated with the target annotations. See below for a guide on how to interpret this metric in the two main use-cases.
 
 
 #### Interpretation of Strength
 
-**Interpretation A:** *Measuring Personality Traits Encouraged by Human Feedback*
+**Interpretation A:** *Measuring personality traits encouraged by human feedback* (comparing *human* and *personality trait* annotations)
 ```{figure}  ../img/metrics_strength_interp_casea.png
 ---
 alt: method
@@ -40,8 +40,7 @@ name: fig-method
 **Interpretation of strength metric** comparing *human* and *personality trait* annotations
 ```
 
-**Interpretation B:** *Measuring Personality Traits Exhibited by Model*
-
+**Interpretation B:** *measuring personality traits exhibited by model* (comparing *target model* and *personality trait* annotations)
 ```{figure}  ../img/metrics_strength_interp_caseb.png
 ---
 alt: method

@@ -29,6 +29,12 @@ EXAMPLE_BASE_URL = os.getenv("FF_EXAMPLE_BASE_URL", APP_BASE_URL)
 DEFAULT_DATASET_NAMES = json.loads(os.getenv("FF_DEFAULT_DATASET_NAMES", "[]"))
 # Whether to enable the example viewer
 ENABLE_EXAMPLE_VIEWER = os.getenv("FF_ENABLE_EXAMPLE_VIEWER", "true").lower() == "true"
+# Default metrics available (in non-full metric mode)
+DEFAULT_AVAIL_METRICS = json.loads(
+    os.getenv("FF_AVAIL_METRICS", '["strength", "relevance", "cohens_kappa"]')
+)
+# Metric selected by default
+DEFAULT_SHOWN_METRIC = os.getenv("FF_SHOWN_METRIC", "strength")
 
 # App username and password
 # Will block app behind login if env vars are set
