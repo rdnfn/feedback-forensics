@@ -252,9 +252,7 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
 
         return {
             out["example_comparison_id"]: comparison_id,
-            out["example_prompt"]: gr.Textbox(
-                value=prompt,
-            ),
+            out["example_prompt"]: gr.Textbox(value=prompt, visible=prompt != "N/A"),
             out["example_response_a_model"]: model_a,
             out["example_response_b_model"]: model_b,
             out["example_response_a"]: gr.Textbox(
