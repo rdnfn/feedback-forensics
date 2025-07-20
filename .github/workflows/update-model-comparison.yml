@@ -17,8 +17,9 @@ on:
 env:
   HF_DATASET: "rdnfn/ff-model-personality"
   VERSION_PATH: "data/test"
-  MODELS: "openrouter/openai/gpt-4o-mini,openrouter/openai/gpt-4.1-mini"
-  REFERENCE_MODELS: "openrouter/openai/gpt-4o-mini"
+  # Models must be space separated
+  MODELS: openrouter/openai/gpt-4o-mini openrouter/openai/gpt-4.1-mini
+  REFERENCE_MODELS: openrouter/openai/gpt-4o-mini
 
 jobs:
   update-hf-model-comparison-data:
