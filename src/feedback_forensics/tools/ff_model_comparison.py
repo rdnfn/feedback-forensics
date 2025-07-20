@@ -9,6 +9,8 @@ import subprocess
 import shutil
 import feedback_forensics.tools.ff_modelgen as modelgen
 from loguru import logger
+import argparse
+import json
 
 
 def create_pairwise_datasets(
@@ -160,3 +162,89 @@ def compare_models(
             logger.info(f"Annotation already exists for {csv_file}. Skipping...")
 
     logger.info(f"Comparison complete. Results in {output_path}")
+
+
+def run():
+    """CLI entry point for model comparison."""
+    parser = argparse.ArgumentParser(
+        description="Compare models' personalities using Feedback Forensics pipeline."
+    )
+
+    # Prompts input
+    prompts_group = parser.add_mutually_exclusive_group(required=True)
+    prompts_group.add_argument(
+        "-p", "--prompts", nargs="+", help="List of prompts to compare models on"
+    )
+    prompts_group.add_argument(
+        "--prompts-file",
+        type=str,
+        help="Path to file containing prompts in JSON array format",
+    )
+
+    # Model configuration
+    parser.add_argument(
+        "-m",
+        "--models",
+        nargs="+",
+        required=True,
+        help="List of model names to compare",
+    )
+
+    parser.add_argument(
+        "-r",
+        "--reference-models",
+        nargs="+",
+        required=True,
+        help="List of reference model names to compare against",
+    )
+
+    # Output configuration
+    parser.add_argument(
+        "-o",
+        "--output-path",
+        type=str,
+        default="output/",
+        help="Path to save results (default: output/)",
+    )
+
+    args = parser.parse_args()
+
+    # Parse prompts
+    if args.prompts:
+        prompts = args.prompts
+    else:
+        prompts_file = pathlib.Path(args.prompts_file)
+        if not prompts_file.exists():
+            logger.error(f"Prompts file not found: {prompts_file}")
+            return 1
+
+        try:
+            with open(prompts_file) as f:
+                prompts = json.load(f)
+            if not isinstance(prompts, list):
+                logger.error("JSON file must contain an array of strings")
+                return 1
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in prompts file: {e}")
+            return 1
+
+    if not prompts:
+        logger.error("No prompts provided")
+        return 1
+
+    try:
+        compare_models(
+            prompts=prompts,
+            model_names=args.models,
+            reference_models=args.reference_models,
+            output_path=args.output_path,
+        )
+        logger.success("Model comparison completed successfully!")
+        return 0
+    except Exception as e:
+        logger.error(f"Model comparison failed: {e}")
+        return 1
+
+
+if __name__ == "__main__":
+    exit(run())
