@@ -2,6 +2,7 @@
 
 import pathlib
 import json
+from datetime import datetime
 from tqdm import tqdm
 import inverse_cai.models
 import inverse_cai.data.annotated_pairs_format
@@ -168,6 +169,7 @@ async def run_model_on_prompts_async(
                 "response": generation.content,
                 "full_response": dict(generation),
                 "model": model_name,
+                "timestamp": datetime.now().isoformat(),
             }
 
             # Write the record to the file with lock to prevent race conditions
