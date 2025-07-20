@@ -140,8 +140,11 @@ def compare_models(
         logger.info(f"Annotating {csv_file}")
         tmp_output_dir = annotation_tmp_dir / csv_file.stem
         final_annotation_path = (
-            pathlib.Path(output_path) / "annotations" / csv_file.stem + "_ap.json"
+            pathlib.Path(output_path) / "annotations" / (csv_file.stem + "_ap.json")
         )
+        # create parent directories if they don't exist
+        final_annotation_path.parent.mkdir(parents=True, exist_ok=True)
+
         if not final_annotation_path.exists():
             subprocess.run(
                 [
