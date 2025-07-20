@@ -61,7 +61,7 @@ jobs:
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
-          feedback-forensics model-comparison \
+          ff-model-comparison \
             --prompts-file ${{ env.VERSION_PATH }}/prompts.json \
             --models ${{ env.MODELS }} \
             --reference-models ${{ env.REFERENCE_MODELS }} \
