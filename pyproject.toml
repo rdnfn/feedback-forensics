@@ -91,6 +91,7 @@ feedback-forensics = "feedback_forensics.app.main:run"
 ff-annotate = "feedback_forensics.tools.ff_annotate:run"
 ff-hfspace-rebuild = "feedback_forensics.tools.ff_hfspace_rebuild:main"
 ff-data = "feedback_forensics.tools.ff_data:run"
+ff-model-comparison = "feedback_forensics.tools.ff_model_comparison:run"
 
 [tool.pytest.ini_options]
 pythonpath = "."
