@@ -36,13 +36,21 @@ jobs:
         run: |
           pip install -e .
 
-      - name: Clone HF dataset via https with hf token
+      - name: Configure git for Hugging Face authentication
         env:
           HF_TOKEN: ${{ secrets.HF_MODEL_PERSONALITY_TOKEN }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git clone https://rdnfn:$HF_TOKEN@huggingface.co/datasets/${{ env.HF_DATASET }} hf-dataset
+          git config --global credential.helper store
+          # Create credentials file with restricted permissions
+          touch ~/.git-credentials
+          chmod 600 ~/.git-credentials
+          echo "https://rdnfn:$HF_TOKEN@huggingface.co" > ~/.git-credentials
+
+      - name: Clone HF dataset
+        run: |
+          git clone https://huggingface.co/datasets/${{ env.HF_DATASET }} hf-dataset
 
       - name: Install additional dependencies
         run: |
@@ -61,14 +69,21 @@ jobs:
 
       - name: Commit and push results
         working-directory: hf-dataset
-        env:
-          HF_TOKEN: ${{ secrets.HF_MODEL_PERSONALITY_TOKEN }}
         run: |
           git add .
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
             JOB_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            git commit -m "GH Action: Update model comparison data $(date '+%Y-%m-%d %H:%M:%S', $JOB_URL)"
-            git push https://rdnfn:$HF_MODEL_PERSONALITY_TOKEN@huggingface.co/datasets/${{ env.HF_DATASET }}
+            git commit -m "GH Action: Update model comparison data $(date '+%Y-%m-%d %H:%M:%S'), $JOB_URL"
+            git push origin main
           fi
+
+      - name: Cleanup credentials
+        if: always()
+        run: |
+          # Remove credentials file and reset git config
+          rm -f ~/.git-credentials
+          git config --global --unset credential.helper || true
+          # Clear any cached credentials
+          git credential-cache exit 2>/dev/null || true
