@@ -18,8 +18,8 @@ env:
   HF_DATASET: "rdnfn/ff-model-personality"
   VERSION_PATH: "data/v1"
   # Models must be space separated
-  MODELS: openai/gpt-4o-2024-11-20 openrouter/openai/gpt-4.1-mini openrouter/x-ai/grok-4
-  REFERENCE_MODELS: openai/gpt-4o-2024-11-20
+  MODELS: openrouter/openai/gpt-4o-2024-11-20 openrouter/openai/gpt-4.1-mini openrouter/x-ai/grok-4
+  REFERENCE_MODELS: openrouter/openai/gpt-4o-2024-11-20
 
 jobs:
   update-hf-model-comparison-data:
@@ -81,7 +81,7 @@ jobs:
             echo "No changes to commit"
           else
             JOB_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            git commit -m "GH Action: Update model comparison data $(date '+%Y-%m-%d %H:%M:%S'), $JOB_URL"
+            git commit -m "GH Action: Update data" -m "$(date '+%Y-%m-%d %H:%M:%S'), $JOB_URL"
             git push origin main
           fi
 
@@ -90,7 +90,7 @@ jobs:
         working-directory: hf-dataset
         run: |
           git add .
-          git commit -m "GH Action: Update model comparison data (failure)"
+          git commit -m "GH Action: Update data (failure)" -m "$(date '+%Y-%m-%d %H:%M:%S'), $JOB_URL"
           git push origin HEAD:backup-$(date '+%Y-%m-%d')
 
       - name: Cleanup credentials
