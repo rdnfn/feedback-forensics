@@ -38,7 +38,7 @@ jobs:
 
       - name: Clone HF dataset via https with hf token
         env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_TOKEN: ${{ secrets.HF_MODEL_PERSONALITY_TOKEN }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
@@ -62,7 +62,7 @@ jobs:
       - name: Commit and push results
         working-directory: hf-dataset
         env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_TOKEN: ${{ secrets.HF_MODEL_PERSONALITY_TOKEN }}
         run: |
           git add .
           if git diff --staged --quiet; then
@@ -70,5 +70,5 @@ jobs:
           else
             JOB_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             git commit -m "GH Action: Update model comparison data $(date '+%Y-%m-%d %H:%M:%S', $JOB_URL)"
-            git push https://rdnfn:$HF_TOKEN@huggingface.co/datasets/${{ env.HF_DATASET }}
+            git push https://rdnfn:$HF_MODEL_PERSONALITY_TOKEN@huggingface.co/datasets/${{ env.HF_DATASET }}
           fi
