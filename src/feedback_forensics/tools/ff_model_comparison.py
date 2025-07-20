@@ -6,6 +6,7 @@ import asyncio
 import pathlib
 import pandas as pd
 import subprocess
+import shutil
 import feedback_forensics.tools.ff_modelgen as modelgen
 from loguru import logger
 
@@ -32,8 +33,14 @@ def create_pairwise_datasets(
         if model_name in reference_models:
             continue  # Skip self-comparison
 
-        logger.info(f"Creating pairwise dataset for {model_name}")
+        filename = f"{model_name.replace('/', '_')}.csv"
+        if (save_path / filename).exists():
+            logger.info(
+                f"Pairwise dataset already exists for {model_name}. Skipping..."
+            )
+            continue
 
+        logger.info(f"Creating pairwise dataset for {model_name}")
         data = []
         model_gens = generations[model_name]
 
@@ -59,9 +66,10 @@ def create_pairwise_datasets(
         # Save pairwise dataset
         if data:
             df = pd.DataFrame(data)
-            filename = f"{model_name.replace('/', '_')}.csv"
             df.to_csv(save_path / filename, index=False)
             logger.info(f"Saved {len(data)} comparisons to {save_path / filename}")
+        else:
+            logger.warning(f"No data to save for {model_name} vs {reference_models}")
 
 
 def compare_models(
@@ -123,19 +131,32 @@ def compare_models(
     ### STAGE 3: annotation ###
     logger.info("Stage 3: Annotating pairwise datasets")
     # Annotate each pairwise dataset
-    annotation_dir = pathlib.Path(output_path) / "annotations"
+    annotation_tmp_dir = pathlib.Path(output_path) / "tmp" / "annotations"
+    annotation_tmp_dir.mkdir(parents=True, exist_ok=True)
 
     for csv_file in pairwise_path.glob("*.csv"):
         logger.info(f"Annotating {csv_file}")
-        subprocess.run(
-            [
-                "ff-annotate",
-                "--datapath",
-                str(csv_file),
-                "--output-dir",
-                str(annotation_dir / csv_file.stem),
-            ],
-            check=True,
+        tmp_output_dir = annotation_tmp_dir / csv_file.stem
+        final_annotation_path = (
+            pathlib.Path(output_path) / "annotations" / csv_file.stem + "_ap.json"
         )
+        if not final_annotation_path.exists():
+            subprocess.run(
+                [
+                    "ff-annotate",
+                    "--datapath",
+                    str(csv_file),
+                    "--output-dir",
+                    str(tmp_output_dir),
+                ],
+                check=True,
+            )
+            # Move the annotation to the final output path
+            shutil.copyfile(
+                src=tmp_output_dir / "results" / "070_annotations_train_ap.json",
+                dst=final_annotation_path,
+            )
+        else:
+            logger.info(f"Annotation already exists for {csv_file}. Skipping...")
 
     logger.info(f"Comparison complete. Results in {output_path}")
