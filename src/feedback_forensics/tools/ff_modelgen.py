@@ -237,5 +237,7 @@ def load_generations(output_path: str, model_name: str):
     """Load generations from output path."""
 
     output_path = pathlib.Path(output_path)
-    output_file = output_path / "generations" / (model_name + ".jsonl")
+    output_file = (
+        output_path / "generations" / (model_name.replace("/", "_") + ".jsonl")
+    )
     return pd.read_json(output_file, lines=True)
