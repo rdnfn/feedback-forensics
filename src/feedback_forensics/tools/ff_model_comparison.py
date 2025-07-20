@@ -181,9 +181,9 @@ def compare_models(
                 + ", ".join(reference_models)
                 + " as reference model(s).",
             )
-    save_ap(combined_ap, final_annotations_dir / "model_comparison_ap.json")
+    save_ap(combined_ap, final_annotations_dir / "combined_ap.json")
     logger.info(
-        f"Saved combined annotation to {final_annotations_dir / 'model_comparison_ap.json'}"
+        f"Saved combined annotation to {final_annotations_dir / 'combined_ap.json'}"
     )
 
     logger.info(f"Comparison complete. Results in {output_path}")
@@ -264,10 +264,12 @@ def run():
             reference_models=args.reference_models,
             output_path=args.output_path,
         )
-        logger.success("Model comparison completed successfully!")
+        logger.success(
+            f"Model personality comparison data generated successfully! To see results, run\n   feedback-forensics -d {args.output_path}/annotations/combined_ap.json"
+        )
         return 0
     except Exception as e:
-        logger.error(f"Model comparison failed: {e}")
+        logger.error(f"Model personality comparison data generation failed: {e}")
         return 1
 
 
