@@ -11,6 +11,7 @@ import feedback_forensics.tools.ff_modelgen as modelgen
 from loguru import logger
 import argparse
 import json
+from feedback_forensics.data.operations import load_ap, save_ap, merge_ap, csv_to_ap
 
 
 def create_pairwise_datasets(
@@ -134,16 +135,14 @@ def compare_models(
     logger.info("Stage 3: Annotating pairwise datasets")
     # Annotate each pairwise dataset
     annotation_tmp_dir = pathlib.Path(output_path) / "tmp" / "annotations"
+    final_annotations_dir = pathlib.Path(output_path) / "annotations"
     annotation_tmp_dir.mkdir(parents=True, exist_ok=True)
+    final_annotations_dir.mkdir(parents=True, exist_ok=True)
 
     for csv_file in pairwise_path.glob("*.csv"):
         logger.info(f"Annotating {csv_file}")
         tmp_output_dir = annotation_tmp_dir / csv_file.stem
-        final_annotation_path = (
-            pathlib.Path(output_path) / "annotations" / (csv_file.stem + "_ap.json")
-        )
-        # create parent directories if they don't exist
-        final_annotation_path.parent.mkdir(parents=True, exist_ok=True)
+        final_annotation_path = final_annotations_dir / (csv_file.stem + "_ap.json")
 
         if not final_annotation_path.exists():
             subprocess.run(
@@ -163,6 +162,29 @@ def compare_models(
             )
         else:
             logger.info(f"Annotation already exists for {csv_file}. Skipping...")
+
+    # Merge annotations
+    logger.info("Merging annotations")
+
+    ap_files = list(final_annotations_dir.glob("*.json"))
+    ap_files = [load_ap(file) for file in ap_files]
+    combined_ap = ap_files[0]
+    if len(ap_files) > 1:
+        for ap_file in ap_files[1:]:
+            combined_ap = merge_ap(
+                combined_ap,
+                ap_file,
+                dataset_name="Model Comparison",
+                description="Model Comparison between "
+                + ", ".join(model_names)
+                + ". Using "
+                + ", ".join(reference_models)
+                + " as reference model(s).",
+            )
+    save_ap(combined_ap, final_annotations_dir / "model_comparison_ap.json")
+    logger.info(
+        f"Saved combined annotation to {final_annotations_dir / 'model_comparison_ap.json'}"
+    )
 
     logger.info(f"Comparison complete. Results in {output_path}")
 
