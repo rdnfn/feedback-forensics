@@ -174,8 +174,8 @@ def compare_models(
             combined_ap = merge_ap(
                 combined_ap,
                 ap_file,
-                dataset_name="Model Comparison",
-                description="Model Comparison between "
+                dataset_name="Model Personality Comparison",
+                description="Model Personality Comparison dataset between "
                 + ", ".join(model_names)
                 + ". Using "
                 + ", ".join(reference_models)
