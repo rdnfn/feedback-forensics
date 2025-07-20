@@ -257,20 +257,16 @@ def run():
         logger.error("No prompts provided")
         return 1
 
-    try:
-        compare_models(
-            prompts=prompts,
-            model_names=args.models,
-            reference_models=args.reference_models,
-            output_path=args.output_path,
-        )
-        logger.success(
-            f"Model personality comparison data generated successfully! To see results, run\n   feedback-forensics -d {args.output_path}/annotations/combined_ap.json"
-        )
-        return 0
-    except Exception as e:
-        logger.error(f"Model personality comparison data generation failed: {e}")
-        return 1
+    compare_models(
+        prompts=prompts,
+        model_names=args.models,
+        reference_models=args.reference_models,
+        output_path=args.output_path,
+    )
+    logger.success(
+        f"Model personality comparison data generated successfully! To see results, run\n   feedback-forensics -d {args.output_path}/annotations/combined_ap.json"
+    )
+    return 0
 
 
 if __name__ == "__main__":
