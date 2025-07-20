@@ -5,6 +5,7 @@ Uses generations created by ff_modelgen."""
 import asyncio
 import pathlib
 import pandas as pd
+import subprocess
 import feedback_forensics.tools.ff_modelgen as modelgen
 from loguru import logger
 
@@ -28,13 +29,39 @@ def create_pairwise_datasets(
 
     # Create pairwise dataset for each model against the reference models
     for model_name in model_names:
+        if model_name in reference_models:
+            continue  # Skip self-comparison
+
         logger.info(f"Creating pairwise dataset for {model_name}")
 
         data = []
+        model_gens = generations[model_name]
 
         for reference_model in reference_models:
-            # Load generations for the model
             ref_gens = generations[reference_model]
+
+            # Create pairwise comparisons for each prompt
+            for _, model_row in model_gens.iterrows():
+                prompt = model_row["prompt"]
+                ref_row = ref_gens[ref_gens["prompt"] == prompt].iloc[0]
+
+                if len(ref_row) > 0:
+                    data.append(
+                        {
+                            "prompt": prompt,
+                            "text_a": model_row["response"],
+                            "text_b": ref_row["response"],
+                            "model_a": model_name,
+                            "model_b": reference_model,
+                        }
+                    )
+
+        # Save pairwise dataset
+        if data:
+            df = pd.DataFrame(data)
+            filename = f"{model_name.replace('/', '_')}.csv"
+            df.to_csv(save_path / filename, index=False)
+            logger.info(f"Saved {len(data)} comparisons to {save_path / filename}")
 
 
 def compare_models(
@@ -60,24 +87,18 @@ def compare_models(
     logger.info(f"Number of prompts: {len(prompts)}")
 
     # Sanity checks
-
-    # Make sure all reference models are in model_names
     for reference_model in reference_models:
         assert (
             reference_model in model_names
         ), f"Reference model {reference_model} not in model_names"
 
-    # Make sure model_names are unique
     assert len(model_names) == len(set(model_names)), "Model names must be unique"
-
-    # Make sure reference_models are unique
     assert len(reference_models) == len(
         set(reference_models)
     ), "Reference models must be unique"
-
-    # Make sure prompts are unique
     assert len(prompts) == len(set(prompts)), "Prompts must be unique"
 
+    ### STAGE 1: Generation ###
     logger.info(f"Stage 1: Creating generations for {model_names}")
 
     # Create generations for each model
@@ -94,5 +115,27 @@ def compare_models(
     for model_name in model_names:
         generations[model_name] = modelgen.load_generations(output_path, model_name)
 
-    # Create pairwise dataset for each model against the reference models
-    create_pairwise_datasets(model_names, reference_models, generations, output_path)
+    ### STAGE 2: pairwise dataset creation ###
+    logger.info("Stage 2: Creating pairwise datasets")
+    pairwise_path = pathlib.Path(output_path) / "tmp" / "pairwise_datasets"
+    create_pairwise_datasets(model_names, reference_models, generations, pairwise_path)
+
+    ### STAGE 3: annotation ###
+    logger.info("Stage 3: Annotating pairwise datasets")
+    # Annotate each pairwise dataset
+    annotation_dir = pathlib.Path(output_path) / "annotations"
+
+    for csv_file in pairwise_path.glob("*.csv"):
+        logger.info(f"Annotating {csv_file}")
+        subprocess.run(
+            [
+                "ff-annotate",
+                "--datapath",
+                str(csv_file),
+                "--output-dir",
+                str(annotation_dir / csv_file.stem),
+            ],
+            check=True,
+        )
+
+    logger.info(f"Comparison complete. Results in {output_path}")
