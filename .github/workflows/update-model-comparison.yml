@@ -68,7 +68,7 @@ jobs:
             --reference-models ${{ env.REFERENCE_MODELS }} \
             --output-path ${{ env.VERSION_PATH }}
 
-      - name: Clean-up: Remove tmp files
+      - name: "Clean-up (tmp files)"
         working-directory: hf-dataset
         run: |
           rm -rf ${{ env.VERSION_PATH }}/tmp
