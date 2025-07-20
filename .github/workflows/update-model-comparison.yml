@@ -62,7 +62,7 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
           ff-model-comparison \
-            --prompts-file ${{ env.VERSION_PATH }}/prompts.json \
+            --prompts-file ${{ env.VERSION_PATH }}/config/prompts.json \
             --models ${{ env.MODELS }} \
             --reference-models ${{ env.REFERENCE_MODELS }} \
             --output-path ${{ env.VERSION_PATH }}/model-comparison
