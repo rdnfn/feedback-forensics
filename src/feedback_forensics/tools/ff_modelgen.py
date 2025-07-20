@@ -102,7 +102,9 @@ async def run_model_on_prompts_async(
     ```
     """
     output_path = pathlib.Path(output_path)
-    output_file = output_path / "generations" / (model_name + ".jsonl")
+    output_file = (
+        output_path / "generations" / (model_name.replace("/", "_") + ".jsonl")
+    )
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
     # Track stats
