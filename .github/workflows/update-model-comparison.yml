@@ -1,0 +1,71 @@
+name: Update Model Personality Comparison Dataset
+
+# Updates the model comparison dataset by running the
+# model comparison tool for a given prompt set.
+# This workflow will check if any new model has been added
+# and the dataset needs to be updated accordingly.
+
+on:
+  release:
+    types: [published]
+  # allow manual triggering
+  workflow_dispatch:
+
+env:
+  HF_DATASET: "rdnfn/ff-model-personality"
+  VERSION_PATH: "data/test"
+  MODELS: "openrouter/openai/gpt-4o-mini,openrouter/openai/gpt-4.1-mini"
+  REFERENCE_MODELS: "openrouter/openai/gpt-4o-mini"
+
+jobs:
+  update-hf-model-comparison-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install feedback-forensics
+        run: |
+          pip install -e .
+
+      - name: Clone HF dataset via https with hf token
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git clone https://rdnfn:$HF_TOKEN@huggingface.co/datasets/${{ env.HF_DATASET }} hf-dataset
+
+      - name: Install additional dependencies
+        run: |
+          pip install datasets huggingface_hub
+
+      - name: Run model comparison
+        working-directory: hf-dataset
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          feedback-forensics model-comparison \
+            --prompts-file ${{ env.VERSION_PATH }}/prompts.json \
+            --models ${{ env.MODELS }} \
+            --reference-models ${{ env.REFERENCE_MODELS }} \
+            --output-path ${{ env.VERSION_PATH }}/model-comparison
+
+      - name: Commit and push results
+        working-directory: hf-dataset
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git add .
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            JOB_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            git commit -m "GH Action: Update model comparison data $(date '+%Y-%m-%d %H:%M:%S', $JOB_URL)"
+            git push https://rdnfn:$HF_TOKEN@huggingface.co/datasets/${{ env.HF_DATASET }}
+          fi
