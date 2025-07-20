@@ -11,6 +11,7 @@ from typing import List
 import time
 import functools
 import concurrent.futures
+import pandas as pd
 
 
 def run_model_on_prompts(prompts: list[str], model_name: str, output_path: str):
@@ -226,3 +227,11 @@ async def run_model_on_prompts_async(
     print(
         f"Total time: {elapsed:.2f}s, Average: {elapsed/max(1, completed):.2f}s per prompt"
     )
+
+
+def load_generations(output_path: str, model_name: str):
+    """Load generations from output path."""
+
+    output_path = pathlib.Path(output_path)
+    output_file = output_path / "generations" / (model_name + ".jsonl")
+    return pd.read_json(output_file, lines=True)
