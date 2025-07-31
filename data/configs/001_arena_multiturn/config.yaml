@@ -1,0 +1,50 @@
+data_path: "data/output/arena100k_multiturn_2k_english.csv"
+s0_skip_principle_generation: true
+s0_added_standard_principles_to_test:
+  - v4
+annotator:
+  skip: true
+s3_num_seeds_to_reannotate_with: 1
+alg_model: "openrouter/openai/gpt-4o-mini-2024-07-18"
+alg_prompts:
+  voting_prompt: '<|im_start|>system
+
+    Your job is to check which assistant''s responses should be selected according to the given
+    rules. You''re an expert at this.
+
+    <|im_end|>
+
+    <|im_start|>user
+
+    Sample A:
+
+    {sample_a}
+
+
+    Sample B:
+
+    {sample_b}
+
+
+    Given the samples data above, check for each rule below which assistant''s responses should be
+    selected:
+
+    {summaries}
+
+
+    Answer in json format, e.g. {{0: "A", 1: "B", 2: "None",...}}.
+
+    Put "A" if A is selected according to that rule, and "B" if B is selected. Put
+    "None" if a rule is not applicable to the two assistant''s responses.
+
+    No ties are allowed, only one of "A", "B" or "None".
+
+    Vote for all rules, even if you are unsure.
+
+    DO NOT respond with any text apart from the json format above!
+
+    DO NOT add markdown formatting around JSON.
+
+    ONLY REPLY IN JSON FORMAT
+
+    <|im_end|>'
