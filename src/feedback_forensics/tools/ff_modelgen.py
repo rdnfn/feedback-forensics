@@ -2,6 +2,7 @@
 
 import pathlib
 import json
+from datetime import datetime
 from tqdm import tqdm
 import inverse_cai.models
 import inverse_cai.data.annotated_pairs_format
@@ -11,6 +12,7 @@ from typing import List
 import time
 import functools
 import concurrent.futures
+import pandas as pd
 
 
 def run_model_on_prompts(prompts: list[str], model_name: str, output_path: str):
@@ -101,7 +103,9 @@ async def run_model_on_prompts_async(
     ```
     """
     output_path = pathlib.Path(output_path)
-    output_file = output_path / "generations" / (model_name + ".jsonl")
+    output_file = (
+        output_path / "generations" / (model_name.replace("/", "_") + ".jsonl")
+    )
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
     # Track stats
@@ -165,6 +169,7 @@ async def run_model_on_prompts_async(
                 "response": generation.content,
                 "full_response": dict(generation),
                 "model": model_name,
+                "timestamp": datetime.now().isoformat(),
             }
 
             # Write the record to the file with lock to prevent race conditions
@@ -226,3 +231,13 @@ async def run_model_on_prompts_async(
     print(
         f"Total time: {elapsed:.2f}s, Average: {elapsed/max(1, completed):.2f}s per prompt"
     )
+
+
+def load_generations(output_path: str, model_name: str):
+    """Load generations from output path."""
+
+    output_path = pathlib.Path(output_path)
+    output_file = (
+        output_path / "generations" / (model_name.replace("/", "_") + ".jsonl")
+    )
+    return pd.read_json(output_file, lines=True)

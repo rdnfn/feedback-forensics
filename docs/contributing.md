@@ -48,3 +48,10 @@ If you want to test and compile the docs locally, run:
 ```bash
 jupyter-book build docs/
 ```
+
+### Update HF Model Personality dataset
+
+The HuggingFace dataset [rdnfn/ff-model-personality](https://huggingface.co/datasets/rdnfn/ff-model-personality) is updated via a GitHub action in the [Feedback Forensics repo](https://github.com/rdnfn/feedback-forensics). By configuring the action script, you can add new models to the dataset - e.g. following a new model release. All models available via openrouter are supported. The following steps are required to add a new model:
+
+1. Add the new model to the `.github/workflows/update-model-comparison.yml` config file under the `env.MODELS` parameter. Note that models need to be separated by a *space* (not a comma).
+2. Merge the change onto the `main` branch (i.e. by opening and merging a PR). Once a new FF version is released, the new model will be added to the dataset. Alternatively, you can request an FF maintainer to manually trigger a dataset update ahead of the next release.

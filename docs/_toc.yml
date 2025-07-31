@@ -23,6 +23,8 @@ chapters:
       title: "Tested personality traits ✍️"
     - file: advanced/datasets
       title: Dataset operations 🗂️
+    - file: advanced/intervals
+    - file: advanced/correlation
 - file: method/index.md
   title: Method 📏
   sections:

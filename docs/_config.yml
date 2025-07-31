@@ -9,6 +9,9 @@ logo: ../src/feedback_forensics/assets/feedback_forensics_logo.png
 execute:
   execute_notebooks: cache
   timeout: 60
+  exclude:
+    - advanced/correlation.ipynb
+    - advanced/error_bars.ipynb
 
 # Define the name of the latex output file for PDF builds
 latex:

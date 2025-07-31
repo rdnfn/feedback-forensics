@@ -1,0 +1,107 @@
+name: Update Model Personality Comparison Dataset
+
+# Updates the model comparison dataset by running the
+# model comparison tool for a given prompt set.
+# This workflow will check if any new model has been added
+# and the dataset needs to be updated accordingly.
+
+on:
+  push:
+    branches:
+      - staging
+  release:
+    types: [published]
+  # allow manual triggering
+  workflow_dispatch:
+
+env:
+  HF_DATASET: "rdnfn/ff-model-personality"
+  VERSION_PATH: "data/v1"
+  # Models must be space separated
+  MODELS: openrouter/openai/gpt-4o-2024-11-20 openrouter/openai/gpt-4.1-mini openrouter/x-ai/grok-4 openrouter/google/gemini-2.5-pro openrouter/moonshotai/kimi-k2 openrouter/meta-llama/llama-4-maverick openrouter/mistralai/magistral-medium-2506 openrouter/anthropic/claude-sonnet-4 #openrouter/mistralai/devstral-medium openrouter/deepseek/deepseek-chat-v3-0324
+  REFERENCE_MODELS: openrouter/openai/gpt-4o-2024-11-20
+
+jobs:
+  update-hf-model-comparison-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install feedback-forensics
+        run: |
+          pip install -e .
+
+      - name: Enable git lfs
+        run: |
+          git lfs install
+
+      - name: Configure git for Hugging Face authentication
+        env:
+          HF_TOKEN: ${{ secrets.HF_MODEL_PERSONALITY_TOKEN }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global credential.helper store
+          # Create credentials file with restricted permissions
+          touch ~/.git-credentials
+          chmod 600 ~/.git-credentials
+          echo "https://rdnfn:$HF_TOKEN@huggingface.co" > ~/.git-credentials
+
+      - name: Clone HF dataset
+        run: |
+          git clone https://huggingface.co/datasets/${{ env.HF_DATASET }} hf-dataset
+
+      - name: Install additional dependencies
+        run: |
+          pip install datasets huggingface_hub
+
+      - name: Run model comparison
+        working-directory: hf-dataset
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          ff-model-comparison \
+            --prompts-file ${{ env.VERSION_PATH }}/config/prompts.json \
+            --models ${{ env.MODELS }} \
+            --reference-models ${{ env.REFERENCE_MODELS }} \
+            --output-path ${{ env.VERSION_PATH }}
+
+      - name: "Clean-up (tmp files)"
+        working-directory: hf-dataset
+        run: |
+          rm -rf ${{ env.VERSION_PATH }}/tmp
+
+      - name: Commit and push results
+        working-directory: hf-dataset
+        run: |
+          git add .
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            JOB_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            git commit -m "GH Action: Update data" -m "$(date '+%Y-%m-%d %H:%M:%S'), $JOB_URL"
+            git push origin main
+          fi
+
+      - name: Commit and push backup results (failure)
+        if: failure() || cancelled()
+        working-directory: hf-dataset
+        run: |
+          git add .
+          git commit -m "GH Action: Update data (failure)" -m "$(date '+%Y-%m-%d %H:%M:%S'), $JOB_URL"
+          git push origin HEAD:backup-$(date '+%Y-%m-%d-%H-%M-%S')
+
+      - name: Cleanup credentials
+        if: always()
+        run: |
+          # Remove credentials file and reset git config
+          rm -f ~/.git-credentials
+          git config --global --unset credential.helper || true
+          # Clear any cached credentials
+          git credential-cache exit 2>/dev/null || true
