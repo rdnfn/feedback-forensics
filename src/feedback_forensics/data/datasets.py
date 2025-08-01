@@ -30,22 +30,6 @@ class BuiltinDataset:
         )
 
 
-@dataclass
-class Config:
-    """Class to represent a configuration."""
-
-    name: str
-    show_individual_prefs: bool = False
-    pref_order: str = "By reconstruction success"
-    plot_col_name: str = NONE_SELECTED_VALUE
-    plot_col_values: list = field(default_factory=lambda: [NONE_SELECTED_VALUE])
-    filter_col: str = NONE_SELECTED_VALUE
-    filter_value: str = NONE_SELECTED_VALUE
-    filter_col_2: str = NONE_SELECTED_VALUE
-    filter_value_2: str = NONE_SELECTED_VALUE
-    metrics: list = field(default_factory=lambda: ["perf", "relevance", "acc"])
-
-
 # Builtin datasets
 
 ANTHROPIC_HELPFUL = BuiltinDataset(
@@ -136,19 +120,6 @@ _BUILTIN_DATASETS = [
 ]
 
 _available_datasets = []
-
-
-# utility functions
-def get_config_from_name(name: str, config_options: list) -> Config:
-    """Get a configuration from its name."""
-    if name == NONE_SELECTED_VALUE or name is None:  # default config
-        return Config(name=name)
-
-    for config in config_options:
-        if config.name == name:
-            return config
-
-    raise ValueError(f"Configuration with name '{name}' not found.")
 
 
 def get_dataset_from_name(name: str) -> BuiltinDataset:
