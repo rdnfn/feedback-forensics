@@ -1,10 +1,11 @@
 """Module with configurations for built-in datasets."""
 
 from dataclasses import dataclass, field
-from loguru import logger
 import pathlib
 import re
-from feedback_forensics.app.constants import NONE_SELECTED_VALUE, DEFAULT_DATASET_NAMES
+from loguru import logger
+
+from feedback_forensics.app.constants import DEFAULT_DATASET_NAMES
 from feedback_forensics.data.fetcher import load_icai_data, DATA_DIR
 
 
