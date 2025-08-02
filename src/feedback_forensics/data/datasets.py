@@ -31,52 +31,11 @@ class BuiltinDataset:
         )
 
 
-# Builtin datasets
-
-ANTHROPIC_HELPFUL = BuiltinDataset(
-    name="🚑 Anthropic helpful",
-    path=DATA_DIR / "anthropic_helpful",
-    description="5k subsample of human preference pairs favouring helpful responses from RLHF dataset by Anthropic.",
-    source="https://github.com/anthropics/hh-rlhf",
-)
-
-
-ANTHROPIC_HARMLESS = BuiltinDataset(
-    name="🕊️ Anthropic harmless",
-    path=DATA_DIR / "anthropic_harmless",
-    description="5k subsample of human preference pairs favouring harmless responses from RLHF dataset by Anthropic.",
-    source="https://github.com/anthropics/hh-rlhf",
-)
-
 ARENA_V2 = BuiltinDataset(
     name="🏟️ Chatbot Arena",
     path=DATA_DIR / "v2/chatbot_arena.json",
     description="10k subsample of Chatbot Arena dataset (100k) released alongside Arena Explorer work, crowdsourced human annotations from between June and August 2024 in English.",
     source="https://huggingface.co/datasets/lmarena-ai/arena-human-preference-100k",
-)
-
-ALPACA_EVAL_V2 = BuiltinDataset(
-    name="🦙 AlpacaEval",
-    path=DATA_DIR / "alpacaeval_human",
-    description="648 cross-annotated human preference pairs used to validate AlpacaEval annotators.",
-    source="https://huggingface.co/datasets/tatsu-lab/alpaca_eval/",
-)
-
-PRISM_V2 = BuiltinDataset(
-    name="💎 PRISM",
-    path=DATA_DIR / "prism",
-    description="~8k human preference pairs from PRISM dataset, focused on controversial topics with extensive annotator information. Originally four-way annotations, subsampled using 1-of-3 rejected responses to get pairwise preferences.",
-    source="https://huggingface.co/datasets/HannahRoseKirk/prism-alignment",
-    filterable_columns=[
-        "age",
-        "education",
-        "chosen_model",
-        "rejected_model",
-        "conversation_type",
-        "lm_familiarity",
-        "location_reside_region",
-        "english_proficiency",
-    ],
 )
 
 OLMO2_0325 = BuiltinDataset(
@@ -110,10 +69,6 @@ COMPARISON_MODELS = BuiltinDataset(
 # List of all built-in datasets
 _BUILTIN_DATASETS = [
     ARENA_V2,
-    ALPACA_EVAL_V2,
-    PRISM_V2,
-    ANTHROPIC_HELPFUL,
-    ANTHROPIC_HARMLESS,
     OLMO2_0325,
     MULTIPREF,
     LLAMA4_ARENA,
@@ -149,6 +104,7 @@ def get_dataset_from_ap_json(file_path: str | pathlib.Path) -> BuiltinDataset:
 
 def get_datasets_from_dir(dir_path: str | pathlib.Path) -> list[BuiltinDataset]:
     """Get all AnnotatedPairs datasets inside dir."""
+    logger.info(f"Loading datasets from directory: {dir_path}")
     datasets = []
     for file_path in pathlib.Path(dir_path).glob("*.json"):
         dataset = get_dataset_from_ap_json(file_path)
