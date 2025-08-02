@@ -6,7 +6,7 @@ import re
 from loguru import logger
 
 from feedback_forensics.app.constants import DEFAULT_DATASET_NAMES
-from feedback_forensics.data.fetcher import load_icai_data, DATA_DIR
+from feedback_forensics.data.fetcher import download_web_datasets, DATA_DIR
 from feedback_forensics.data.dataset_utils import get_first_json_key_value
 
 
@@ -30,50 +30,6 @@ class BuiltinDataset:
             .strip(" _-")
         )
 
-
-ARENA_V2 = BuiltinDataset(
-    name="🏟️ Chatbot Arena",
-    path=DATA_DIR / "v2/chatbot_arena.json",
-    description="10k subsample of Chatbot Arena dataset (100k) released alongside Arena Explorer work, crowdsourced human annotations from between June and August 2024 in English.",
-    source="https://huggingface.co/datasets/lmarena-ai/arena-human-preference-100k",
-)
-
-OLMO2_0325 = BuiltinDataset(
-    name="🏋️ OLMo-2 0325 pref-mix",
-    path=DATA_DIR / "olmo2-0325-32b",
-    description="10k preference pairs subsampled randomly from original 378k pairs used for fine-tuning OLMo 2 model by Ai2. Synthetically generated via multiple different pipelines.",
-    source="https://huggingface.co/datasets/allenai/olmo-2-0325-32b-preference-mix",
-)
-
-MULTIPREF = BuiltinDataset(
-    name="🔄 MultiPref",
-    path=DATA_DIR / "v2/allenai_multipref.json",
-    description="10k preference pairs, each annotated by 4 human annotators as well as GPT-4-based AI annotators. Whilst each pair is annotated by 4 human annotators, these annotators are not identical across all pairs (i.e. more than four annotators overall worked on the dataset).",
-    source="https://huggingface.co/datasets/allenai/multipref",
-)
-
-LLAMA4_ARENA = BuiltinDataset(
-    name="🏟️ Arena (special)",
-    path=DATA_DIR / "arena_llama4.json",
-    description="Llama-4-Maverick-03-26-Experimental arena results, combined with public weights version of Llama-4-Maverick.",
-    source="https://huggingface.co/spaces/lmarena-ai/Llama-4-Maverick-03-26-Experimental_battles/tree/main/data",
-)
-
-COMPARISON_MODELS = BuiltinDataset(
-    name="🤖 Model comparison",
-    path=DATA_DIR / "v2/model_comparison.json",
-    description="Model comparison results across Llama, GPT and Mistral model families.",
-    source="Self-generated.",
-)
-
-# List of all built-in datasets
-_BUILTIN_DATASETS = [
-    ARENA_V2,
-    OLMO2_0325,
-    MULTIPREF,
-    LLAMA4_ARENA,
-    COMPARISON_MODELS,
-]
 
 _available_datasets = []
 
@@ -114,22 +70,6 @@ def get_datasets_from_dir(dir_path: str | pathlib.Path) -> list[BuiltinDataset]:
     return datasets
 
 
-def get_available_builtin_datasets() -> list[BuiltinDataset]:
-    """Get all built-in datasets."""
-    # validate that the relevant data is present for each dataset
-    available_datasets = []
-    for dataset in _BUILTIN_DATASETS:
-        if dataset.path is not None and dataset.path.exists():
-            logger.info(f"Found dataset: {dataset.name} at {dataset.path}")
-            available_datasets.append(dataset)
-        else:
-            if dataset.path is not None:
-                logger.warning(
-                    f"Dataset path does not exist: {dataset.path} for {dataset.name}"
-                )
-    return available_datasets
-
-
 def get_urlname_from_stringname(stringname: str, datasets: list[BuiltinDataset]) -> str:
     """Get the URL name from the string name."""
     for dataset in datasets:
@@ -161,10 +101,10 @@ def load_datasets_from_hf():
 
     # Try to load the datasets from HuggingFace
     logger.info("Attempting to load datasets from HuggingFace...")
-    success = load_icai_data()
+    success = download_web_datasets()
 
-    # Refresh the available datasets
-    _available_datasets += get_available_builtin_datasets()
+    if success:
+        _available_datasets += get_datasets_from_dir(DATA_DIR / "data" / "main")
 
     loaded_count = len(_available_datasets)
     if success and loaded_count > 0:
