@@ -24,14 +24,16 @@ def clone_repo(username, repo_name, clone_directory, provider="github.com", toke
     repo_name (str): Name of the repository to be cloned
     clone_directory (str): Local directory where the repository should be cloned
     """
-    # ensure the clone directory exists
-    dir_exists = os.path.exists(clone_directory / repo_name)
+    logger.info(
+        f"Attempting to clone repository {username}/{repo_name} from {provider}..."
+    )
 
-    if dir_exists:
+    # check if already cloned
+    if os.path.exists(clone_directory / repo_name):
         logger.info(
             f"Standard data repository '{repo_name}' already exists in '{clone_directory}'. Skipping loading data from repo. Delete directory to re-clone standard data."
         )
-        return None
+        return False
 
     # check if git-lfs is installed
     if not shutil.which("git-lfs"):
@@ -41,51 +43,23 @@ def clone_repo(username, repo_name, clone_directory, provider="github.com", toke
                 "Check https://github.com/git-lfs/git-lfs for installation instructions."
             )
         )
-        return None
+        return False
 
     pathlib.Path(clone_directory).mkdir(parents=True, exist_ok=True)
 
-    # Form the complete GitHub URL with credentials
+    # set up git url
     if token:
         logger.info("Using token and https to clone data from repository.")
         git_url = f"https://{username}:{token}@{provider}/{username}/{repo_name}.git"
-        # Execute the git clone command
-        subprocess.run(
-            [f"git clone {git_url}"], shell=True, check=True, cwd=clone_directory
-        )
     else:
         logger.info("Using https to clone data from repository.")
         git_url = f"https://{provider}/{username}/{repo_name}.git"
 
+    try:
         subprocess.run(
             [f"git clone {git_url}"], shell=True, check=True, cwd=clone_directory
         )
-    logger.info("Data loaded from repo successfully.")
-
-
-def download_web_datasets():
-    """
-    Load the public results from HuggingFace repository.
-    """
-    # Define the repository name
-    username = REPO_USERNAME
-    repo_name = REPO_NAME
-
-    # Define the local directory where the repository should be cloned
-    # get package directory
-    clone_directory = CLONE_DIR
-
-    try:
-        # Clone the repository
-        logger.info(
-            f"Attempting to clone repository {username}/{repo_name} from {REPO_PROVIDER}..."
-        )
-        clone_repo(
-            username=username,
-            repo_name=repo_name,
-            clone_directory=clone_directory,
-            provider=REPO_PROVIDER,
-        )
+        logger.info("Data loaded from repo successfully.")
         return True
     except Exception as e:
         logger.error(
