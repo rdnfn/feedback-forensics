@@ -23,6 +23,13 @@ def run():
         action="append",
         help="Path to AnnotatedPairs dataset to analyse. Can be used multiple times (e.g. -d path1 -d path2).",
     )
+    parser.add_argument(
+        "--dir",
+        type=str,
+        action="append",
+        help="Path to directory containing AnnotatedPairs datasets to analyse. Will be recursively searched for .json files. Can be used multiple times (e.g. --dir dirpath1 --dir dirpath2).",
+    )
+
     args = parser.parse_args()
 
     # Try to load local datasets if provided
@@ -33,7 +40,12 @@ def run():
             )
             if local_dataset is not None:
                 feedback_forensics.data.datasets.add_dataset(local_dataset)
-                logger.info(f"Added dataset provided via -d/--datapath ({datapath}).")
+
+    if args.dir:
+        for dirpath in args.dir:
+            datasets = feedback_forensics.data.datasets.get_datasets_from_dir(dirpath)
+            for dataset in datasets:
+                feedback_forensics.data.datasets.add_dataset(dataset)
 
     if HF_TOKEN:
         logger.info("HF_TOKEN found. Attempting to load HuggingFace datasets...")
