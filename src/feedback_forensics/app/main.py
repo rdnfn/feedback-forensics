@@ -29,6 +29,11 @@ def run():
         action="append",
         help="Path to directory containing AnnotatedPairs datasets to analyse. Will be recursively searched for .json files. Can be used multiple times (e.g. --dir dirpath1 --dir dirpath2).",
     )
+    parser.add_argument(
+        "--load-web-datasets",
+        action="store_true",
+        help="Load datasets from HuggingFace. Does not require HF_TOKEN to be set.",
+    )
 
     args = parser.parse_args()
 
@@ -47,9 +52,9 @@ def run():
             for dataset in datasets:
                 feedback_forensics.data.datasets.add_dataset(dataset)
 
-    if HF_TOKEN:
-        logger.info("HF_TOKEN found. Attempting to load HuggingFace datasets...")
-        loaded_count = feedback_forensics.data.datasets.load_datasets_from_hf()
+    if args.load_web_datasets:
+        logger.info("Loading web datasets from HuggingFace...")
+        feedback_forensics.data.datasets.load_datasets_from_hf()
     else:
         logger.info("Note: only local datasets will be loaded.")
 
