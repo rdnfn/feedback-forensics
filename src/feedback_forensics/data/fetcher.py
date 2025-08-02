@@ -9,12 +9,12 @@ from feedback_forensics.app.constants import HF_TOKEN
 
 CLONE_DIR = pathlib.Path("forensics-data")
 REPO_USERNAME = "rdnfn"
-REPO_NAME = "feedback-forensics-public-results"
+REPO_NAME = "ff-app-data"
 REPO_PROVIDER = "huggingface.co/datasets"
 DATA_DIR = CLONE_DIR / REPO_NAME
 
 
-def clone_repo(username, token, repo_name, clone_directory, provider="github.com"):
+def clone_repo(username, repo_name, clone_directory, provider="github.com", token=None):
     """
     Clones a GitHub repository into a specified directory using subprocess.
 
@@ -54,16 +54,16 @@ def clone_repo(username, token, repo_name, clone_directory, provider="github.com
             [f"git clone {git_url}"], shell=True, check=True, cwd=clone_directory
         )
     else:
-        # try via ssh
-        logger.info("Using SSH to clone data from repository.")
-        git_url = f"git@{provider}:{username}/{repo_name}.git"
+        logger.info("Using https to clone data from repository.")
+        git_url = f"https://{provider}/{username}/{repo_name}.git"
+
         subprocess.run(
             [f"git clone {git_url}"], shell=True, check=True, cwd=clone_directory
         )
     logger.info("Data loaded from repo successfully.")
 
 
-def load_icai_data():
+def download_web_datasets():
     """
     Load the public results from HuggingFace repository.
     """
@@ -75,22 +75,15 @@ def load_icai_data():
     # get package directory
     clone_directory = CLONE_DIR
 
-    if not HF_TOKEN:
-        logger.warning(
-            "HF_TOKEN environment variable not set. Cannot load datasets from HuggingFace."
-        )
-        return False
-
     try:
         # Clone the repository
         logger.info(
             f"Attempting to clone repository {username}/{repo_name} from {REPO_PROVIDER}..."
         )
         clone_repo(
-            username,
-            HF_TOKEN,
-            repo_name,
-            clone_directory,
+            username=username,
+            repo_name=repo_name,
+            clone_directory=clone_directory,
             provider=REPO_PROVIDER,
         )
         return True
