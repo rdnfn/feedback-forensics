@@ -219,6 +219,15 @@ def get_votes_dict_from_annotated_pairs_json(results_path: pathlib.Path) -> dict
     # create dataframe
     full_df = pd.DataFrame(comparisons_data)
 
+    # drop duplicates
+    duplicates = full_df[full_df["comparison_id"].duplicated(keep=False)]
+    unique_duplicates = duplicates["comparison_id"].unique()
+    if len(duplicates) > 0:
+        logger.warning(
+            f"Dropping {len(duplicates) - len(unique_duplicates)} duplicate comparisons (same id, potentially different metadata). Fraction affected: {100 * (len(duplicates) / len(full_df)):.4f}%. Affected comparison_id's: {unique_duplicates}"
+        )
+        full_df = full_df.drop_duplicates(subset=["comparison_id"])
+
     # Create annotator metadata
     annotator_metadata = {}
     principle_annotator_cols = []
