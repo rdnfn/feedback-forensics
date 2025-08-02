@@ -4,7 +4,7 @@ import gradio as gr
 from loguru import logger
 
 import feedback_forensics.app.interface as interface
-from feedback_forensics.app.constants import USERNAME, PASSWORD, HF_TOKEN
+from feedback_forensics.app.constants import USERNAME, PASSWORD, HF_TOKEN, WEBAPP_MODE
 import feedback_forensics.data.datasets
 
 # make gradio work offline
@@ -52,11 +52,15 @@ def run():
             for dataset in datasets:
                 feedback_forensics.data.datasets.add_dataset(dataset)
 
-    if args.load_web_datasets:
+    if args.load_web_datasets or WEBAPP_MODE:
         logger.info("Loading web datasets from HuggingFace...")
-        feedback_forensics.data.datasets.load_datasets_from_hf()
+        feedback_forensics.data.datasets.load_standard_web_datasets()
     else:
         logger.info("Note: only local datasets will be loaded.")
+
+    if WEBAPP_MODE:
+        logger.info("Loading special webapp datasets from HuggingFace...")
+        feedback_forensics.data.datasets.load_webapp_datasets()
 
     # Get the current available datasets
     available_datasets = feedback_forensics.data.datasets.get_available_datasets()

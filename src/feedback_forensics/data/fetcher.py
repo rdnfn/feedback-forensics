@@ -4,15 +4,6 @@ import shutil
 import pathlib
 from loguru import logger
 
-from feedback_forensics.app.constants import HF_TOKEN
-
-
-CLONE_DIR = pathlib.Path("forensics-data")
-REPO_USERNAME = "rdnfn"
-REPO_NAME = "ff-app-data"
-REPO_PROVIDER = "huggingface.co/datasets"
-DATA_DIR = CLONE_DIR / REPO_NAME
-
 
 def clone_repo(username, repo_name, clone_directory, provider="github.com", token=None):
     """

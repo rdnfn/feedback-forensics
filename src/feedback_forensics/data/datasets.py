@@ -5,8 +5,8 @@ import pathlib
 import re
 from loguru import logger
 
-from feedback_forensics.app.constants import DEFAULT_DATASET_NAMES
-from feedback_forensics.data.fetcher import download_web_datasets, DATA_DIR
+from feedback_forensics.app.constants import DEFAULT_DATASET_NAMES, DATA_DIR, HF_TOKEN
+from feedback_forensics.data.fetcher import clone_repo
 from feedback_forensics.data.dataset_utils import get_first_json_key_value
 
 
@@ -88,40 +88,76 @@ def get_stringname_from_urlname(urlname: str, datasets: list[BuiltinDataset]) ->
     return None
 
 
-def load_datasets_from_hf():
+def load_datasets_from_repo(
+    repo_username: str,
+    repo_name: str,
+    repo_provider: str,
+    token: str | None = None,
+    data_extraction_subdir: str | None = None,
+):
     """
-    Load datasets from HuggingFace.
+    Load datasets from git repo, e.g. on HuggingFace (HF).
 
-    This function attempts to clone the HuggingFace repository containing datasets.
+    Args:
+        repo_username (str): Username of repo
+        repo_name (str): Name of repo
+        repo_provider (str): Provider of the git repo (e.g. "huggingface.co/datasets")
+        token (str): Token for the repo (optional, required for private repos)
+        data_extraction_subdir (str): Subdirectory of repo to extract datasets from (optional)
 
     Returns:
         int: Number of datasets successfully loaded
     """
     global _available_datasets
 
-    # Try to load the datasets from HuggingFace
-    logger.info("Attempting to load datasets from HuggingFace...")
-    success = download_web_datasets()
+    # Try to load the datasets from repo
+    logger.info(f"Attempting to load datasets from {repo_provider}...")
+
+    success = clone_repo(
+        username=repo_username,
+        repo_name=repo_name,
+        clone_directory=DATA_DIR,
+        provider=repo_provider,
+        token=token,
+    )
 
     if success:
-        loaded_datasets = get_datasets_from_dir(DATA_DIR / "data" / "main")
+        extraction_dir = (
+            DATA_DIR / data_extraction_subdir if data_extraction_subdir else DATA_DIR
+        )
+        loaded_datasets = get_datasets_from_dir(extraction_dir)
         _available_datasets += loaded_datasets
         loaded_count = len(loaded_datasets)
     else:
         loaded_count = 0
 
     if success and loaded_count > 0:
-        logger.info(f"Successfully loaded {loaded_count} datasets from HuggingFace.")
+        logger.info(
+            f"Successfully loaded {loaded_count} datasets from {repo_provider}."
+        )
     elif success and loaded_count == 0:
         logger.error(
             "No datasets found in HuggingFace repository despite successful clone. Check repository contents."
         )
     elif not success:
         logger.error(
-            "Failed to load datasets from HuggingFace. Check your HF_TOKEN permissions."
+            f"Failed to load datasets from {repo_provider}. Check your HF_TOKEN permissions."
         )
 
     return loaded_count
+
+
+def load_standard_web_datasets():
+    load_datasets_from_repo(
+        repo_username="rdnfn",
+        repo_name="ff-app-data",
+        repo_provider="huggingface.co/datasets",
+    )
+
+
+def load_webapp_datasets():
+    # TODO: implement
+    pass
 
 
 def get_available_datasets():
