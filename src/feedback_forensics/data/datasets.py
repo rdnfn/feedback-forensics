@@ -104,9 +104,12 @@ def load_datasets_from_hf():
     success = download_web_datasets()
 
     if success:
-        _available_datasets += get_datasets_from_dir(DATA_DIR / "data" / "main")
+        loaded_datasets = get_datasets_from_dir(DATA_DIR / "data" / "main")
+        _available_datasets += loaded_datasets
+        loaded_count = len(loaded_datasets)
+    else:
+        loaded_count = 0
 
-    loaded_count = len(_available_datasets)
     if success and loaded_count > 0:
         logger.info(f"Successfully loaded {loaded_count} datasets from HuggingFace.")
     elif success and loaded_count == 0:
