@@ -7,6 +7,7 @@ from loguru import logger
 
 from feedback_forensics.app.constants import DEFAULT_DATASET_NAMES
 from feedback_forensics.data.fetcher import load_icai_data, DATA_DIR
+from feedback_forensics.data.dataset_utils import get_first_json_key_value
 
 
 @dataclass
@@ -16,7 +17,6 @@ class BuiltinDataset:
     name: str
     path: str | None = None
     description: str | None = None
-    options: list | None = None
     filterable_columns: list[str] | None = None
     source: str | None = None
 
@@ -121,6 +121,41 @@ _BUILTIN_DATASETS = [
 ]
 
 _available_datasets = []
+
+
+def get_dataset_from_ap(file_path: str | pathlib.Path) -> BuiltinDataset:
+    """Get a dataset config from AnnotatedPairs file."""
+
+    # load metadata from AnnotatedPairs file (first key value pair)
+    key, metadata = get_first_json_key_value(file_path)
+
+    if key != "metadata":
+        logger.warning(
+            f"Failed to load dataset from: '{file_path}'. "
+            f"Expected first key to be 'metadata', got {key}. "
+            f"This is not a valid AnnotatedPairs file. Skipping..."
+        )
+        return None
+
+    logger.info(f"Loaded dataset from: '{file_path}'")
+    return BuiltinDataset(
+        name=metadata.get("dataset_name", f"Unnamed dataset ({file_path})"),
+        path=file_path,
+        description=metadata.get("description", "No description"),
+        source=metadata.get("source", "Unknown source"),
+        filterable_columns=metadata.get("filterable_columns", None),
+    )
+
+
+def get_datasets_from_dir(dir_path: str | pathlib.Path) -> list[BuiltinDataset]:
+    """Get all AnnotatedPairs datasets inside dir."""
+    datasets = []
+    for file_path in pathlib.Path(dir_path).glob("*.json"):
+        dataset = get_dataset_from_ap(file_path)
+        if dataset is not None:
+            datasets.append(dataset)
+    logger.info(f"Loaded {len(datasets)} datasets from: '{dir_path}'")
+    return datasets
 
 
 def get_available_builtin_datasets() -> list[BuiltinDataset]:
