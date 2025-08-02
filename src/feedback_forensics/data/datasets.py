@@ -1,6 +1,6 @@
 """Module with configurations for built-in datasets."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import pathlib
 import re
 from loguru import logger
@@ -121,16 +121,6 @@ _BUILTIN_DATASETS = [
 ]
 
 _available_datasets = []
-
-
-def get_dataset_from_name(name: str) -> BuiltinDataset:
-    """Get a dataset from its name."""
-    for dataset in get_available_datasets():
-        if dataset.name == name:
-            logger.info(f"Loading dataset '{name}'", duration=5)
-            return dataset
-
-    raise ValueError(f"Dataset with name '{name}' not found.")
 
 
 def get_available_builtin_datasets() -> list[BuiltinDataset]:
