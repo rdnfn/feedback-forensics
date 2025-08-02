@@ -16,16 +16,23 @@ def run():
     parser = argparse.ArgumentParser(
         description="Launch the Feedback Forensics visualisation app."
     )
-    parser.add_argument("-d", "--datapath", type=str, help="Path to dataset to analyse")
+    parser.add_argument(
+        "-d",
+        "--datapath",
+        type=str,
+        action="append",
+        help="Path to AnnotatedPairs dataset to analyse. Can be used multiple times (e.g. -d path1 -d path2).",
+    )
     args = parser.parse_args()
 
-    # Try to load local dataset if provided
+    # Try to load local datasets if provided
     if args.datapath:
-        local_dataset = feedback_forensics.data.datasets.create_local_dataset(
-            args.datapath
-        )
-        feedback_forensics.data.datasets.add_dataset(local_dataset)
-        logger.info(f"Added local dataset to available datasets ({args.datapath}).")
+        for datapath in args.datapath:
+            local_dataset = feedback_forensics.data.datasets.create_local_dataset(
+                datapath
+            )
+            feedback_forensics.data.datasets.add_dataset(local_dataset)
+            logger.info(f"Added dataset provided via -d/--datapath ({datapath}).")
 
     if HF_TOKEN:
         logger.info("HF_TOKEN found. Attempting to load HuggingFace datasets...")
