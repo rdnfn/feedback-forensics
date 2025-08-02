@@ -123,8 +123,8 @@ _BUILTIN_DATASETS = [
 _available_datasets = []
 
 
-def get_dataset_from_ap(file_path: str | pathlib.Path) -> BuiltinDataset:
-    """Get a dataset config from AnnotatedPairs file."""
+def get_dataset_from_ap_json(file_path: str | pathlib.Path) -> BuiltinDataset:
+    """Get a dataset config from AnnotatedPairs json file."""
 
     # load metadata from AnnotatedPairs file (first key value pair)
     key, metadata = get_first_json_key_value(file_path)
@@ -151,7 +151,7 @@ def get_datasets_from_dir(dir_path: str | pathlib.Path) -> list[BuiltinDataset]:
     """Get all AnnotatedPairs datasets inside dir."""
     datasets = []
     for file_path in pathlib.Path(dir_path).glob("*.json"):
-        dataset = get_dataset_from_ap(file_path)
+        dataset = get_dataset_from_ap_json(file_path)
         if dataset is not None:
             datasets.append(dataset)
     logger.info(f"Loaded {len(datasets)} datasets from: '{dir_path}'")
@@ -172,16 +172,6 @@ def get_available_builtin_datasets() -> list[BuiltinDataset]:
                     f"Dataset path does not exist: {dataset.path} for {dataset.name}"
                 )
     return available_datasets
-
-
-def create_local_dataset(path: str, name: str = "🏠 Local dataset") -> BuiltinDataset:
-    """Create a local dataset."""
-    return BuiltinDataset(
-        name=name,
-        path=pathlib.Path(path),
-        description=f"Local dataset from path {path}.",
-        source=f"{path}",
-    )
 
 
 def get_urlname_from_stringname(stringname: str, datasets: list[BuiltinDataset]) -> str:

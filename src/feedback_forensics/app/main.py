@@ -28,11 +28,12 @@ def run():
     # Try to load local datasets if provided
     if args.datapath:
         for datapath in args.datapath:
-            local_dataset = feedback_forensics.data.datasets.create_local_dataset(
+            local_dataset = feedback_forensics.data.datasets.get_dataset_from_ap_json(
                 datapath
             )
-            feedback_forensics.data.datasets.add_dataset(local_dataset)
-            logger.info(f"Added dataset provided via -d/--datapath ({datapath}).")
+            if local_dataset is not None:
+                feedback_forensics.data.datasets.add_dataset(local_dataset)
+                logger.info(f"Added dataset provided via -d/--datapath ({datapath}).")
 
     if HF_TOKEN:
         logger.info("HF_TOKEN found. Attempting to load HuggingFace datasets...")
