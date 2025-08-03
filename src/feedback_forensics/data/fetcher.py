@@ -22,9 +22,9 @@ def clone_repo(username, repo_name, clone_directory, provider="github.com", toke
     # check if already cloned
     if os.path.exists(clone_directory / repo_name):
         logger.info(
-            f"Standard data repository '{repo_name}' already exists in '{clone_directory}'. Skipping loading data from repo. Delete directory to re-clone standard data."
+            f"Repository '{repo_name}' already exists in '{clone_directory}'. Skipping loading data from repo. Delete directory to re-clone data."
         )
-        return False
+        return True
 
     # check if git-lfs is installed
     if not shutil.which("git-lfs"):

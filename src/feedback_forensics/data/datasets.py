@@ -123,7 +123,9 @@ def load_datasets_from_repo(
 
     if success:
         extraction_dir = (
-            DATA_DIR / data_extraction_subdir if data_extraction_subdir else DATA_DIR
+            DATA_DIR / repo_name / data_extraction_subdir
+            if data_extraction_subdir
+            else DATA_DIR / repo_name
         )
         loaded_datasets = get_datasets_from_dir(extraction_dir)
         _available_datasets += loaded_datasets
@@ -148,14 +150,23 @@ def load_datasets_from_repo(
 
 
 def load_standard_web_datasets():
+    """Load standard openly accessible datasets from HuggingFace.
+
+    Triggered via command line flag or webapp mode.
+    """
     load_datasets_from_repo(
         repo_username="rdnfn",
-        repo_name="ff-app-data",
+        repo_name="ff-public-results",
         repo_provider="huggingface.co/datasets",
+        data_extraction_subdir="data/main",
     )
 
 
 def load_webapp_datasets():
+    """Load special gated datasets for the webapp from HuggingFace.
+
+    Triggered via webapp mode only.
+    """
     # TODO: implement
     pass
 
