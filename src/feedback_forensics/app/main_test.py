@@ -14,7 +14,7 @@ def test_gradio_app_runs():
             "-m",
             "feedback_forensics.app.main",
             "--datapath",
-            "data/output/example",
+            "data/output/example/results/070_annotations_train_ap.json",
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

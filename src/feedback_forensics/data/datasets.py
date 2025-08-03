@@ -1,11 +1,14 @@
 """Module with configurations for built-in datasets."""
 
-from dataclasses import dataclass, field
-from loguru import logger
+from dataclasses import dataclass
 import pathlib
 import re
-from feedback_forensics.app.constants import NONE_SELECTED_VALUE, DEFAULT_DATASET_NAMES
-from feedback_forensics.data.fetcher import load_icai_data, DATA_DIR
+import copy
+from loguru import logger
+
+from feedback_forensics.app.constants import DEFAULT_DATASET_NAMES, DATA_DIR, HF_TOKEN
+from feedback_forensics.data.fetcher import clone_repo
+from feedback_forensics.data.dataset_utils import get_first_json_key_value
 
 
 @dataclass
@@ -15,7 +18,6 @@ class BuiltinDataset:
     name: str
     path: str | None = None
     description: str | None = None
-    options: list | None = None
     filterable_columns: list[str] | None = None
     source: str | None = None
 
@@ -30,161 +32,43 @@ class BuiltinDataset:
         )
 
 
-@dataclass
-class Config:
-    """Class to represent a configuration."""
-
-    name: str
-    show_individual_prefs: bool = False
-    pref_order: str = "By reconstruction success"
-    plot_col_name: str = NONE_SELECTED_VALUE
-    plot_col_values: list = field(default_factory=lambda: [NONE_SELECTED_VALUE])
-    filter_col: str = NONE_SELECTED_VALUE
-    filter_value: str = NONE_SELECTED_VALUE
-    filter_col_2: str = NONE_SELECTED_VALUE
-    filter_value_2: str = NONE_SELECTED_VALUE
-    metrics: list = field(default_factory=lambda: ["perf", "relevance", "acc"])
-
-
-# Builtin datasets
-
-ANTHROPIC_HELPFUL = BuiltinDataset(
-    name="🚑 Anthropic helpful",
-    path=DATA_DIR / "anthropic_helpful",
-    description="5k subsample of human preference pairs favouring helpful responses from RLHF dataset by Anthropic.",
-    source="https://github.com/anthropics/hh-rlhf",
-)
-
-
-ANTHROPIC_HARMLESS = BuiltinDataset(
-    name="🕊️ Anthropic harmless",
-    path=DATA_DIR / "anthropic_harmless",
-    description="5k subsample of human preference pairs favouring harmless responses from RLHF dataset by Anthropic.",
-    source="https://github.com/anthropics/hh-rlhf",
-)
-
-ARENA_V2 = BuiltinDataset(
-    name="🏟️ Chatbot Arena",
-    path=DATA_DIR / "v2/chatbot_arena.json",
-    description="10k subsample of Chatbot Arena dataset (100k) released alongside Arena Explorer work, crowdsourced human annotations from between June and August 2024 in English.",
-    source="https://huggingface.co/datasets/lmarena-ai/arena-human-preference-100k",
-)
-
-ALPACA_EVAL_V2 = BuiltinDataset(
-    name="🦙 AlpacaEval",
-    path=DATA_DIR / "alpacaeval_human",
-    description="648 cross-annotated human preference pairs used to validate AlpacaEval annotators.",
-    source="https://huggingface.co/datasets/tatsu-lab/alpaca_eval/",
-)
-
-PRISM_V2 = BuiltinDataset(
-    name="💎 PRISM",
-    path=DATA_DIR / "prism",
-    description="~8k human preference pairs from PRISM dataset, focused on controversial topics with extensive annotator information. Originally four-way annotations, subsampled using 1-of-3 rejected responses to get pairwise preferences.",
-    source="https://huggingface.co/datasets/HannahRoseKirk/prism-alignment",
-    filterable_columns=[
-        "age",
-        "education",
-        "chosen_model",
-        "rejected_model",
-        "conversation_type",
-        "lm_familiarity",
-        "location_reside_region",
-        "english_proficiency",
-    ],
-)
-
-OLMO2_0325 = BuiltinDataset(
-    name="🏋️ OLMo-2 0325 pref-mix",
-    path=DATA_DIR / "olmo2-0325-32b",
-    description="10k preference pairs subsampled randomly from original 378k pairs used for fine-tuning OLMo 2 model by Ai2. Synthetically generated via multiple different pipelines.",
-    source="https://huggingface.co/datasets/allenai/olmo-2-0325-32b-preference-mix",
-)
-
-MULTIPREF = BuiltinDataset(
-    name="🔄 MultiPref",
-    path=DATA_DIR / "v2/allenai_multipref.json",
-    description="10k preference pairs, each annotated by 4 human annotators as well as GPT-4-based AI annotators. Whilst each pair is annotated by 4 human annotators, these annotators are not identical across all pairs (i.e. more than four annotators overall worked on the dataset).",
-    source="https://huggingface.co/datasets/allenai/multipref",
-)
-
-LLAMA4_ARENA = BuiltinDataset(
-    name="🏟️ Arena (special)",
-    path=DATA_DIR / "arena_llama4.json",
-    description="Llama-4-Maverick-03-26-Experimental arena results, combined with public weights version of Llama-4-Maverick.",
-    source="https://huggingface.co/spaces/lmarena-ai/Llama-4-Maverick-03-26-Experimental_battles/tree/main/data",
-)
-
-COMPARISON_MODELS = BuiltinDataset(
-    name="🤖 Model comparison",
-    path=DATA_DIR / "v2/model_comparison.json",
-    description="Model comparison results across Llama, GPT and Mistral model families.",
-    source="Self-generated.",
-)
-
-# List of all built-in datasets
-_BUILTIN_DATASETS = [
-    ARENA_V2,
-    ALPACA_EVAL_V2,
-    PRISM_V2,
-    ANTHROPIC_HELPFUL,
-    ANTHROPIC_HARMLESS,
-    OLMO2_0325,
-    MULTIPREF,
-    LLAMA4_ARENA,
-    COMPARISON_MODELS,
-]
-
 _available_datasets = []
 
 
-# utility functions
-def get_config_from_name(name: str, config_options: list) -> Config:
-    """Get a configuration from its name."""
-    if name == NONE_SELECTED_VALUE or name is None:  # default config
-        return Config(name=name)
+def get_dataset_from_ap_json(file_path: str | pathlib.Path) -> BuiltinDataset:
+    """Get a dataset config from AnnotatedPairs json file."""
 
-    for config in config_options:
-        if config.name == name:
-            return config
+    # load metadata from AnnotatedPairs file (first key value pair)
+    key, metadata = get_first_json_key_value(file_path)
 
-    raise ValueError(f"Configuration with name '{name}' not found.")
+    if key != "metadata":
+        logger.warning(
+            f"Failed to load dataset from: '{file_path}'. "
+            f"Expected first key to be 'metadata', got {key}. "
+            f"This is not a valid AnnotatedPairs file. Skipping..."
+        )
+        return None
 
-
-def get_dataset_from_name(name: str) -> BuiltinDataset:
-    """Get a dataset from its name."""
-    for dataset in get_available_datasets():
-        if dataset.name == name:
-            logger.info(f"Loading dataset '{name}'", duration=5)
-            return dataset
-
-    raise ValueError(f"Dataset with name '{name}' not found.")
-
-
-def get_available_builtin_datasets() -> list[BuiltinDataset]:
-    """Get all built-in datasets."""
-    # validate that the relevant data is present for each dataset
-    available_datasets = []
-    for dataset in _BUILTIN_DATASETS:
-        if dataset.path is not None and dataset.path.exists():
-            logger.info(f"Found dataset: {dataset.name} at {dataset.path}")
-            available_datasets.append(dataset)
-        else:
-            if dataset.path is not None:
-                logger.warning(
-                    f"Dataset path does not exist: {dataset.path} for {dataset.name}"
-                )
-    return available_datasets
-
-
-def create_local_dataset(path: str, name: str = "🏠 Local dataset") -> BuiltinDataset:
-    """Create a local dataset."""
+    logger.info(f"Loaded dataset from: '{file_path}'")
     return BuiltinDataset(
-        name=name,
-        path=pathlib.Path(path),
-        description=f"Local dataset from path {path}.",
-        source=f"{path}",
+        name=metadata.get("dataset_name", f"Unnamed dataset ({file_path})"),
+        path=file_path,
+        description=metadata.get("description", "No description"),
+        source=metadata.get("source", "Unknown source"),
+        filterable_columns=metadata.get("filterable_columns", None),
     )
+
+
+def get_datasets_from_dir(dir_path: str | pathlib.Path) -> list[BuiltinDataset]:
+    """Get all AnnotatedPairs datasets inside dir."""
+    logger.info(f"Loading datasets from directory: {dir_path}")
+    datasets = []
+    for file_path in pathlib.Path(dir_path).glob("*.json"):
+        dataset = get_dataset_from_ap_json(file_path)
+        if dataset is not None:
+            datasets.append(dataset)
+    logger.info(f"Loaded {len(datasets)} datasets from: '{dir_path}'")
+    return datasets
 
 
 def get_urlname_from_stringname(stringname: str, datasets: list[BuiltinDataset]) -> str:
@@ -205,37 +89,96 @@ def get_stringname_from_urlname(urlname: str, datasets: list[BuiltinDataset]) ->
     return None
 
 
-def load_datasets_from_hf():
+def load_datasets_from_repo(
+    repo_username: str,
+    repo_name: str,
+    repo_provider: str,
+    token: str | None = None,
+    data_extraction_subdir: str | None = None,
+):
     """
-    Load datasets from HuggingFace.
+    Load datasets from git repo, e.g. on HuggingFace (HF).
 
-    This function attempts to clone the HuggingFace repository containing datasets.
+    Args:
+        repo_username (str): Username of repo
+        repo_name (str): Name of repo
+        repo_provider (str): Provider of the git repo (e.g. "huggingface.co/datasets")
+        token (str): Token for the repo (optional, required for private repos)
+        data_extraction_subdir (str): Subdirectory of repo to extract datasets from (optional)
 
     Returns:
         int: Number of datasets successfully loaded
     """
     global _available_datasets
 
-    # Try to load the datasets from HuggingFace
-    logger.info("Attempting to load datasets from HuggingFace...")
-    success = load_icai_data()
+    # Try to load the datasets from repo
+    logger.info(f"Attempting to load datasets from {repo_provider}...")
 
-    # Refresh the available datasets
-    _available_datasets += get_available_builtin_datasets()
+    success = clone_repo(
+        username=repo_username,
+        repo_name=repo_name,
+        clone_directory=DATA_DIR,
+        provider=repo_provider,
+        token=token,
+    )
 
-    loaded_count = len(_available_datasets)
+    if success:
+        extraction_dir = (
+            DATA_DIR / repo_name / data_extraction_subdir
+            if data_extraction_subdir
+            else DATA_DIR / repo_name
+        )
+        loaded_datasets = get_datasets_from_dir(extraction_dir)
+        _available_datasets += loaded_datasets
+        loaded_count = len(loaded_datasets)
+    else:
+        loaded_count = 0
+
     if success and loaded_count > 0:
-        logger.info(f"Successfully loaded {loaded_count} datasets from HuggingFace.")
+        logger.info(
+            f"Successfully loaded {loaded_count} datasets from {repo_provider}."
+        )
     elif success and loaded_count == 0:
         logger.error(
             "No datasets found in HuggingFace repository despite successful clone. Check repository contents."
         )
     elif not success:
         logger.error(
-            "Failed to load datasets from HuggingFace. Check your HF_TOKEN permissions."
+            f"Failed to load datasets from {repo_provider}. Check your HF_TOKEN permissions."
         )
 
     return loaded_count
+
+
+def load_standard_web_datasets():
+    """Load standard openly accessible datasets from HuggingFace.
+
+    Triggered via command line flag or webapp mode.
+    """
+    load_datasets_from_repo(
+        repo_username="rdnfn",
+        repo_name="ff-public-results",
+        repo_provider="huggingface.co/datasets",
+        data_extraction_subdir="data/main",
+    )
+
+
+def load_webapp_datasets():
+    """Load special gated datasets for the webapp from HuggingFace.
+
+    Triggered via webapp mode only.
+    """
+    if HF_TOKEN is None:
+        logger.error("HF_TOKEN is not set. Skipping loading gated datasets.")
+        return
+
+    load_datasets_from_repo(
+        repo_username="rdnfn",
+        repo_name="ff-gated-results",
+        repo_provider="huggingface.co/datasets",
+        data_extraction_subdir="data/main",
+        token=HF_TOKEN,
+    )
 
 
 def get_available_datasets():
@@ -254,7 +197,10 @@ def get_available_datasets():
 
 def get_available_datasets_names():
     """Get the names of all available datasets."""
-    return [dataset.name for dataset in _available_datasets]
+    avail_datasets = copy.deepcopy(get_available_datasets())
+    avail_datasets.sort(key=lambda x: x.url_name)
+    names = [dataset.name for dataset in avail_datasets]
+    return names
 
 
 def get_default_dataset_names():

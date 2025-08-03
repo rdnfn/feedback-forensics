@@ -2,6 +2,7 @@
 
 import os
 import json
+import pathlib
 
 # App/package version
 import importlib.metadata
@@ -18,6 +19,9 @@ VERSION = importlib.metadata.version("feedback_forensics")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 # Hugging Face token
 HF_TOKEN = os.getenv("HF_TOKEN")
+
+# Data directory, to clone web datasets to
+DATA_DIR = pathlib.Path("forensics-data")
 
 # Base url used for share link
 APP_BASE_URL = os.getenv("FF_APP_BASE_URL", "")
@@ -92,3 +96,8 @@ EXAMPLE_VIEWER_NO_DATA_MESSAGE = "⚠️ No examples found"
 EXAMPLE_VIEWER_MULTIPLE_DATASETS_MESSAGE = (
     "⚠️ Multiple datasets selected. Select single dataset to view examples."
 )
+
+# Mode for Gradio web app (downloads special data)
+# FOR INTERNAL USE ONLY: this won't work
+# without the right HF_TOKEN and setup
+WEBAPP_MODE = os.getenv("FF_WEBAPP_MODE", "False").lower() == "true"

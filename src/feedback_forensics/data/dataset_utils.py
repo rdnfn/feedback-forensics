@@ -3,6 +3,7 @@
 import time
 from collections import defaultdict
 from typing import Any, Dict, List, Tuple
+import ijson
 
 import pandas as pd
 from loguru import logger
@@ -85,3 +86,34 @@ def get_annotators_by_type(
             )
 
     return result
+
+
+def get_first_json_key_value(file_path):
+    """Get the first key and value from a JSON file.
+
+    This is useful for extracting metadata from AnnotatedPairs
+    file, without loading full dataset.
+    """
+
+    with open(file_path, "rb") as f:
+        parser = ijson.parse(f)
+        first_key = None
+        for prefix, event, value in parser:
+            if event == "map_key" and first_key is None:
+                first_key = value
+            elif (
+                event in ("string", "number", "boolean", "null")
+                and first_key is not None
+            ):
+                return first_key, value
+            elif event == "start_array" and first_key is not None:
+                # Load the entire array value
+                array_value = list(
+                    ijson.items(open(file_path, "rb"), f"{first_key}.item")
+                )
+                return first_key, array_value
+            elif event == "start_map" and first_key is not None and prefix == first_key:
+                # Load the entire object value
+                obj_value = next(ijson.items(open(file_path, "rb"), first_key))
+                return first_key, obj_value
+    return None, None
