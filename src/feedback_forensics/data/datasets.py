@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 import pathlib
 import re
+import copy
 from loguru import logger
 
 from feedback_forensics.app.constants import DEFAULT_DATASET_NAMES, DATA_DIR, HF_TOKEN
@@ -196,7 +197,10 @@ def get_available_datasets():
 
 def get_available_datasets_names():
     """Get the names of all available datasets."""
-    return [dataset.name for dataset in _available_datasets]
+    avail_datasets = copy.deepcopy(get_available_datasets())
+    avail_datasets.sort(key=lambda x: x.url_name)
+    names = [dataset.name for dataset in avail_datasets]
+    return names
 
 
 def get_default_dataset_names():
