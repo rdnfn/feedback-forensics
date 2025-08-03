@@ -1,6 +1,6 @@
 [project]
 name = "feedback-forensics"
-version = "0.4.4"
+version = "0.4.5"
 authors = [
   { name="rdnfn", email="hi@arduin.io" },
   { name="timokau", email="timo.kaufmann@ifi.lmu.de"},
@@ -66,7 +66,7 @@ packages = ["src/feedback_forensics"]
 "src/feedback_forensics/assets" = "feedback_forensics/assets"
 
 [tool.bumpversion]
-current_version = "0.4.4"
+current_version = "0.4.5"
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
 serialize = ["{major}.{minor}.{patch}"]
 search = "{current_version}"
