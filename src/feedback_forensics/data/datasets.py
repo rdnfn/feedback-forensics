@@ -167,8 +167,17 @@ def load_webapp_datasets():
 
     Triggered via webapp mode only.
     """
-    # TODO: implement
-    pass
+    if HF_TOKEN is None:
+        logger.error("HF_TOKEN is not set. Skipping loading gated datasets.")
+        return
+
+    load_datasets_from_repo(
+        repo_username="rdnfn",
+        repo_name="ff-gated-results",
+        repo_provider="huggingface.co/datasets",
+        data_extraction_subdir="data/main",
+        token=HF_TOKEN,
+    )
 
 
 def get_available_datasets():
