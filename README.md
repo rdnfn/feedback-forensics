@@ -56,7 +56,7 @@ feedback-forensics -d data/output/example/annotated_pairs.json
 This will start the Gradio interface on localhost port 7860 (e.g. http://localhost:7860).
 
 > [!NOTE]
-> The online results are currently not available when running locally.
+> To load more pre-annotated results, run `feedback-forensics --load-web-datasets`. This will load datasets from [HuggingFace](https://huggingface.co/datasets/rdnfn/ff-public-results).
 
 **Next steps**
 
