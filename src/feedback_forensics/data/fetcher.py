@@ -47,6 +47,9 @@ def clone_repo(username, repo_name, clone_directory, provider="github.com", toke
         git_url = f"https://{provider}/{username}/{repo_name}.git"
 
     try:
+        logger.warning(
+            "Note: With large datasets, this may take a while! Git often underestimates overall size due to omitting large files (when using git lfs). Patience may be required."
+        )
         subprocess.run(
             [f"git clone {git_url}"], shell=True, check=True, cwd=clone_directory
         )
