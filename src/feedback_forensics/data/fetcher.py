@@ -2,6 +2,7 @@ import subprocess
 import os
 import shutil
 import pathlib
+import requests
 from loguru import logger
 
 
@@ -79,24 +80,27 @@ def clone_file(
         f"Attempting to clone file '{file_path}' from {username}/{repo_name}..."
     )
 
+    if ref is None:
+        ref = "HEAD"
+
     pathlib.Path(destination_dir).mkdir(parents=True, exist_ok=True)
 
     if token:
-        repo_url = f"https://{username}:{token}@{provider}/{username}/{repo_name}.git"
+        url_base = f"https://{username}:{token}@{provider}/{username}/{repo_name}"
     else:
-        repo_url = f"https://{provider}/{username}/{repo_name}.git"
+        url_base = f"https://{provider}/{username}/{repo_name}"
+
+    download_url = f"{url_base}/resolve/{ref}/{file_path}"
+    file_name = file_path.split("/")[-1] if "/" in file_path else file_path
 
     try:
-        if "/" in file_path:
-            directory_path = "/".join(file_path.split("/")[:-1])
-            filename = file_path.split("/")[-1]
-            ref_path = f"{ref}:{directory_path}"
-        else:
-            filename = file_path
-            ref_path = ref
-
-        cmd = f"git archive --remote={repo_url} {ref_path} {filename} | tar -x -C {destination_dir}"
-        subprocess.run(cmd, shell=True, check=True)
+        logger.info(f"Downloading file from {download_url}...")
+        response = requests.get(
+            download_url,
+            timeout=60 * 5,  # max 5 mins
+        )
+        with open(destination_dir / file_name, "wb") as f:
+            f.write(response.content)
         logger.info("File cloned successfully.")
         return True
 
