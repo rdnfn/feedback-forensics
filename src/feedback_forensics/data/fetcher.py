@@ -61,3 +61,45 @@ def clone_repo(username, repo_name, clone_directory, provider="github.com", toke
             "Please verify your HF_TOKEN has permissions to access the repository."
         )
         return False
+
+
+def clone_file(
+    username,
+    repo_name,
+    file_path,
+    destination_dir,
+    provider="github.com",
+    token=None,
+    ref="HEAD",
+):
+    """
+    Clones a single file from a git repository using git archive.
+    """
+    logger.info(
+        f"Attempting to clone file '{file_path}' from {username}/{repo_name}..."
+    )
+
+    pathlib.Path(destination_dir).mkdir(parents=True, exist_ok=True)
+
+    if token:
+        repo_url = f"https://{username}:{token}@{provider}/{username}/{repo_name}.git"
+    else:
+        repo_url = f"https://{provider}/{username}/{repo_name}.git"
+
+    try:
+        if "/" in file_path:
+            directory_path = "/".join(file_path.split("/")[:-1])
+            filename = file_path.split("/")[-1]
+            ref_path = f"{ref}:{directory_path}"
+        else:
+            filename = file_path
+            ref_path = ref
+
+        cmd = f"git archive --remote={repo_url} {ref_path} {filename} | tar -x -C {destination_dir}"
+        subprocess.run(cmd, shell=True, check=True)
+        logger.info("File cloned successfully.")
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to clone file (error: '{e}').")
+        return False
