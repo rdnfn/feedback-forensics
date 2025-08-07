@@ -79,16 +79,16 @@ def _create_getting_started_section():
             gr.Button(
                 "🤖 Example 1: Compare GPT-4o's personality to other models",
                 size=button_size,
-                link=f"{tutorial_domain}?data=chatbot_arena&ann_cols=model_gpt4o20240513,model_claude35sonnet20240620,model_gemini15proapi0514,model_mistrallarge2407,model_deepseekv2api0628",
+                link=f"{tutorial_domain}?data=lmarena_2024&ann_cols=model_gpt4o20240513,model_claude35sonnet20240620,model_gemini15proapi0514,model_mistrallarge2407,model_deepseekv2api0628",
             )
             gr.Button(
                 "📚 Example 2: Personality traits encouraged by feedback datasets",
                 size=button_size,
-                link=f"{tutorial_domain}?data=chatbot_arena,alpacaeval,prism,anthropic_helpful,anthropic_harmless",
+                link=f"{tutorial_domain}?data=lmarena_2024,alpacaeval,prism,anthropic_helpful,anthropic_harmless",
             )
             gr.Button(
                 "📝 Example 3: Preferred personality traits across writing tasks",
-                link=f"{tutorial_domain}?data=chatbot_arena&col=narrower_category&col_vals=songwriting_prompts,resume_and_cover_letter_writing,professional_email_communication,creative_writing_prompts&analysis_mode=advanced_settings",
+                link=f"{tutorial_domain}?data=lmarena_2024&col=narrower_category&col_vals=songwriting_prompts,resume_and_cover_letter_writing,professional_email_communication,creative_writing_prompts&analysis_mode=advanced_settings",
                 size=button_size,
             )
 
