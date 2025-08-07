@@ -15,7 +15,7 @@ env:
   HF_DATASET: "rdnfn/ff-model-personality"
   VERSION_PATH: "data/v1"
   # Models must be space separated
-  MODELS: openrouter/openai/gpt-4o-2024-11-20 openrouter/openai/gpt-4.1-mini openrouter/x-ai/grok-4 openrouter/google/gemini-2.5-pro openrouter/moonshotai/kimi-k2 openrouter/meta-llama/llama-4-maverick openrouter/mistralai/magistral-medium-2506 openrouter/anthropic/claude-sonnet-4 openrouter/openai/gpt-oss-20b #openrouter/mistralai/devstral-medium openrouter/deepseek/deepseek-chat-v3-0324
+  MODELS: openrouter/openai/gpt-4o-2024-11-20 openrouter/openai/gpt-4.1-mini openrouter/x-ai/grok-4 openrouter/google/gemini-2.5-pro openrouter/moonshotai/kimi-k2 openrouter/meta-llama/llama-4-maverick openrouter/mistralai/magistral-medium-2506 openrouter/anthropic/claude-sonnet-4 openrouter/openai/gpt-oss-20b openrouter/openai/gpt-5 #openrouter/mistralai/devstral-medium openrouter/deepseek/deepseek-chat-v3-0324
   REFERENCE_MODELS: openrouter/openai/gpt-4o-2024-11-20
 
 jobs:
