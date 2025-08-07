@@ -62,9 +62,6 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/feedback_forensics"]
 
-[tool.hatch.build.targets.wheel.force-include]
-"src/feedback_forensics/assets" = "feedback_forensics/assets"
-
 [tool.bumpversion]
 current_version = "0.4.6"
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
