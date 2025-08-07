@@ -174,12 +174,15 @@ def compare_models(
             combined_ap = merge_ap(
                 combined_ap,
                 ap_file,
-                dataset_name="Model Personality Comparison",
+                dataset_name="🎭 Model Personality Comparison",
                 description="Model Personality Comparison dataset between "
                 + ", ".join(model_names)
                 + ". Using "
                 + ", ".join(reference_models)
-                + " as reference model(s).",
+                + " as reference model(s). "
+                + "Created and annotated using Feedback Forensics, "
+                + "see https://huggingface.co/datasets/rdnfn/ff-model-personality "
+                + "for more details.",
             )
     save_ap(combined_ap, final_annotations_dir / "combined_ap.json")
     logger.info(

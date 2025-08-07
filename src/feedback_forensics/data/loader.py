@@ -228,6 +228,9 @@ def get_votes_dict_from_annotated_pairs_json(results_path: pathlib.Path) -> dict
         )
         full_df = full_df.drop_duplicates(subset=["comparison_id"])
 
+    # remove comparisons with empty responses
+    full_df = _remove_empty_response_comparisons(full_df)
+
     # Create annotator metadata
     annotator_metadata = {}
     principle_annotator_cols = []
@@ -314,6 +317,21 @@ def _check_for_nondefault_annotators(df: pd.DataFrame) -> dict:
 
     logger.info(f"Found {len(annotator_metadata)} non-default annotators")
     return annotator_metadata
+
+
+def _remove_empty_response_comparisons(df: pd.DataFrame) -> pd.DataFrame:
+
+    def has_empty_response(row):
+        for text in [row["text_a"], row["text_b"]]:
+            if text is None or text in ["", "nan"]:
+                return True
+        return False
+
+    logger.info(
+        f"Removing {len(df[df.apply(has_empty_response, axis=1)])} comparisons with empty responses. Fraction affected: {100 * (len(df[df.apply(has_empty_response, axis=1)]) / len(df)):.2f}%"
+    )
+    df = df[~df.apply(has_empty_response, axis=1)]
+    return df
 
 
 def create_votes_dict_from_icai_log_files(results_dir: pathlib.Path) -> list[dict]:

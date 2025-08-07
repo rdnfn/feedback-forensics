@@ -2,6 +2,7 @@ import subprocess
 import os
 import shutil
 import pathlib
+import requests
 from loguru import logger
 
 
@@ -60,4 +61,49 @@ def clone_repo(username, repo_name, clone_directory, provider="github.com", toke
             f"Failed to load standard data from repo (error: '{e}'). "
             "Please verify your HF_TOKEN has permissions to access the repository."
         )
+        return False
+
+
+def clone_file(
+    username,
+    repo_name,
+    file_path,
+    destination_dir,
+    provider="github.com",
+    token=None,
+    ref="HEAD",
+):
+    """
+    Clones a single file from a git repository using git archive.
+    """
+    logger.info(
+        f"Attempting to clone file '{file_path}' from {username}/{repo_name}..."
+    )
+
+    if ref is None:
+        ref = "HEAD"
+
+    pathlib.Path(destination_dir).mkdir(parents=True, exist_ok=True)
+
+    if token:
+        url_base = f"https://{username}:{token}@{provider}/{username}/{repo_name}"
+    else:
+        url_base = f"https://{provider}/{username}/{repo_name}"
+
+    download_url = f"{url_base}/resolve/{ref}/{file_path}"
+    file_name = file_path.split("/")[-1] if "/" in file_path else file_path
+
+    try:
+        logger.info(f"Downloading file from {download_url}...")
+        response = requests.get(
+            download_url,
+            timeout=60 * 5,  # max 5 mins
+        )
+        with open(destination_dir / file_name, "wb") as f:
+            f.write(response.content)
+        logger.info("File cloned successfully.")
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to clone file (error: '{e}').")
         return False
