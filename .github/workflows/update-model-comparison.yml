@@ -6,8 +6,6 @@ name: Update Model Personality Comparison Dataset
 # and the dataset needs to be updated accordingly.
 
 on:
-  release:
-    types: [published]
   # allow manual triggering
   workflow_dispatch:
 
