@@ -23,6 +23,7 @@ PERSONALITY_TRAITS_DEFAULT: List[str] = (
         "refuses to answer the question",
         "ends with a follow-up question",
         "is more polite",
+        "ISSUE_LANGUAGE",
     ]
 )
 
@@ -232,7 +233,10 @@ def build_interface(
                 text_b,
             ]
 
-            annotations: Dict[str, Any] = comp.get("annotations", {})
+            annotations: Dict[str, Any] = new_comparisons.get(comp["id"], {}).get(
+                "annotations", {}
+            )
+
             for trait in traits:
                 annotator_id = trait_to_annotator_id[trait]
                 existing = annotations.get(annotator_id, {}).get("pref")
@@ -301,7 +305,7 @@ def build_interface(
             trait_controls[t] for t in traits
         ]
         for _trait_name, ctrl in trait_controls.items():
-            ctrl.change(
+            ctrl.select(
                 on_any_trait_change,
                 inputs=[idx_display] + trait_inputs,
                 outputs=[],
