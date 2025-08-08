@@ -230,37 +230,40 @@ def build_interface(
             outputs=output_components,
         )
 
-        # Autosave handlers for each trait control
-        def make_on_change(trait_name: str):
-            annotator_id = trait_to_annotator_id[trait_name]
+        # Autosave handler: on any single trait change, save ALL trait annotations for the current comparison
+        def on_any_trait_change(i: int, *trait_values: str):
+            idx = max(0, min(int(i), len(comparisons) - 1))
+            comp = comparisons[idx]
+            comp_id = comp["id"]
 
-            def on_change(i: int, value: str):
-                idx = max(0, min(int(i), len(comparisons) - 1))
-                comp = comparisons[idx]
-                comp_id = comp["id"]
-                if comp_id not in new_comparisons:
-                    # add new comaprison without original annotations
-                    new_comp = copy.deepcopy(comp)
-                    new_comp["annotations"] = {}
-                    new_comparisons[comp_id] = new_comp
-                else:
-                    new_comp = new_comparisons[comp_id]
+            if comp_id not in new_comparisons:
+                # Add new comparison without original annotations
+                new_comp = copy.deepcopy(comp)
+                new_comp["annotations"] = {}
+                new_comparisons[comp_id] = new_comp
+            else:
+                new_comp = new_comparisons[comp_id]
 
-                new_comparisons[comp_id]["annotations"][annotator_id] = {
-                    "pref": _annotation_from_value(value)
-                }
+            # Build annotations for ALL traits from current control values
+            all_annotations: Dict[str, Any] = {}
+            for trait_name, value in zip(traits, trait_values):
+                annotator_id = trait_to_annotator_id[trait_name]
+                all_annotations[annotator_id] = {"pref": _annotation_from_value(value)}
 
-                new_ap["comparisons"] = list(new_comparisons.values())
-                _save(new_ap, output_path)
-                return
+            new_comparisons[comp_id]["annotations"] = all_annotations
 
-            return on_change
+            new_ap["comparisons"] = list(new_comparisons.values())
+            _save(new_ap, output_path)
+            return
 
-        for trait_name, ctrl in trait_controls.items():
-            handler = make_on_change(trait_name)
+        # Wire every trait control to trigger saving all traits by passing all trait inputs
+        trait_inputs: List[gr.components.Component] = [
+            trait_controls[t] for t in traits
+        ]
+        for _trait_name, ctrl in trait_controls.items():
             ctrl.change(
-                handler,
-                inputs=[idx_display, ctrl],
+                on_any_trait_change,
+                inputs=[idx_display] + trait_inputs,
                 outputs=[],
             )
 
