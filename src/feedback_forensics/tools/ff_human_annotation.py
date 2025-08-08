@@ -111,20 +111,26 @@ def build_interface(
     output_path: pathlib.Path | None,
 ) -> gr.Blocks:
     ap: Dict[str, Any] = load_ap(input_path)
-    new_ap: Dict[str, Any] = {
-        "metadata": {
-            "version": "2.0",
-            "description": "AnnotatedPairs with human annotations for personality traits.",
-            "dataset_name": "ff-model-personality",
-            "available_metadata_keys_per_comparison": ap.get(
-                "available_metadata_keys_per_comparison", []
-            ),
-        },
-        "annotators": {},
-        "comparisons": [],
+
+    if pathlib.Path(output_path).exists():
+        new_ap = load_ap(output_path)
+    else:
+        new_ap: Dict[str, Any] = {
+            "metadata": {
+                "version": "2.0",
+                "description": "AnnotatedPairs with human annotations for personality traits.",
+                "dataset_name": "ff-model-personality",
+                "available_metadata_keys_per_comparison": ap.get(
+                    "available_metadata_keys_per_comparison", []
+                ),
+            },
+            "annotators": {},
+            "comparisons": [],
+        }
+    comparisons: List[Dict[str, Any]] = ap["comparisons"]
+    new_comparisons: Dict[str, Any] = {
+        comp["id"]: comp for comp in new_ap["comparisons"]
     }
-    comparisons: List[Dict[str, Any]] = ap.get("comparisons", [])
-    new_comparisons: Dict[str, Any] = {}
     trait_to_annotator_id = _ensure_trait_annotators_exist(new_ap, traits)
 
     if output_path is None:
