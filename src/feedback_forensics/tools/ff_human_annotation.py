@@ -9,6 +9,7 @@ from loguru import logger
 
 from feedback_forensics.data.operations.core import load_ap, save_ap
 from inverse_cai.data.annotated_pairs_format import hash_string
+from feedback_forensics.app.constants import DEFAULT_ANNOTATOR_HASH
 
 
 PERSONALITY_TRAITS_DEFAULT: List[str] = (
@@ -148,6 +149,7 @@ def build_interface(
                 "version": "2.0",
                 "description": "AnnotatedPairs with human annotations for personality traits.",
                 "dataset_name": "ff-model-personality",
+                "default_annotator": DEFAULT_ANNOTATOR_HASH,
                 "available_metadata_keys_per_comparison": ap.get(
                     "available_metadata_keys_per_comparison", []
                 ),
@@ -160,6 +162,12 @@ def build_interface(
     # randomize order of comparisons
     random.seed(42)
     random.shuffle(comparisons)
+
+    # add default annotator
+    if DEFAULT_ANNOTATOR_HASH not in new_ap["annotators"]:
+        new_ap["annotators"][DEFAULT_ANNOTATOR_HASH] = ap["annotators"].get(
+            DEFAULT_ANNOTATOR_HASH, {}
+        )
 
     new_comparisons: Dict[str, Any] = {
         comp["id"]: comp for comp in new_ap["comparisons"]
@@ -293,6 +301,13 @@ def build_interface(
             for trait_name, value in zip(traits, trait_values):
                 annotator_id = trait_to_annotator_id[trait_name]
                 all_annotations[annotator_id] = {"pref": _annotation_from_value(value)}
+
+            # add default annotator
+            all_annotations[DEFAULT_ANNOTATOR_HASH] = {
+                "pref": comp["annotations"]
+                .get(DEFAULT_ANNOTATOR_HASH, {})
+                .get("pref", "irrelevant")
+            }
 
             new_comparisons[comp_id]["annotations"] = all_annotations
 
