@@ -2,6 +2,7 @@ import argparse
 import pathlib
 from typing import Any, Dict, List, Tuple
 import copy
+import random
 
 import gradio as gr
 from loguru import logger
@@ -12,16 +13,16 @@ from inverse_cai.data.annotated_pairs_format import hash_string
 
 PERSONALITY_TRAITS_DEFAULT: List[str] = (
     [  # top and bottom 5 traits from LMArena in og experiments
-        "is more verbose"
-        "has more structured formatting"
-        "makes more confident statements"
-        "is more factually correct"
-        "more strictly follows the requested output format"
-        "is more concise"
-        "has a more avoidant tone"
-        "refuses to answer the question"
-        "ends with a follow-up question"
-        "is more polite"
+        "is more verbose",
+        "has more structured formatting",
+        "makes more confident statements",
+        "is more factually correct",
+        "more strictly follows the requested output format",
+        "is more concise",
+        "has a more avoidant tone",
+        "refuses to answer the question",
+        "ends with a follow-up question",
+        "is more polite",
     ]
 )
 
@@ -154,6 +155,11 @@ def build_interface(
             "comparisons": [],
         }
     comparisons: List[Dict[str, Any]] = ap["comparisons"]
+
+    # randomize order of comparisons
+    random.seed(42)
+    random.shuffle(comparisons)
+
     new_comparisons: Dict[str, Any] = {
         comp["id"]: comp for comp in new_ap["comparisons"]
     }
@@ -219,7 +225,12 @@ def build_interface(
             comp = comparisons[i]
             prompt, text_a, text_b = _read_pair_texts(comp)
 
-            updates: List[Any] = [i, gr.update(value=prompt), text_a, text_b]
+            updates: List[Any] = [
+                i,
+                gr.update(value=prompt, visible=bool(prompt)),
+                text_a,
+                text_b,
+            ]
 
             annotations: Dict[str, Any] = comp.get("annotations", {})
             for trait in traits:
