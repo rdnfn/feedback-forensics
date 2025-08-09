@@ -367,11 +367,17 @@ def run():
         action="store_true",
         help="Use most important traits on LMArena dataset",
     )
+    parser.add_argument(
+        "--share",
+        action="store_true",
+        help="Share the Gradio interface with the world",
+        default=False,
+    )
 
     args = parser.parse_args()
 
     demo = build_interface(args.input, args.out, args.traits, args.use_standard_traits)
-    demo.launch()
+    demo.launch(share=args.share)
 
 
 if __name__ == "__main__":
