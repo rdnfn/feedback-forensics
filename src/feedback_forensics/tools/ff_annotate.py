@@ -30,7 +30,7 @@ def run():
         "--datapath",
         type=str,
         required=True,
-        help="Path to dataset CSV file with columns text_a, text_b, and preferred_text",
+        help="Path to AnnotatedPairs JSON file or CSV file with columns text_a, text_b, and preferred_text.",
     )
     parser.add_argument(
         "-v",
