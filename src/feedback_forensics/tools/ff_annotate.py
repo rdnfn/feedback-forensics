@@ -81,6 +81,8 @@ def run():
         f'data_path="{args.datapath}"',
         "annotator.skip=true",
         "s0_skip_principle_generation=true",
+        "async_task_num=400",
+        "s3_num_seeds_to_reannotate_with=1",
     ]
 
     if args.output_dir is not None:
