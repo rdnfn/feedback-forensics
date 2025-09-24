@@ -65,8 +65,8 @@ def run():
         "-m",
         "--model",
         type=str,
-        default="openrouter/openai/gpt-4o-mini-2024-07-18",
-        help="Model to use to annotate the data (default: openrouter/openai/gpt-4o-mini-2024-07-18)",
+        default="openrouter/google/gemini-2.5-flash",
+        help="Model to use to annotate the data (default: openrouter/google/gemini-2.5-flash)",
     )
 
     args = parser.parse_args()
