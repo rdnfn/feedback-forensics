@@ -584,15 +584,15 @@ class DatasetHandler:
         metrics_df = pd.DataFrame(metrics_df)
         if add_max_diff_col:
             metrics_df["Max diff"] = abs(
-                metrics_df.iloc[:, 1:].max(axis=1) - metrics_df.iloc[:, 1:].min(axis=1)
+                metrics_df.iloc[:, 0:].max(axis=1) - metrics_df.iloc[:, 0:].min(axis=1)
             )
             # by default, sort by max diff, then by annotator names
-            sort_by = ["Max diff"] + list(metrics_df.columns[1:])
+            sort_by = ["Max diff"] + list(metrics_df.columns[0:])
             metrics_df = metrics_df.sort_values(by=sort_by, ascending=False)
 
         # Add index column with name
+        # IMPORTANT: index column does not exist before, thus starting from 0 there
         metrics_df[index_col_name] = metrics_df.index
-
         metrics_df = metrics_df[[index_col_name, *metrics_df.columns[:-1]]]
 
         return metrics_df
