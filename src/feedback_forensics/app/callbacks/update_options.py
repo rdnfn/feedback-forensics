@@ -80,6 +80,19 @@ def generate(inp: dict, state: dict, out: dict, utils_callbacks: dict) -> dict:
             and PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS not in name
         ]
 
+        # by default show principle annotators as rows
+        # if None, show all annotators except default annotator
+        annotator_rows_visible_names = annotator_types[PRINCIPLE_ANNOTATOR_TYPE][
+            "visible_names"
+        ]
+        if len(annotator_rows_visible_names) == 0:
+            # all annotators except default annotator
+            annotator_rows_visible_names = [
+                name
+                for name in all_annotator_names
+                if name != DEFAULT_ANNOTATOR_VISIBLE_NAME
+            ]
+
         return {
             inp["annotator_cols_dropdown"]: gr.Dropdown(
                 choices=sorted(all_annotator_names),
@@ -88,7 +101,7 @@ def generate(inp: dict, state: dict, out: dict, utils_callbacks: dict) -> dict:
             ),
             inp["annotator_rows_dropdown"]: gr.Dropdown(
                 choices=sorted(all_annotator_names),
-                value=annotator_types[PRINCIPLE_ANNOTATOR_TYPE]["visible_names"],
+                value=annotator_rows_visible_names,
                 interactive=True,
             ),
             inp["reference_models_dropdown"]: gr.Dropdown(
