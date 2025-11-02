@@ -403,7 +403,15 @@ def group_by_city_state(tweets: List[Tweet]) -> Dict[Tuple[str, str], List[Tweet
     return d
 
 
-async def make_report(city, state, tweets, disaster, model, sem, cache):
+async def make_report(
+    city, state, tweets, disaster, model, sem, cache, tweets_limit=250
+):
+    if tweets_limit and len(tweets) > tweets_limit:
+        print(
+            f"Warning: {len(tweets)} tweets found for {city}, {state}, truncating to {tweets_limit}"
+        )
+        tweets = tweets[:tweets_limit]
+
     block = "\n".join(f"{t.tweet_id}: {t.text}" for t in tweets)
     title = await call_llm(
         TITLE_PROMPT_TEMPLATE.format(city=city, disaster=disaster, tweets=block),
