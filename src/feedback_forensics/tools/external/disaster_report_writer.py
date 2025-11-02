@@ -447,7 +447,6 @@ async def make_all_reports(tweets, model, sem, cache, disaster):
 async def main_async(args):
     print("Starting disaster report writer with args")
     sem = asyncio.Semaphore(args.max_concurrent)
-    cache = PromptCache(Path(args.cache) if args.cache else None)
 
     if args.output_dir is None:
         model_name = args.model.split("/")[-1].replace("-", "_")
@@ -456,6 +455,7 @@ async def main_async(args):
         output_dir = Path(args.output_dir)
 
     output_dir.mkdir(parents=True, exist_ok=True)
+    cache = PromptCache(output_dir / "cache.json")
 
     # saving config
     with open(output_dir / "config.json", "w") as f:
@@ -493,11 +493,6 @@ def parse_args():
     p.add_argument("--disaster", default="Hurricane Harvey")
     p.add_argument(
         "--limit", type=int, default=None, help="Process only first N tweets"
-    )
-    p.add_argument(
-        "--cache",
-        default="exp/disaster_report_writer/cache.json",
-        help="Cache file for model responses",
     )
     p.add_argument("--max-concurrent", type=int, default=5)
     p.add_argument("--class-batch", type=int, default=20)
