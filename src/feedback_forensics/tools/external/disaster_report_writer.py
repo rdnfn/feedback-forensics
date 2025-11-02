@@ -163,10 +163,19 @@ def read_tweets_from_tsv(
         overall_num_tweets = 0
 
         def load_tweet(row: Dict[str, str]) -> Tweet:
+            text = row.get("text", row.get("tweet_text", ""))
             if not include_labels:
-                return Tweet(tweet_id=row["tweet_id"], text=row["tweet_text"])
+                return Tweet(tweet_id=row["tweet_id"], text=text)
             else:
-                return Tweet(**row)
+                return Tweet(
+                    tweet_id=row["tweet_id"],
+                    text=text,
+                    label=row.get("label", None),
+                    is_sub_event=row.get("is_sub_event", None),
+                    ner_locations=row.get("ner_locations", None),
+                    state=row.get("state", None),
+                    city=row.get("city", None),
+                )
 
         for i, row in enumerate(reader):
             overall_num_tweets += 1
