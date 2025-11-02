@@ -158,10 +158,17 @@ def read_tweets_from_tsv(path: Path, limit: Optional[int] = None) -> List[Tweet]
     tweets = []
     with path.open("r", encoding="utf-8") as f:
         reader = csv.DictReader(f, delimiter="\t")
+        overall_num_tweets = 0
         for i, row in enumerate(reader):
-            if limit and i >= limit:
-                break
-            tweets.append(Tweet(tweet_id=row["tweet_id"], text=row["tweet_text"]))
+            overall_num_tweets += 1
+            if limit and i <= limit - 1:
+                tweets.append(Tweet(tweet_id=row["tweet_id"], text=row["tweet_text"]))
+            elif not limit:
+                tweets.append(Tweet(tweet_id=row["tweet_id"], text=row["tweet_text"]))
+            else:
+                continue
+
+    print(f"Loaded {len(tweets)} tweets out of {overall_num_tweets}")
     return tweets
 
 
@@ -423,6 +430,7 @@ async def make_all_reports(tweets, model, sem, cache, disaster):
 
 
 async def main_async(args):
+    print("Starting disaster report writer with args")
     tweets = read_tweets_from_tsv(Path(args.input), limit=args.limit)
     sem = asyncio.Semaphore(args.max_concurrent)
     cache = PromptCache(Path(args.cache) if args.cache else None)
