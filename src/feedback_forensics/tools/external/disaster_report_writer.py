@@ -7,7 +7,7 @@ and Automated Reporting from Social Media Feedback” (Cantini et al., 2024)
 Example usage:
 
 ```bash
-python disaster_report_writer.py --input tweets.tsv --output reports.tsv --model openrouter/google/gemini-2.5-flash --limit 100 --cache mycache.json
+python disaster_report_writer.py --input tweets.tsv --model openrouter/google/gemini-2.5-flash --limit 100
 ```
 """
 
@@ -273,8 +273,8 @@ async def get_model_response(prompt: str, model_name: str):
             )
             response_content = response.content
             break
-        except Exception:
-            print(f"Error getting model response for prompt {prompt}")
+        except Exception as e:
+            print(f"Error getting model response: {e}")
             if i < max_retries - 1:
                 print(
                     f"Retrying ({i+1}/{max_retries} tries). Sleeping for 3 seconds..."
@@ -293,7 +293,7 @@ async def call_llm(
         return cached
     async with sem:
         result = await get_model_response(prompt, model)
-        await cache.set(prompt, model, result)  # <-- now awaited
+        await cache.set(prompt, model, result)
         return result
 
 
