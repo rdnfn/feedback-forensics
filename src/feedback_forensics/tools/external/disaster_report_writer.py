@@ -154,17 +154,26 @@ def agg_to_binary(label: str) -> bool:
 # ========== SIMPLE TSV HELPERS ==========
 
 
-def read_tweets_from_tsv(path: Path, limit: Optional[int] = None) -> List[Tweet]:
+def read_tweets_from_tsv(
+    path: Path, limit: Optional[int] = None, include_labels: bool = False
+) -> List[Tweet]:
     tweets = []
     with path.open("r", encoding="utf-8") as f:
         reader = csv.DictReader(f, delimiter="\t")
         overall_num_tweets = 0
+
+        def load_tweet(row: Dict[str, str]) -> Tweet:
+            if not include_labels:
+                return Tweet(tweet_id=row["tweet_id"], text=row["tweet_text"])
+            else:
+                return Tweet(**row)
+
         for i, row in enumerate(reader):
             overall_num_tweets += 1
             if limit and i <= limit - 1:
-                tweets.append(Tweet(tweet_id=row["tweet_id"], text=row["tweet_text"]))
+                tweets.append(load_tweet(row))
             elif not limit:
-                tweets.append(Tweet(tweet_id=row["tweet_id"], text=row["tweet_text"]))
+                tweets.append(load_tweet(row))
             else:
                 continue
 
@@ -292,6 +301,12 @@ def parse_class_output(text: str) -> Dict[str, str]:
         if "," in line:
             tid, label = line.split(",", 1)
             out[tid.strip()] = label.strip().lower()
+        elif ":" in line:
+            tid, label = line.split(":", 1)
+            out[tid.strip()] = label.strip().lower()
+        else:
+            print(f"Warning: No label found for tweet {tid}")
+            continue
     return out
 
 
@@ -431,26 +446,49 @@ async def make_all_reports(tweets, model, sem, cache, disaster):
 
 async def main_async(args):
     print("Starting disaster report writer with args")
-    tweets = read_tweets_from_tsv(Path(args.input), limit=args.limit)
     sem = asyncio.Semaphore(args.max_concurrent)
     cache = PromptCache(Path(args.cache) if args.cache else None)
 
-    await classify_tweets(tweets, args.model, sem, cache, batch=args.class_batch)
-    await ner_and_geo(tweets, args.model, sem, cache, batch=args.geo_batch)
+    if args.output_dir is None:
+        model_name = args.model.split("/")[-1].replace("-", "_")
+        output_dir = Path(f"exp/disaster_report_writer/{model_name}")
+    else:
+        output_dir = Path(args.output_dir)
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # saving config
+    with open(output_dir / "config.json", "w") as f:
+        json.dump(args.__dict__, f, indent=4)
+
+    if not args.reuse_labels:
+        tweets = read_tweets_from_tsv(Path(args.input), limit=args.limit)
+        await classify_tweets(tweets, args.model, sem, cache, batch=args.class_batch)
+        await ner_and_geo(tweets, args.model, sem, cache, batch=args.geo_batch)
+    else:
+        tweets = read_tweets_from_tsv(
+            Path(args.input), limit=args.limit, include_labels=True
+        )
+        print(
+            f"Skipping classification and NER, reusing labels from input file {Path(args.input)}"
+        )
 
     # save tweets to tsv
-    write_tweets_to_tsv(Path(args.output_dir) / "tweets.tsv", tweets)
+    write_tweets_to_tsv(output_dir / "tweets.tsv", tweets)
 
     reports = await make_all_reports(
         tweets, args.model, sem, cache, disaster=args.disaster
     )
-    write_reports_to_tsv(Path(args.output_dir) / "reports.tsv", reports)
+    write_reports_to_tsv(output_dir / "reports.tsv", reports)
 
 
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--input", required=True)
-    p.add_argument("--output-dir", default="exp/disaster_report_writer")
+    p.add_argument(
+        "--reuse-labels", action="store_true", help="Reuse labels from input file"
+    )
+    p.add_argument("--output-dir", default=None)
     p.add_argument("--model", required=True)
     p.add_argument("--disaster", default="Hurricane Harvey")
     p.add_argument(
