@@ -390,6 +390,10 @@ async def ner_and_geo(tweets: List[Tweet], model: str, sem, cache, batch=30):
     for t in sub:
         g = geo_map.get(t.tweet_id, {})
         t.state, t.city = g.get("state"), g.get("city")
+        if t.state:
+            t.state = t.state.lower()
+        if t.city:
+            t.city = t.city.lower()
 
 
 # ========== REPORTS ==========
@@ -399,7 +403,7 @@ def group_by_city_state(tweets: List[Tweet]) -> Dict[Tuple[str, str], List[Tweet
     d = defaultdict(list)
     for t in tweets:
         if t.is_sub_event:
-            d[(t.city or "unknown", t.state or "unknown")].append(t)
+            d[(t.city or "unknown").lower(), (t.state or "unknown").lower()].append(t)
     return d
 
 
