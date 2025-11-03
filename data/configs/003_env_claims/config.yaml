@@ -1,0 +1,6 @@
+data_path: data/output/environmental_claims_ap_v2.json
+alg_model: openrouter/google/gemini-2.5-flash
+s3_num_seeds_to_reannotate_with: 1
+s2_num_clusters: 160
+annotator:
+  skip: true
