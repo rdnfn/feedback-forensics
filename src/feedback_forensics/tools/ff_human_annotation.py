@@ -127,6 +127,58 @@ def _log_event(event_log_path, event_type, **data) -> None:
         f.write(json.dumps(event) + "\n")
 
 
+def _compute_stats(event_log_path: pathlib.Path, total_comparisons: int) -> str:
+    """Compute annotation statistics from event log.
+
+    Returns markdown string with progress and timing stats.
+    """
+    try:
+        events: List[Dict[str, Any]] = []
+        with open(event_log_path) as f:
+            for line in f:
+                if len(line.strip()) > 0:
+                    events.append(json.loads(line))
+    except FileNotFoundError:
+        return "**Progress**: No events yet."
+
+    last_load_time = None
+    last_trait_change_time = None
+    time_diffs = []
+
+    # Count only loads that are followed by at least one annotation.
+    # Compute delta between load and final annotation.
+    for event in events:
+        event_type = event["event"]
+        timestamp = datetime.fromisoformat(event["timestamp"])
+
+        if event_type == "comparison_loaded":
+            if last_load_time is not None and last_trait_change_time is not None:
+                time_diffs.append((timestamp - last_load_time).total_seconds())
+
+            last_load_time = timestamp
+            last_trait_change_time = None
+
+        elif event_type == "trait_changed":
+            last_trait_change_time = timestamp
+
+    annotated_count = len(time_diffs)
+    progress_pct = int(100 * annotated_count / total_comparisons)
+
+    if len(time_diffs) > 0:
+        avg_time_secs = sum(time_diffs) / len(time_diffs)
+        time_str = f"{avg_time_secs:.1f}s"
+        remaining_str = f"{int((total_comparisons - annotated_count) * avg_time_secs)}s"
+    else:
+        time_str = "N/A"
+        remaining_str = "N/A"
+
+    return f"""**Progress**
+
+- **Annotated**: {annotated_count} / {total_comparisons} ({progress_pct}%)
+- **Avg time/comparison**: {time_str}
+- **Est. time remaining**: {remaining_str}"""
+
+
 def build_interface(
     input_path: pathlib.Path,
     output_path: pathlib.Path | None,
@@ -220,13 +272,19 @@ def build_interface(
             )
 
         with gr.Row():
-            idx_display = gr.Number(
-                label="Index (out of {len(comparisons)})",
-                value=0,
-                precision=0,
-                interactive=False,
-                container=False,
-            )
+            # One row with two cols: Index and progress
+            with gr.Column(scale=2):
+                idx_display = gr.Number(
+                    label="Index (out of {len(comparisons)})",
+                    value=0,
+                    precision=0,
+                    interactive=False,
+                    container=False,
+                )
+            with gr.Column(scale=1):
+                stats_display = gr.Markdown(
+                    value=_compute_stats(event_log_path, len(comparisons))
+                )
 
         with gr.Row():
             btn_prev = gr.Button("Prev")
@@ -264,6 +322,7 @@ def build_interface(
 
             updates: List[Any] = [
                 i,
+                gr.update(value=_compute_stats(event_log_path, len(comparisons))),
                 gr.update(value=prompt, visible=bool(prompt)),
                 text_a,
                 text_b,
@@ -295,6 +354,7 @@ def build_interface(
         # Outputs list: idx_display, prompt_md, text_a_box, text_b_box, then one per trait
         output_components: List[gr.components.Component] = [
             idx_display,
+            stats_display,
             prompt_md,
             text_a_box,
             text_b_box,
