@@ -3,6 +3,8 @@ import pathlib
 from typing import Any, Dict, List, Tuple
 import copy
 import random
+import json
+from datetime import datetime, timezone
 
 import gradio as gr
 from loguru import logger
@@ -115,6 +117,16 @@ def _save(ap: Dict[str, Any], output_path: pathlib.Path) -> None:
     logger.info(f"Saved annotations to: {output_path}")
 
 
+def _log_event(event_log_path, event_type, **data) -> None:
+    event = {
+        "event": event_type,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        **data,
+    }
+    with open(event_log_path, "a") as f:
+        f.write(json.dumps(event) + "\n")
+
+
 def build_interface(
     input_path: pathlib.Path,
     output_path: pathlib.Path | None,
@@ -173,6 +185,15 @@ def build_interface(
         comp["id"]: comp for comp in new_ap["comparisons"]
     }
     trait_to_annotator_id = _ensure_trait_annotators_exist(new_ap, traits)
+
+    event_log_path = pathlib.Path(str(output_path) + ".events.jsonl")
+    _log_event(
+        event_log_path,
+        "session_started",
+        input_file=str(input_path),
+        output_file=str(output_path),
+        total_comparisons=len(comparisons),
+    )
 
     # Save immediately to ensure annotators are present in the output file
     _save(new_ap, output_path)
@@ -234,6 +255,13 @@ def build_interface(
             comp = comparisons[i]
             prompt, text_a, text_b = _read_pair_texts(comp)
 
+            _log_event(
+                event_log_path,
+                "comparison_loaded",
+                comparison_id=comp["id"],
+                comparison_index=i,
+            )
+
             updates: List[Any] = [
                 i,
                 gr.update(value=prompt, visible=bool(prompt)),
@@ -255,10 +283,14 @@ def build_interface(
 
         # Wire navigation
         def on_prev(i):
-            return load_index(int(i) - 1)
+            from_index = int(i)
+            _log_event(event_log_path, "prev_clicked", from_index=from_index)
+            return load_index(from_index - 1)
 
         def on_next(i):
-            return load_index(int(i) + 1)
+            from_index = int(i)
+            _log_event(event_log_path, "next_clicked", from_index=from_index)
+            return load_index(from_index + 1)
 
         # Outputs list: idx_display, prompt_md, text_a_box, text_b_box, then one per trait
         output_components: List[gr.components.Component] = [
@@ -296,11 +328,26 @@ def build_interface(
             else:
                 new_comp = new_comparisons[comp_id]
 
+            old_annotations = new_comp.get("annotations", {})
+
             # Build annotations for ALL traits from current control values
             all_annotations: Dict[str, Any] = {}
             for trait_name, value in zip(traits, trait_values):
                 annotator_id = trait_to_annotator_id[trait_name]
-                all_annotations[annotator_id] = {"pref": _annotation_from_value(value)}
+                new_pref = _annotation_from_value(value)
+                all_annotations[annotator_id] = {"pref": new_pref}
+
+                old_pref = old_annotations.get(annotator_id, {}).get("pref")
+                if old_pref != new_pref:
+                    # This is always triggered for all traits. Only log the actually changed one.
+                    _log_event(
+                        event_log_path,
+                        "trait_changed",
+                        comparison_id=comp_id,
+                        trait=trait_name,
+                        old_value=old_pref,
+                        new_value=new_pref,
+                    )
 
             # add default annotator
             all_annotations[DEFAULT_ANNOTATOR_HASH] = {
