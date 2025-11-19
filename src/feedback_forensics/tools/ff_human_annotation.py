@@ -179,6 +179,41 @@ def _compute_stats(event_log_path: pathlib.Path, total_comparisons: int) -> str:
 - **Est. time remaining**: {remaining_str}"""
 
 
+def _is_annotated(
+    comp_id: str,
+    output_comparisons: Dict[str, Any],
+    trait_to_annotator_id: Dict[str, str],
+) -> bool:
+    """Check if a comparison has any trait annotations."""
+    if comp_id not in output_comparisons:
+        return False
+    annotations = output_comparisons[comp_id].get("annotations", {})
+    for annotator_id in trait_to_annotator_id.values():
+        if annotator_id in annotations:
+            return True
+    return False
+
+
+def _find_unannotated(
+    start_idx: int,
+    input_comparisons_ordered: List[Dict[str, Any]],
+    output_comparisons: Dict[str, Any],
+    trait_to_annotator_id: Dict[str, str],
+    direction: int = 1,
+) -> int:
+    """
+    Find next unannotated comparison in given direction starting after start_idx.
+    Returns a valid index clamped to the input_comparisons_ordered list bounds.
+    """
+    idx = start_idx
+    for _ in range(len(input_comparisons_ordered)):
+        idx = (idx + direction) % len(input_comparisons_ordered)
+        comp_id = input_comparisons_ordered[idx]["id"]
+        if not _is_annotated(comp_id, output_comparisons, trait_to_annotator_id):
+            return idx
+    return start_idx
+
+
 def build_interface(
     input_path: pathlib.Path,
     output_path: pathlib.Path | None,
@@ -274,9 +309,15 @@ def build_interface(
         with gr.Row():
             # One row with two cols: Index and progress
             with gr.Column(scale=2):
+                initial_idx = _find_unannotated(
+                    -1,
+                    comparisons,
+                    new_comparisons,
+                    trait_to_annotator_id,
+                )
                 idx_display = gr.Number(
                     label="Index (out of {len(comparisons)})",
-                    value=0,
+                    value=initial_idx,
                     precision=0,
                     interactive=False,
                     container=False,
@@ -309,7 +350,6 @@ def build_interface(
                 trait_controls[trait] = ctrl
 
         def load_index(i: int) -> List[Any]:
-            i = max(0, min(i, len(comparisons) - 1))
             comp = comparisons[i]
             prompt, text_a, text_b = _read_pair_texts(comp)
 
@@ -343,13 +383,37 @@ def build_interface(
         # Wire navigation
         def on_prev(i):
             from_index = int(i)
-            _log_event(event_log_path, "prev_clicked", from_index=from_index)
-            return load_index(from_index - 1)
+            to_index = _find_unannotated(
+                from_index,
+                comparisons,
+                new_comparisons,
+                trait_to_annotator_id,
+                direction=-1,
+            )
+            _log_event(
+                event_log_path,
+                "prev_clicked",
+                from_index=from_index,
+                to_index=to_index,
+            )
+            return load_index(to_index)
 
         def on_next(i):
             from_index = int(i)
-            _log_event(event_log_path, "next_clicked", from_index=from_index)
-            return load_index(from_index + 1)
+            to_index = _find_unannotated(
+                from_index,
+                comparisons,
+                new_comparisons,
+                trait_to_annotator_id,
+                direction=1,
+            )
+            _log_event(
+                event_log_path,
+                "next_clicked",
+                from_index=from_index,
+                to_index=to_index,
+            )
+            return load_index(to_index)
 
         # Outputs list: idx_display, prompt_md, text_a_box, text_b_box, then one per trait
         output_components: List[gr.components.Component] = [
