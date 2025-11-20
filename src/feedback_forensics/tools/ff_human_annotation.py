@@ -570,13 +570,29 @@ def run():
         required=True,
         help="Identifier of the human rater (used to track annotations per person)",
     )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=7860,
+        help="Port to run the interface on (default: 7860)",
+    )
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="127.0.0.1",
+        help="Host address to bind to (default: 127.0.0.1). Use 0.0.0.0 for network accessibility",
+    )
 
     args = parser.parse_args()
 
     demo = build_interface(
         args.input, args.out, args.rater, args.traits, args.use_standard_traits
     )
-    demo.launch(share=args.share)
+    demo.launch(
+        share=args.share,
+        server_name=args.host,
+        server_port=args.port,
+    )
 
 
 if __name__ == "__main__":
