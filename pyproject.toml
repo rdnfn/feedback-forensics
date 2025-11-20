@@ -45,7 +45,7 @@ dev = [
     "huggingface_hub",
 ]
 docs = [
-    "jupyter-book>=0.15.1",
+    "jupyter-book<2",
     "sphinx>=4.0.0",
     "myst-parser>=0.18.0",
     "sphinx-book-theme>=1.0.0",
