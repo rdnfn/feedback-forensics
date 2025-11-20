@@ -32,11 +32,15 @@ PERSONALITY_TRAITS_DEFAULT: List[str] = (
 
 
 def _ensure_trait_annotators_exist(
-    ap: Dict[str, Any], traits: List[str]
+    ap: Dict[str, Any], traits: List[str], rater: str
 ) -> Dict[str, str]:
     """Ensure that an annotator entry exists for every trait.
 
     Returns mapping from trait -> annotator_id (stable, hashed).
+
+    Note: 'rater' refers to the human doing the rating/annotation work. We use 'rater'
+    rather than 'annotator' to avoid confusion with the trait-level annotators created
+    from this rater (one rater produces multiple trait-level annotators).
     """
     annotators: Dict[str, Any] = ap.setdefault("annotators", {})
     trait_to_annotator_id: Dict[str, str] = {}
@@ -44,12 +48,13 @@ def _ensure_trait_annotators_exist(
     for trait in traits:
         # Create a stable short annotator id from the trait name
         # TODO: use standard hash method from ICAI
-        annotator_id = hash_string(f"trait::{trait}")[:8]
+        annotator_id = hash_string(f"human::{rater};trait::{trait}")[:8]
+        description = f"Human ({rater}): {trait}"
         trait_to_annotator_id[trait] = annotator_id
 
         if annotator_id not in annotators:
             annotators[annotator_id] = {
-                "description": f"Human: {trait}",
+                "description": description,
                 "type": "principle",
             }
 
@@ -127,8 +132,10 @@ def _log_event(event_log_path, event_type, **data) -> None:
         f.write(json.dumps(event) + "\n")
 
 
-def _compute_stats(event_log_path: pathlib.Path, total_comparisons: int) -> str:
-    """Compute annotation statistics from event log.
+def _compute_stats(
+    event_log_path: pathlib.Path, total_comparisons: int, rater: str
+) -> str:
+    """Compute annotation statistics from event log, filtered by rater.
 
     Returns markdown string with progress and timing stats.
     """
@@ -149,6 +156,11 @@ def _compute_stats(event_log_path: pathlib.Path, total_comparisons: int) -> str:
     # Compute delta between load and final annotation.
     for event in events:
         event_type = event["event"]
+        event_rater = event["rater"]
+
+        if event_rater != rater:
+            continue
+
         timestamp = datetime.fromisoformat(event["timestamp"])
 
         if event_type == "comparison_loaded":
@@ -217,6 +229,7 @@ def _find_unannotated(
 def build_interface(
     input_path: pathlib.Path,
     output_path: pathlib.Path | None,
+    rater: str,
     traits: List[str] | None = None,
     use_standard_traits: bool = False,
 ) -> gr.Blocks:
@@ -271,7 +284,7 @@ def build_interface(
     new_comparisons: Dict[str, Any] = {
         comp["id"]: comp for comp in new_ap["comparisons"]
     }
-    trait_to_annotator_id = _ensure_trait_annotators_exist(new_ap, traits)
+    trait_to_annotator_id = _ensure_trait_annotators_exist(new_ap, traits, rater)
 
     event_log_path = pathlib.Path(str(output_path) + ".events.jsonl")
     _log_event(
@@ -280,6 +293,7 @@ def build_interface(
         input_file=str(input_path),
         output_file=str(output_path),
         total_comparisons=len(comparisons),
+        rater=rater,
     )
 
     # Save immediately to ensure annotators are present in the output file
@@ -324,7 +338,7 @@ def build_interface(
                 )
             with gr.Column(scale=1):
                 stats_display = gr.Markdown(
-                    value=_compute_stats(event_log_path, len(comparisons))
+                    value=_compute_stats(event_log_path, len(comparisons), rater)
                 )
 
         with gr.Row():
@@ -358,11 +372,14 @@ def build_interface(
                 "comparison_loaded",
                 comparison_id=comp["id"],
                 comparison_index=i,
+                rater=rater,
             )
 
             updates: List[Any] = [
                 i,
-                gr.update(value=_compute_stats(event_log_path, len(comparisons))),
+                gr.update(
+                    value=_compute_stats(event_log_path, len(comparisons), rater)
+                ),
                 gr.update(value=prompt, visible=bool(prompt)),
                 text_a,
                 text_b,
@@ -395,6 +412,7 @@ def build_interface(
                 "prev_clicked",
                 from_index=from_index,
                 to_index=to_index,
+                rater=rater,
             )
             return load_index(to_index)
 
@@ -412,6 +430,7 @@ def build_interface(
                 "next_clicked",
                 from_index=from_index,
                 to_index=to_index,
+                rater=rater,
             )
             return load_index(to_index)
 
@@ -471,6 +490,7 @@ def build_interface(
                         trait=trait_name,
                         old_value=old_pref,
                         new_value=new_pref,
+                        rater=rater,
                     )
 
             # add default annotator
@@ -544,10 +564,18 @@ def run():
         help="Share the Gradio interface with the world",
         default=False,
     )
+    parser.add_argument(
+        "--rater",
+        type=str,
+        required=True,
+        help="Identifier of the human rater (used to track annotations per person)",
+    )
 
     args = parser.parse_args()
 
-    demo = build_interface(args.input, args.out, args.traits, args.use_standard_traits)
+    demo = build_interface(
+        args.input, args.out, args.rater, args.traits, args.use_standard_traits
+    )
     demo.launch(share=args.share)
 
 
