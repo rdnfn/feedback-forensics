@@ -235,20 +235,6 @@ def generate(
         """Load data from query params."""
         config = get_config_from_query_params(request)
 
-        # check if config is None (did not parse correctly)
-        if config is None:
-            return {
-                inp["active_datasets_dropdown"]: gr.Dropdown(
-                    choices=get_available_datasets_names(),
-                    value=(
-                        get_default_dataset_names()[0]
-                        if get_default_dataset_names()
-                        else None
-                    ),
-                    multiselect=False,
-                )
-            }
-
         # ensure that base_url is correctly set
         # (e.g. app.feedbackforensics.com or localhost:7860)
         if APP_BASE_URL is not None:
@@ -260,6 +246,44 @@ def generate(
             state["app_url"]: app_url,
         }
         data[state["app_url"]] = app_url
+
+        # check if config is None (did not parse correctly / no URL params)
+        if config is None:
+            # Set default dataset if available
+            default_datasets = get_default_dataset_names()
+            if default_datasets:
+                data[inp["active_datasets_dropdown"]] = default_datasets[0]
+                return_dict[inp["active_datasets_dropdown"]] = gr.Dropdown(
+                    choices=get_available_datasets_names(),
+                    value=default_datasets[0],
+                    multiselect=False,
+                )
+
+                # Initialize default configuration (including annotator rows)
+                base_updated_config_dict = update_config_on_dataset_change(data)
+
+                # Extract values from the returned Gradio components and update data dict
+                # This is necessary so that load_data() can access the default values
+                for key, component in base_updated_config_dict.items():
+                    if hasattr(component, "value"):
+                        data[key] = component.value
+
+                return_dict = {
+                    **base_updated_config_dict,
+                    **update_col_split_value_dropdown(data),
+                    **return_dict,
+                }
+
+                # Load data with default configuration
+                return_dict = {**return_dict, **load_data(data)}
+            else:
+                return_dict[inp["active_datasets_dropdown"]] = gr.Dropdown(
+                    choices=get_available_datasets_names(),
+                    value=None,
+                    multiselect=False,
+                )
+
+            return return_dict
 
         if "datasets" in config:
 
