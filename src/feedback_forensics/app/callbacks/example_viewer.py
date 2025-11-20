@@ -8,6 +8,7 @@ from feedback_forensics.app.constants import (
     EXAMPLE_VIEWER_NO_DATA_MESSAGE,
     EXAMPLE_VIEWER_MULTIPLE_DATASETS_MESSAGE,
     NONE_SELECTED_VALUE,
+    SUBSET_FILTER_CHOICES,
 )
 
 from feedback_forensics.app.metrics import ensure_categories_identical
@@ -31,8 +32,9 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
                 choices=[], value=None, interactive=False
             ),
             inp["example_index_slider"]: _generate_non_functional_slider(),
+            # Keep choices visible (but disabled) so the dropdown never looks empty
             inp["example_subset_dropdown"]: gr.Dropdown(
-                choices=[], value=None, interactive=False
+                choices=SUBSET_FILTER_CHOICES, value=None, interactive=False
             ),
         }
 
@@ -144,6 +146,12 @@ def generate(inp: dict, state: dict, out: dict) -> dict:
                 maximum=max(1, max_examples),
                 value=slider_value,
                 interactive=max_examples > 0,
+            ),
+            # Repopulate and re-enable subset dropdown when data is available
+            inp["example_subset_dropdown"]: gr.Dropdown(
+                choices=SUBSET_FILTER_CHOICES,
+                value=subset_filter or "all",
+                interactive=True,
             ),
             **display_example(data),
         }

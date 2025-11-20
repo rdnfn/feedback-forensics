@@ -30,7 +30,7 @@ def run():
         "--datapath",
         type=str,
         required=True,
-        help="Path to dataset CSV file with columns text_a, text_b, and preferred_text",
+        help="Path to AnnotatedPairs JSON file or CSV file with columns text_a, text_b, and preferred_text.",
     )
     parser.add_argument(
         "-v",
@@ -65,8 +65,8 @@ def run():
         "-m",
         "--model",
         type=str,
-        default="openrouter/openai/gpt-4o-mini-2024-07-18",
-        help="Model to use to annotate the data (default: openrouter/openai/gpt-4o-mini-2024-07-18)",
+        default="openrouter/google/gemini-2.5-flash",
+        help="Model to use to annotate the data (default: openrouter/google/gemini-2.5-flash)",
     )
 
     args = parser.parse_args()
@@ -81,6 +81,8 @@ def run():
         f'data_path="{args.datapath}"',
         "annotator.skip=true",
         "s0_skip_principle_generation=true",
+        "async_task_num=400",
+        "s3_num_seeds_to_reannotate_with=1",
     ]
 
     if args.output_dir is not None:

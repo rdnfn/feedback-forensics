@@ -201,7 +201,7 @@ def load_webapp_datasets():
         repo_username="rdnfn",
         repo_name="ff-model-personality",
         repo_provider="huggingface.co/datasets",
-        file_path="data/v1/annotations/combined_ap.json",
+        file_path="data/v2/annotations/combined_ap.json",
     )
 
 

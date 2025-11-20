@@ -9,6 +9,7 @@ from feedback_forensics.app.constants import (
     ENABLE_EXAMPLE_VIEWER,
     EXAMPLE_BASE_URL,
     DEFAULT_SHOWN_METRIC,
+    SUBSET_FILTER_CHOICES,
 )
 from feedback_forensics.data.datasets import (
     get_available_datasets,
@@ -321,20 +322,7 @@ def _create_example_viewer(inp: dict, out: dict):
 
             inp["example_subset_dropdown"] = gr.Dropdown(
                 label="🔍 Filter subset",
-                choices=[
-                    ("All", "all"),
-                    ("Agree", "agree"),
-                    ("Disagree", "disagree"),
-                    (
-                        "Only annotator 1 does not apply",
-                        "only annotator 1 does not apply",
-                    ),
-                    (
-                        "Only annotator 2 does not apply",
-                        "only annotator 2 does not apply",
-                    ),
-                    ("Neither apply", "neither apply"),
-                ],
+                choices=SUBSET_FILTER_CHOICES,
                 value="all",
                 interactive=True,
             )

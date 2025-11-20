@@ -1,0 +1,7 @@
+# data_path: exp/disaster_report_writer/pairwise_reports.csv
+data_path: exp/disaster_report_writer/pairwise_reports_fully_separate_pipeline.csv
+alg_model: openrouter/google/gemini-2.5-flash
+s3_num_seeds_to_reannotate_with: 3
+s2_num_clusters: 160
+annotator:
+  skip: true

@@ -97,6 +97,16 @@ EXAMPLE_VIEWER_MULTIPLE_DATASETS_MESSAGE = (
     "⚠️ Multiple datasets selected. Select single dataset to view examples."
 )
 
+# Choices for the example viewer subset filter dropdown
+SUBSET_FILTER_CHOICES = [
+    ("All", "all"),
+    ("Agree", "agree"),
+    ("Disagree", "disagree"),
+    ("Only annotator 1 does not apply", "only annotator 1 does not apply"),
+    ("Only annotator 2 does not apply", "only annotator 2 does not apply"),
+    ("Neither apply", "neither apply"),
+]
+
 # Mode for Gradio web app (downloads special data)
 # FOR INTERNAL USE ONLY: this won't work
 # without the right HF_TOKEN and setup

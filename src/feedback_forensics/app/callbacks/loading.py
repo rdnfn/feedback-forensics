@@ -62,6 +62,17 @@ def generate(
         data: dict,
     ) -> dict:
         """Load data with dictionary inputs instead of individual arguments."""
+
+        fail_return_dict = {
+            inp["split_col_dropdown"]: data[inp["split_col_dropdown"]],
+            out["overall_metrics_table"]: gr.Dataframe(
+                value=pd.DataFrame(), headers=["⛔️ Analysis stopped"]
+            ),
+            out["annotator_table"]: gr.Dataframe(
+                value=pd.DataFrame(), headers=["⛔️ Analysis stopped"]
+            ),
+        }
+
         datasets = data[inp["active_datasets_dropdown"]]
 
         # Normalize datasets to always be a list for processing
@@ -103,6 +114,15 @@ def generate(
 
         # set annotators rows and columns according to user input
         annotator_rows_visible_names = data[inp["annotator_rows_dropdown"]]
+
+        if (
+            annotator_rows_visible_names is None
+            or len(annotator_rows_visible_names) == 0
+        ):
+            gr.Warning(
+                "No annotator rows selected. Please select at least one annotator row to run analysis on."
+            )
+            return fail_return_dict
         dataset_handler.set_annotator_rows(annotator_rows_visible_names)
         annotator_cols_visible_names = data[inp["annotator_cols_dropdown"]]
         if len(datasets) > 1 and len(annotator_cols_visible_names) > 1:
@@ -127,15 +147,7 @@ def generate(
                 )
                 # return statement needs to have at least one output
                 # thus we add this output without change
-                return {
-                    inp["split_col_dropdown"]: data[inp["split_col_dropdown"]],
-                    out["overall_metrics_table"]: gr.Dataframe(
-                        value=pd.DataFrame(), headers=["⛔️ Analysis stopped"]
-                    ),
-                    out["annotator_table"]: gr.Dataframe(
-                        value=pd.DataFrame(), headers=["⛔️ Analysis stopped"]
-                    ),
-                }
+                return fail_return_dict
 
         dataset_handler.set_annotator_cols(annotator_cols_visible_names)
 
