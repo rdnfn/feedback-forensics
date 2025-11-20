@@ -258,22 +258,22 @@ def generate(
                     value=default_datasets[0],
                     multiselect=False,
                 )
-                
+
                 # Initialize default configuration (including annotator rows)
                 base_updated_config_dict = update_config_on_dataset_change(data)
-                
+
                 # Extract values from the returned Gradio components and update data dict
                 # This is necessary so that load_data() can access the default values
                 for key, component in base_updated_config_dict.items():
-                    if hasattr(component, 'value'):
+                    if hasattr(component, "value"):
                         data[key] = component.value
-                
+
                 return_dict = {
                     **base_updated_config_dict,
                     **update_col_split_value_dropdown(data),
                     **return_dict,
                 }
-                
+
                 # Load data with default configuration
                 return_dict = {**return_dict, **load_data(data)}
             else:
@@ -282,7 +282,7 @@ def generate(
                     value=None,
                     multiselect=False,
                 )
-            
+
             return return_dict
 
         if "datasets" in config:
