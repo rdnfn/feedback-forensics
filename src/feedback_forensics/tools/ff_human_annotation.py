@@ -299,7 +299,26 @@ def build_interface(
     # Save immediately to ensure annotators are present in the output file
     _save(new_ap, output_path)
 
-    with gr.Blocks(title="Feedback Forensics: Human Trait Annotation") as demo:
+    # Reset scroll to top in the textboxes when the content is mutated
+    scroll_reset_js = """
+    () => {
+        const observer = new MutationObserver(() => {
+            document.querySelectorAll('#text_a_box textarea, #text_b_box textarea').forEach(el => {
+                el.scrollTop = 0;
+            });
+        });
+
+        const config = { childList: true, subtree: true, characterData: true };
+        ['text_a_box', 'text_b_box'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) observer.observe(el, config);
+        });
+    }
+    """
+
+    with gr.Blocks(
+        title="Feedback Forensics: Human Trait Annotation", js=scroll_reset_js
+    ) as demo:
         gr.Markdown(
             """
         ### Human annotation for personality traits
@@ -348,8 +367,8 @@ def build_interface(
         with gr.Group():
             prompt_md = gr.Textbox(label="Prompt", lines=4)
             with gr.Row():
-                text_a_box = gr.Textbox(label="Text A", lines=10)
-                text_b_box = gr.Textbox(label="Text B", lines=10)
+                text_a_box = gr.Textbox(label="Text A", lines=10, elem_id="text_a_box")
+                text_b_box = gr.Textbox(label="Text B", lines=10, elem_id="text_b_box")
 
         # Dynamic controls per trait
         trait_controls: Dict[str, gr.components.Component] = {}
