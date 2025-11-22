@@ -333,7 +333,7 @@ def build_interface(
                     label="Index (out of {len(comparisons)})",
                     value=initial_idx,
                     precision=0,
-                    interactive=False,
+                    interactive=True,
                     container=False,
                 )
             with gr.Column(scale=1):
@@ -516,6 +516,16 @@ def build_interface(
                 inputs=[idx_display] + trait_inputs,
                 outputs=[],
             )
+
+        def on_index_change(new_idx):
+            idx = max(0, min(int(new_idx), len(comparisons) - 1))
+            return load_index(idx)
+
+        idx_display.change(
+            on_index_change,
+            inputs=[idx_display],
+            outputs=output_components,
+        )
 
         # Initialize first example
         load_fn = getattr(demo, "load")
