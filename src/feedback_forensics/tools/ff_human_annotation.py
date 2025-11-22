@@ -149,11 +149,10 @@ def _compute_stats(
         return "**Progress**: No events yet."
 
     last_load_time = None
-    last_trait_change_time = None
+    last_save_time = None
     time_diffs = []
 
-    # Count only loads that are followed by at least one annotation.
-    # Compute delta between load and final annotation.
+    # Compute delta between load and save.
     for event in events:
         event_type = event["event"]
         event_rater = event["rater"]
@@ -164,14 +163,14 @@ def _compute_stats(
         timestamp = datetime.fromisoformat(event["timestamp"])
 
         if event_type == "comparison_loaded":
-            if last_load_time is not None and last_trait_change_time is not None:
-                time_diffs.append((timestamp - last_load_time).total_seconds())
+            if last_load_time is not None and last_save_time is not None:
+                time_diffs.append((last_save_time - last_load_time).total_seconds())
 
             last_load_time = timestamp
-            last_trait_change_time = None
+            last_save_time = None
 
-        elif event_type == "trait_changed":
-            last_trait_change_time = timestamp
+        elif event_type == "comparison_saved":
+            last_save_time = timestamp
 
     annotated_count = len(time_diffs)
     progress_pct = int(100 * annotated_count / total_comparisons)
@@ -361,7 +360,7 @@ def build_interface(
                 )
 
         with gr.Row():
-            btn_next = gr.Button("Next")
+            btn_save_next = gr.Button("Save and Next")
 
         with gr.Group():
             prompt_md = gr.Textbox(label="Prompt", lines=4)
@@ -383,15 +382,27 @@ def build_interface(
 
         def load_index(i: int) -> List[Any]:
             comp = comparisons[i]
+            comp_id = comp["id"]
             prompt, text_a, text_b = _read_pair_texts(comp)
 
             _log_event(
                 event_log_path,
                 "comparison_loaded",
-                comparison_id=comp["id"],
+                comparison_id=comp_id,
                 comparison_index=i,
                 rater=rater,
             )
+
+            if comp_id not in new_comparisons:
+                # Add new comparison without original annotations
+                new_comp = copy.deepcopy(comp)
+                new_comp["annotations"] = {
+                    trait_to_annotator_id[trait]: {"pref": "irrelevant"}
+                    for trait in traits
+                }
+                new_comparisons[comp_id] = new_comp
+            else:
+                new_comp = new_comparisons[comp_id]
 
             updates: List[Any] = [
                 i,
@@ -415,9 +426,36 @@ def build_interface(
             # Update index display first, then prompt/texts, then trait controls
             return updates
 
-        # Wire navigation
-        def on_next(i):
+        def on_save_and_next(i: int, *trait_values: str):
             from_index = int(i)
+            comp = comparisons[from_index]
+            comp_id = comp["id"]
+            new_comp = new_comparisons[comp_id]
+
+            # Build annotations for ALL traits from current control values
+            all_annotations: Dict[str, Any] = {}
+            for trait_name, value in zip(traits, trait_values):
+                annotator_id = trait_to_annotator_id[trait_name]
+                new_pref = _annotation_from_value(value)
+                all_annotations[annotator_id] = {"pref": new_pref}
+
+            all_annotations[DEFAULT_ANNOTATOR_HASH] = {
+                "pref": comp["annotations"]
+                .get(DEFAULT_ANNOTATOR_HASH, {})
+                .get("pref", "irrelevant")
+            }
+
+            new_comparisons[comp_id]["annotations"] = all_annotations
+            new_ap["comparisons"] = list(new_comparisons.values())
+            _save(new_ap, output_path)
+
+            _log_event(
+                event_log_path,
+                "comparison_saved",
+                comparison_id=comp_id,
+                rater=rater,
+            )
+
             to_index = _find_unannotated(
                 from_index,
                 comparisons,
@@ -443,37 +481,28 @@ def build_interface(
             text_b_box,
         ] + [trait_controls[t] for t in traits]
 
-        # Bind using attribute lookup to appease static type checkers
-        click_fn = getattr(btn_next, "click")
+        trait_inputs: List[gr.components.Component] = [
+            trait_controls[t] for t in traits
+        ]
+
+        click_fn = getattr(btn_save_next, "click")
         click_fn(
-            on_next,
-            inputs=[idx_display],
+            on_save_and_next,
+            inputs=[idx_display] + trait_inputs,
             outputs=output_components,
         )
 
-        # Autosave handler: on any single trait change, save ALL trait annotations for the current comparison
-        def on_any_trait_change(i: int, *trait_values: str):
+        # Log trait changes
+        def on_trait_change_log(i: int, *trait_values: str):
             idx = max(0, min(int(i), len(comparisons) - 1))
             comp = comparisons[idx]
             comp_id = comp["id"]
 
-            if comp_id not in new_comparisons:
-                # Add new comparison without original annotations
-                new_comp = copy.deepcopy(comp)
-                new_comp["annotations"] = {}
-                new_comparisons[comp_id] = new_comp
-            else:
-                new_comp = new_comparisons[comp_id]
+            old_annotations = new_comparisons[comp_id].get("annotations", {})
 
-            old_annotations = new_comp.get("annotations", {})
-
-            # Build annotations for ALL traits from current control values
-            all_annotations: Dict[str, Any] = {}
             for trait_name, value in zip(traits, trait_values):
                 annotator_id = trait_to_annotator_id[trait_name]
                 new_pref = _annotation_from_value(value)
-                all_annotations[annotator_id] = {"pref": new_pref}
-
                 old_pref = old_annotations.get(annotator_id, {}).get("pref")
                 if old_pref != new_pref:
                     # This is always triggered for all traits. Only log the actually changed one.
@@ -487,26 +516,10 @@ def build_interface(
                         rater=rater,
                     )
 
-            # add default annotator
-            all_annotations[DEFAULT_ANNOTATOR_HASH] = {
-                "pref": comp["annotations"]
-                .get(DEFAULT_ANNOTATOR_HASH, {})
-                .get("pref", "irrelevant")
-            }
-
-            new_comparisons[comp_id]["annotations"] = all_annotations
-
-            new_ap["comparisons"] = list(new_comparisons.values())
-            _save(new_ap, output_path)
-            return
-
-        # Wire every trait control to trigger saving all traits by passing all trait inputs
-        trait_inputs: List[gr.components.Component] = [
-            trait_controls[t] for t in traits
-        ]
+        # Wire trait controls to log changes
         for _trait_name, ctrl in trait_controls.items():
             ctrl.select(
-                on_any_trait_change,
+                on_trait_change_log,
                 inputs=[idx_display] + trait_inputs,
                 outputs=[],
             )
