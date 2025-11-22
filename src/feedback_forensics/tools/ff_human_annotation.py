@@ -361,7 +361,6 @@ def build_interface(
                 )
 
         with gr.Row():
-            btn_prev = gr.Button("Prev")
             btn_next = gr.Button("Next")
 
         with gr.Group():
@@ -417,24 +416,6 @@ def build_interface(
             return updates
 
         # Wire navigation
-        def on_prev(i):
-            from_index = int(i)
-            to_index = _find_unannotated(
-                from_index,
-                comparisons,
-                new_comparisons,
-                trait_to_annotator_id,
-                direction=-1,
-            )
-            _log_event(
-                event_log_path,
-                "prev_clicked",
-                from_index=from_index,
-                to_index=to_index,
-                rater=rater,
-            )
-            return load_index(to_index)
-
         def on_next(i):
             from_index = int(i)
             to_index = _find_unannotated(
@@ -463,12 +444,6 @@ def build_interface(
         ] + [trait_controls[t] for t in traits]
 
         # Bind using attribute lookup to appease static type checkers
-        click_fn = getattr(btn_prev, "click")
-        click_fn(
-            on_prev,
-            inputs=[idx_display],
-            outputs=output_components,
-        )
         click_fn = getattr(btn_next, "click")
         click_fn(
             on_next,
