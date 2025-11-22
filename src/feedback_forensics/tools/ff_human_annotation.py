@@ -528,10 +528,20 @@ def build_interface(
         )
 
         # Initialize first example
+        def on_page_load():
+            initial_idx = _find_unannotated(
+                -1,
+                comparisons,
+                new_comparisons,
+                trait_to_annotator_id,
+                1,
+            )
+            return load_index(initial_idx)
+
         load_fn = getattr(demo, "load")
         load_fn(
-            load_index,
-            inputs=[idx_display],
+            on_page_load,
+            inputs=[],
             outputs=output_components,
         )
 
