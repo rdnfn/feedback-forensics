@@ -348,7 +348,7 @@ def build_interface(
                     trait_to_annotator_id,
                 )
                 idx_display = gr.Number(
-                    label="Index (out of {len(comparisons)})",
+                    label=f"Index (out of {len(comparisons)})",
                     value=initial_idx,
                     precision=0,
                     interactive=True,
