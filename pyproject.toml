@@ -31,7 +31,7 @@ dependencies = [
   "nbconvert",
   "jupyter",
   "ipywidgets", # IProgress in jupyter notebooks
-  "gradio",
+  "gradio<6.0",  # Gradio 6.0 has breaking changes, e.g., moved theme/css from gr.Blocks() to launch(). Migration needed if we update.
   "msgspec",
   "ijson",
   "adjustText",
