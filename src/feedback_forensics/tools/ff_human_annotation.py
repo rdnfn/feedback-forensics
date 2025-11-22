@@ -210,15 +210,14 @@ def _find_unannotated(
     input_comparisons_ordered: List[Dict[str, Any]],
     output_comparisons: Dict[str, Any],
     trait_to_annotator_id: Dict[str, str],
-    direction: int = 1,
 ) -> int:
     """
-    Find next unannotated comparison in given direction starting after start_idx.
+    Find next unannotated comparison starting after start_idx.
     Returns a valid index clamped to the input_comparisons_ordered list bounds.
     """
     idx = start_idx
     for _ in range(len(input_comparisons_ordered)):
-        idx = (idx + direction) % len(input_comparisons_ordered)
+        idx = (idx + 1) % len(input_comparisons_ordered)
         comp_id = input_comparisons_ordered[idx]["id"]
         if not _is_annotated(comp_id, output_comparisons, trait_to_annotator_id):
             return idx
@@ -461,7 +460,6 @@ def build_interface(
                 comparisons,
                 new_comparisons,
                 trait_to_annotator_id,
-                direction=1,
             )
             _log_event(
                 event_log_path,
@@ -541,7 +539,6 @@ def build_interface(
                 comparisons,
                 new_comparisons,
                 trait_to_annotator_id,
-                1,
             )
             return load_index(initial_idx)
 
