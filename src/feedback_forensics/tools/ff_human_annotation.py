@@ -46,10 +46,8 @@ def _ensure_trait_annotators_exist(
     trait_to_annotator_id: Dict[str, str] = {}
 
     for trait in traits:
-        # Create a stable short annotator id from the trait name
-        # TODO: use standard hash method from ICAI
-        annotator_id = hash_string(f"human::{rater};trait::{trait}")[:8]
         description = f"Human ({rater}): {trait}"
+        annotator_id = hash_string(description)
         trait_to_annotator_id[trait] = annotator_id
 
         if annotator_id not in annotators:
