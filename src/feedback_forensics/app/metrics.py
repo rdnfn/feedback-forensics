@@ -84,6 +84,52 @@ def get_cohens_kappa_randomized(
     return 2 * (accuracy - 0.5)
 
 
+def get_strength_CI(
+    value_counts: pd.Series,
+    *,
+    annotation_a=None,
+    annotation_b=None,
+    confidence_level=0.95,
+    num_resamples=10000,
+) -> float:
+    """Confidence interval for Cohen's kappa using bootstrapping.
+
+    Computes strength in parallel with different re-samples of the data.
+
+    Strength = 2 * (a/(a+b) - 0.5) * (a+b)/(a+b+c)
+
+    Where a is the number of agreed votes, b is the number of disagreed votes, and c is the number of not applicable/invalid votes.
+    """
+
+    og_agreed = value_counts.get("Agree", 0)
+    og_disagreed = value_counts.get("Disagree", 0)
+    og_non_applicable = value_counts.get("Not applicable", 0)
+    total = og_agreed + og_disagreed + og_non_applicable
+
+    # resampled the data n_resamples times
+    rng = np.random.default_rng()
+    resamples = rng.multinomial(
+        total,
+        [og_agreed / total, og_disagreed / total, og_non_applicable / total],
+        size=num_resamples,
+    )
+
+    # get vectors of each category
+    agreed = resamples[:, 0]
+    disagreed = resamples[:, 1]
+    non_applicable = resamples[:, 2]
+
+    kappas = 2 * (agreed / (agreed + disagreed) - 0.5)
+    relevance = (agreed + disagreed) / (agreed + disagreed + non_applicable)
+    strengths = kappas * relevance
+
+    ci = np.percentile(
+        strengths, [(1 - confidence_level) / 2, (1 + confidence_level) / 2]
+    )
+    mean = strengths.mean()
+    return mean, ci
+
+
 def get_relevance(
     value_counts: pd.Series, *, annotation_a=None, annotation_b=None
 ) -> float:
@@ -155,6 +201,12 @@ def get_metrics():
             "short": "Strength",
             "descr": "Principle strength: relevance * Cohen's kappa, or relevance * 2 * (accuracy - 0.5)",
             "fn": get_principle_strength,
+        },
+        "strength_ci": {
+            "name": "Principle strength (Confidence interval)",
+            "short": "Strength CI",
+            "descr": "Principle strength: relevance * Cohen's kappa, or relevance * 2 * (accuracy - 0.5)",
+            "fn": get_strength_CI,
         },
         "cohens_kappa_og": {
             "name": "Cohen's kappa (non-adjusted)",
