@@ -67,7 +67,7 @@ def run():
 
     if len(available_datasets) == 0:
         logger.error(
-            "No datasets available. No local or standard datasets could be loaded. Please provide a path to a local dataset via --datapath (-d) flag (or alternatively enable loading online mode datasets via HF_TOKEN if you have permissions)."
+            "No datasets selected and successfully loaded. Please provide a path to a local dataset via --datapath (-d) flag. Alternatively, use --load-web-datasets to load standard web datasets from HuggingFace."
         )
         return
 
