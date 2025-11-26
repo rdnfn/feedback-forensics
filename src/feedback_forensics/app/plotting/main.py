@@ -113,9 +113,11 @@ def get_annotator_table_df(
         }
     )
     if len(metric_columns) > 1:
-        shown_df["Max diff"] = abs(
-            shown_df.iloc[:, 1:].max(axis=1) - shown_df.iloc[:, 1:].min(axis=1)
+        # Extract first value from tuples if present, otherwise use value as-is
+        numeric_cols = shown_df.iloc[:, 1:].map(
+            lambda x: x[0] if isinstance(x, tuple) else x
         )
+        shown_df["Max diff"] = abs(numeric_cols.max(axis=1) - numeric_cols.min(axis=1))
         headers.append("Max diff")
     else:
         sort_by = list(metric_columns.keys())[0]
@@ -183,6 +185,8 @@ def get_annotator_table_df(
                 elif isinstance(col, tuple):
                     if len(col) == 3:
                         val_str = f"{col[0]:.2f} ({col[1]:.2f}, {col[2]:.2f})"
+                        if (col[1] > 0 and col[2] > 0) or (col[1] < 0 and col[2] < 0):
+                            val_str += " *"
                     else:
                         val_str = " | ".join([f"{value:.2f}" for value in col])
                     display_row.append(val_str)
