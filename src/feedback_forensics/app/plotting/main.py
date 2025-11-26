@@ -113,7 +113,7 @@ def get_annotator_table_df(
         }
     )
     numeric_cols = shown_df.iloc[:, 1:].map(
-        lambda x: x[0] if isinstance(x, tuple) else x
+        lambda x: x["strength"] if isinstance(x, dict) else x
     )
     if len(metric_columns) > 1:
         # Extract first value from tuples if present, otherwise use value as-is
@@ -130,7 +130,13 @@ def get_annotator_table_df(
     if sort_by is None:
         sort_by = list(metric_columns.keys())[0]
 
-    shown_df = shown_df.sort_values(by=sort_by, ascending=sort_ascending)
+    shown_df = shown_df.sort_values(
+        by=sort_by,
+        ascending=sort_ascending,
+        key=lambda series: series.apply(
+            lambda x: x["strength"] if isinstance(x, dict) else x
+        ),
+    )
 
     shown_values = shown_df.to_numpy()
 
@@ -141,9 +147,9 @@ def get_annotator_table_df(
         for row in values:
             display_row = []
             for col in row:
-                if isinstance(col, float) or isinstance(col, tuple):
-                    if isinstance(col, tuple):
-                        col = col[0]
+                if isinstance(col, float) or isinstance(col, dict):
+                    if isinstance(col, dict):
+                        col = col["strength"]
                     if col > neutral_value:
                         denominator = max_value - neutral_value
                         if denominator != 0:
@@ -184,6 +190,20 @@ def get_annotator_table_df(
             for col in row:
                 if isinstance(col, float):
                     display_row.append(f"{col:.2f}")
+                elif isinstance(col, dict):
+                    val_str = ""
+                    if "strength" in col:
+                        val_str += f"{col['strength']:.2f}"
+                    if "ci_lower_95" in col and "ci_upper_95" in col:
+                        val_str += (
+                            f" ({col['ci_lower_95']:.2f}, {col['ci_upper_95']:.2f})"
+                        )
+                    if "p_value" in col:
+                        val_str += f" (p={col['p_value']:.2f})"
+                        if col["p_value"] < 0.05:
+                            val_str += " *"
+                    display_row.append(val_str)
+
                 elif isinstance(col, tuple):
                     if len(col) == 3:
                         val_str = f"{col[0]:.2f} ({col[1]:.2f}, {col[2]:.2f})"

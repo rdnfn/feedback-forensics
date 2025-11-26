@@ -4,6 +4,7 @@ import pandas as pd
 import gradio as gr
 import numpy as np
 import sklearn.metrics
+import scipy.stats
 
 from loguru import logger
 
@@ -89,7 +90,6 @@ def get_strength_CI(
     *,
     annotation_a=None,
     annotation_b=None,
-    confidence_level=95,
     num_resamples=100000,
 ) -> float:
     """Confidence interval for Cohen's kappa using bootstrapping.
@@ -129,11 +129,48 @@ def get_strength_CI(
     relevance = (agreed + disagreed) / (agreed + disagreed + non_applicable)
     strengths = kappas * relevance
 
-    ci = np.percentile(
-        strengths, [(100 - confidence_level) / 2, (100 + confidence_level) / 2]
-    )
-    value = get_principle_strength(value_counts)
-    return value, ci[0], ci[1]
+    ci = np.percentile(strengths, [97.5, 2.5, 95, 5])
+    return {
+        "ci_lower_95": ci[0],
+        "ci_upper_95": ci[1],
+        "ci_lower_90": ci[2],
+        "ci_upper_90": ci[3],
+    }
+
+
+def get_binom_significance(
+    value_counts: pd.Series, *, annotation_a=None, annotation_b=None
+) -> float:
+    """
+    Binomial significance: measures the significance of the difference between two proportions.
+    """
+    metric_dict = {
+        "p_value": 1.0,
+    }
+
+    agree = value_counts.get("Agree", 0)
+    disagree = value_counts.get("Disagree", 0)
+    total = agree + disagree
+    direction = "greater" if agree > disagree else "less"
+
+    if total > 0:
+        result = scipy.stats.binomtest(k=agree, n=total, p=0.5, alternative=direction)
+        metric_dict["p_value"] = result.pvalue
+
+    return metric_dict
+
+
+def get_strength_with_stats(
+    value_counts: pd.Series, *, annotation_a=None, annotation_b=None
+) -> dict:
+    """
+    Strength with statistics: combines strength with confidence interval and p-value.
+    """
+    return {
+        "strength": get_principle_strength(value_counts),
+        **get_strength_CI(value_counts),
+        **get_binom_significance(value_counts),
+    }
 
 
 def get_relevance(
@@ -208,11 +245,23 @@ def get_metrics():
             "descr": "Principle strength: relevance * Cohen's kappa, or relevance * 2 * (accuracy - 0.5)",
             "fn": get_principle_strength,
         },
+        "strength_with_stats": {
+            "name": "Principle strength (with statistics)",
+            "short": "Strength with stats (95% CI, p-value)",
+            "descr": "Principle strength with 95% confidence interval and p-value based on binomial test of agreement vs. disagreement. A p-value of 0.05 or less indicates that the difference is statistically significant (indicated with *).",
+            "fn": get_strength_with_stats,
+        },
         "strength_ci": {
             "name": "Principle strength (Confidence interval)",
             "short": "Strength with CI",
             "descr": "Principle strength: relevance * Cohen's kappa, or relevance * 2 * (accuracy - 0.5)",
             "fn": get_strength_CI,
+        },
+        "agreement_binomial_significance": {
+            "name": "Binomial significance",
+            "short": "Strength with p-value",
+            "descr": "Strength with p-value based on binomial test of agreement vs. disagreement. A p-value of 0.05 or less indicates that the difference is statistically significant.",
+            "fn": get_binom_significance,
         },
         "cohens_kappa_og": {
             "name": "Cohen's kappa (non-adjusted)",
