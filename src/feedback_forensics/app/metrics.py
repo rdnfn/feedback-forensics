@@ -133,7 +133,6 @@ def get_strength_CI(
         strengths, [(100 - confidence_level) / 2, (100 + confidence_level) / 2]
     )
     mean = strengths.mean()
-    print(f"Mean: {mean}, CI: {ci[0]}, {ci[1]}")
     return mean, ci[0], ci[1]
 
 

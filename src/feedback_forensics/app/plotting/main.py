@@ -112,19 +112,19 @@ def get_annotator_table_df(
             **metric_columns,
         }
     )
+    numeric_cols = shown_df.iloc[:, 1:].map(
+        lambda x: x[0] if isinstance(x, tuple) else x
+    )
     if len(metric_columns) > 1:
         # Extract first value from tuples if present, otherwise use value as-is
-        numeric_cols = shown_df.iloc[:, 1:].map(
-            lambda x: x[0] if isinstance(x, tuple) else x
-        )
         shown_df["Max diff"] = abs(numeric_cols.max(axis=1) - numeric_cols.min(axis=1))
         headers.append("Max diff")
     else:
         sort_by = list(metric_columns.keys())[0]
 
     # get max and min numerical value in the dataframe (ignoring non-numeric values)
-    max_value = shown_df.select_dtypes(include=[np.number]).max().max()
-    min_value = shown_df.select_dtypes(include=[np.number]).min().min()
+    max_value = numeric_cols.max(axis=1).max()
+    min_value = numeric_cols.min(axis=1).min()
 
     # sort by
     if sort_by is None:
@@ -141,7 +141,9 @@ def get_annotator_table_df(
         for row in values:
             display_row = []
             for col in row:
-                if isinstance(col, float):
+                if isinstance(col, float) or isinstance(col, tuple):
+                    if isinstance(col, tuple):
+                        col = col[0]
                     if col > neutral_value:
                         denominator = max_value - neutral_value
                         if denominator != 0:
@@ -185,6 +187,8 @@ def get_annotator_table_df(
                 elif isinstance(col, tuple):
                     if len(col) == 3:
                         val_str = f"{col[0]:.2f} ({col[1]:.2f}, {col[2]:.2f})"
+
+                        # add significance indicator
                         if (col[1] > 0 and col[2] > 0) or (col[1] < 0 and col[2] < 0):
                             val_str += " *"
                     else:
