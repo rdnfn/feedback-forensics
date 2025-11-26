@@ -89,7 +89,7 @@ def get_strength_CI(
     *,
     annotation_a=None,
     annotation_b=None,
-    confidence_level=0.95,
+    confidence_level=95,
     num_resamples=10000,
 ) -> float:
     """Confidence interval for Cohen's kappa using bootstrapping.
@@ -124,9 +124,10 @@ def get_strength_CI(
     strengths = kappas * relevance
 
     ci = np.percentile(
-        strengths, [(1 - confidence_level) / 2, (1 + confidence_level) / 2]
+        strengths, [(100 - confidence_level) / 2, (100 + confidence_level) / 2]
     )
     mean = strengths.mean()
+    print(f"Mean: {mean}, CI: {ci[0]}, {ci[1]}")
     return mean, ci[0], ci[1]
 
 
