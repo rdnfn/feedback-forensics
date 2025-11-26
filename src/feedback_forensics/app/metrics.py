@@ -127,7 +127,7 @@ def get_strength_CI(
         strengths, [(1 - confidence_level) / 2, (1 + confidence_level) / 2]
     )
     mean = strengths.mean()
-    return mean, ci
+    return mean, ci[0], ci[1]
 
 
 def get_relevance(
