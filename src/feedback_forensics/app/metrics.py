@@ -1,5 +1,6 @@
 """Compute metrics"""
 
+import time
 import pandas as pd
 import gradio as gr
 import numpy as np
@@ -90,7 +91,7 @@ def get_strength_CI(
     *,
     annotation_a=None,
     annotation_b=None,
-    num_resamples=100000,
+    num_resamples=10000,
 ) -> float:
     """Confidence interval for Cohen's kappa using bootstrapping.
 
@@ -219,7 +220,7 @@ def get_not_applicable(
     return value_counts.get("Not applicable", 0)
 
 
-def get_metrics():
+def get_all_defined_metrics() -> dict:
     return {
         "agreement": {
             "name": "Agreement",
@@ -299,6 +300,15 @@ def get_metrics():
     }
 
 
+def get_avail_metrics() -> dict:
+    full_metric_dict = get_all_defined_metrics()
+    return {
+        metric_name: metric_dict
+        for metric_name, metric_dict in full_metric_dict.items()
+        if metric_name in DEFAULT_AVAIL_METRICS
+    }
+
+
 def compute_annotator_metrics(
     votes_df: pd.DataFrame,
     annotator_metadata: dict,
@@ -309,7 +319,7 @@ def compute_annotator_metrics(
     # votes_df is a pd.DataFrame with one row
     # per vote, and columns "comparison_id", "principle", "vote"
 
-    metric_dicts = get_metrics()
+    metric_dicts = get_avail_metrics()
 
     # check that ref annotator col only contains "text_a" or "text_b"
     if not all(votes_df[ref_annotator_col].isin(["text_a", "text_b"])):
@@ -327,6 +337,9 @@ def compute_annotator_metrics(
     num_pairs = len(votes_df)
 
     metrics = {}
+    per_metric_time = {}
+    for metric_name in metric_dicts.keys():
+        per_metric_time[metric_name] = 0
 
     for annotator_col in annotator_cols:
 
@@ -359,13 +372,20 @@ def compute_annotator_metrics(
         value_counts = value_counts.fillna(0)
 
         for metric_name, metric_dict in metric_dicts.items():
+            start_time = time.time()
             metric_fn = metric_dict["fn"]
             if metric_name not in metrics:
                 metrics[metric_name] = {}
             metrics[metric_name][annotator_name] = metric_fn(
                 value_counts, annotation_a=annotation_a, annotation_b=annotation_b
             )
+            end_time = time.time()
+            per_metric_time[metric_name] += end_time - start_time
 
+    logger.info("Time spent per metric:")
+    for metric_name, time_spent in per_metric_time.items():
+        logger.info(f" - {metric_name}: {time_spent:.2f}s")
+    logger.info(f"Total time: {sum(per_metric_time.values()):.2f}s")
     return {
         "annotator_names": annotator_names,
         "num_pairs": num_pairs,
@@ -473,7 +493,7 @@ def ensure_categories_identical(
 
 
 def get_default_avail_metrics():
-    all_metrics = get_metrics()
+    all_metrics = get_avail_metrics()
 
     # sanity check that metric config is valid
     assert isinstance(
