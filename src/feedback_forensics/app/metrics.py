@@ -90,7 +90,7 @@ def get_strength_CI(
     annotation_a=None,
     annotation_b=None,
     confidence_level=95,
-    num_resamples=10000,
+    num_resamples=100000,
 ) -> float:
     """Confidence interval for Cohen's kappa using bootstrapping.
 
@@ -101,9 +101,14 @@ def get_strength_CI(
     Where a is the number of agreed votes, b is the number of disagreed votes, and c is the number of not applicable/invalid votes.
     """
 
-    og_agreed = value_counts.get("Agree", 0)
-    og_disagreed = value_counts.get("Disagree", 0)
-    og_non_applicable = value_counts.get("Not applicable", 0)
+    # the prior adds a baseline noise assumption about agreement
+    # if the number of datapoints is small, the prior will dominate the result
+    # if larger, the prior will have less of an effect
+    prior_weight = 1
+
+    og_agreed = value_counts.get("Agree", 0) + prior_weight
+    og_disagreed = value_counts.get("Disagree", 0) + prior_weight
+    og_non_applicable = value_counts.get("Not applicable", 0) + prior_weight
     total = og_agreed + og_disagreed + og_non_applicable
 
     # resampled the data n_resamples times
@@ -120,6 +125,7 @@ def get_strength_CI(
     non_applicable = resamples[:, 2]
 
     kappas = 2 * (agreed / (agreed + disagreed) - 0.5)
+    kappas = np.where(np.isnan(kappas), 0, kappas)  # replace nan with 0
     relevance = (agreed + disagreed) / (agreed + disagreed + non_applicable)
     strengths = kappas * relevance
 
