@@ -168,9 +168,10 @@ def get_strength_with_stats(
     Strength with statistics: combines strength with confidence interval and p-value.
     """
     return {
-        "strength": get_principle_strength(value_counts),
+        **get_principle_strength(value_counts),
         **get_strength_CI(value_counts),
         **get_binom_significance(value_counts),
+        "hide_metrics": False,  # needed to show metrics in the table (first dict hides by default)
     }
 
 
@@ -195,7 +196,12 @@ def get_principle_strength(
         value_counts, annotation_a=annotation_a, annotation_b=annotation_b
     )
     relevance = get_relevance(value_counts)
-    return cohens_kappa * relevance
+    strength = float(cohens_kappa * relevance)
+    return {
+        "strength": strength,
+        "hide_metrics": True,
+        **get_binom_significance(value_counts),
+    }
 
 
 def get_num_votes(

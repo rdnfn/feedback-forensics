@@ -148,8 +148,12 @@ def get_annotator_table_df(
             display_row = []
             for col in row:
                 if isinstance(col, float) or isinstance(col, dict):
+                    text_color = "var(--body-text-color)"
                     if isinstance(col, dict):
-                        col = col["strength"]
+                        col_dict = col
+                        col = col_dict["strength"]
+                        if "p_value" in col_dict and col_dict["p_value"] >= 0.05:
+                            text_color = "rgba(0, 0, 0, 0.3)"
                     if col > neutral_value:
                         denominator = max_value - neutral_value
                         if denominator != 0:
@@ -175,7 +179,7 @@ def get_annotator_table_df(
                     )
                     # Apply the color with opacity
                     display_row.append(
-                        f"background-color: rgba({int(color_to_use[1:3], 16)}, {int(color_to_use[3:5], 16)}, {int(color_to_use[5:7], 16)}, {opacity}); color: var(--body-text-color);"
+                        f"background-color: rgba({int(color_to_use[1:3], 16)}, {int(color_to_use[3:5], 16)}, {int(color_to_use[5:7], 16)}, {opacity}); color: {text_color};"
                         # f"background-color: color-mix(in srgb, {color_to_use} {opacity * 100}%, var(--body-background-fill)); color: var(--body-text-color);" # alternative with no line alternating color
                     )
                 else:
@@ -194,14 +198,13 @@ def get_annotator_table_df(
                     val_str = ""
                     if "strength" in col:
                         val_str += f"{col['strength']:.2f}"
-                    if "ci_lower_95" in col and "ci_upper_95" in col:
-                        val_str += (
-                            f" ({col['ci_lower_95']:.2f}, {col['ci_upper_95']:.2f})"
-                        )
-                    if "p_value" in col:
-                        val_str += f" (p={col['p_value']:.2f})"
-                        if col["p_value"] < 0.05:
-                            val_str += " *"
+                    if not col.get("hide_metrics", False):
+                        if "ci_lower_95" in col and "ci_upper_95" in col:
+                            val_str += (
+                                f" ({col['ci_lower_95']:.2f}, {col['ci_upper_95']:.2f})"
+                            )
+                        if "p_value" in col:
+                            val_str += f" (p={col['p_value']:.2f})"
                     display_row.append(val_str)
 
                 elif isinstance(col, tuple):
