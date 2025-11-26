@@ -132,8 +132,8 @@ def get_strength_CI(
     ci = np.percentile(
         strengths, [(100 - confidence_level) / 2, (100 + confidence_level) / 2]
     )
-    mean = strengths.mean()
-    return mean, ci[0], ci[1]
+    value = get_principle_strength(value_counts)
+    return value, ci[0], ci[1]
 
 
 def get_relevance(
@@ -210,7 +210,7 @@ def get_metrics():
         },
         "strength_ci": {
             "name": "Principle strength (Confidence interval)",
-            "short": "Strength CI",
+            "short": "Strength with CI",
             "descr": "Principle strength: relevance * Cohen's kappa, or relevance * 2 * (accuracy - 0.5)",
             "fn": get_strength_CI,
         },
