@@ -180,6 +180,12 @@ def get_annotator_table_df(
             for col in row:
                 if isinstance(col, float):
                     display_row.append(f"{col:.2f}")
+                elif isinstance(col, tuple):
+                    if len(col) == 3:
+                        val_str = f"{col[0]:.2f} ({col[1]:.2f}, {col[2]:.2f})"
+                    else:
+                        val_str = " | ".join([f"{value:.2f}" for value in col])
+                    display_row.append(val_str)
                 else:
                     display_row.append(col)
             display_values.append(display_row)
