@@ -284,11 +284,11 @@ def generate(
                     value=True,
                 )
 
-            dataset_config = data[state["avail_datasets"]][config["datasets"][0]]
+            initial_dataset_name = config["datasets"][0]
         else:
             initial_dataset_name = get_default_dataset_names()[0]
-            dataset_config = data[state["avail_datasets"]][initial_dataset_name]
 
+        dataset_config = data[state["avail_datasets"]][initial_dataset_name]
         base_votes_dict = None
         reference_models = []
 
