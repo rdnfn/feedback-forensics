@@ -8,7 +8,11 @@ import ijson
 import pandas as pd
 from loguru import logger
 
-from feedback_forensics.app.constants import PREFIX_OTHER_ANNOTATOR_WITH_VARIANT
+from feedback_forensics.app.constants import (
+    PREFIX_OTHER_ANNOTATOR_WITH_VARIANT,
+    PRINCIPLE_ANNOTATOR_TYPE,
+    DEFAULT_ANNOTATOR_VISIBLE_NAME,
+)
 
 
 def get_available_models(df: pd.DataFrame) -> list:
@@ -86,6 +90,24 @@ def get_annotators_by_type(
             )
 
     return result
+
+
+def get_default_annotator_rows(
+    annotator_types: Dict[str, Dict[str, List[str]]],
+) -> List[str]:
+    """Get the default annotator rows from a votes_dict."""
+    annotator_rows = annotator_types[PRINCIPLE_ANNOTATOR_TYPE]["visible_names"]
+    if len(annotator_rows) == 0:
+        # all annotators except default annotator
+        all_annotator_names = []
+        for names in annotator_types.values():
+            all_annotator_names.extend(names["visible_names"])
+        annotator_rows = [
+            name
+            for name in all_annotator_names
+            if name != DEFAULT_ANNOTATOR_VISIBLE_NAME
+        ]
+    return sorted(annotator_rows)
 
 
 def get_first_json_key_value(file_path):
