@@ -130,12 +130,12 @@ def get_strength_CI(
     relevance = (agreed + disagreed) / (agreed + disagreed + non_applicable)
     strengths = kappas * relevance
 
-    ci = np.percentile(strengths, [97.5, 2.5, 95, 5])
+    ci = np.percentile(strengths, [2.5, 5, 95, 97.5])
     return {
         "ci_lower_95": ci[0],
-        "ci_upper_95": ci[1],
-        "ci_lower_90": ci[2],
-        "ci_upper_90": ci[3],
+        "ci_lower_90": ci[1],
+        "ci_upper_90": ci[2],
+        "ci_upper_95": ci[3],
     }
 
 
