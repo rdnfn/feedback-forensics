@@ -26,7 +26,10 @@ def _get_sort_values(series: pd.Series):
 
 
 def _parse_dict_metric(
-    value: dict, precision: int = 2, include_p_value: bool = False
+    value: dict,
+    precision: int = 2,
+    include_p_value: bool = False,
+    num_tested_hypotheses: int = 1,
 ) -> str:
     val_str = ""
     if "strength" in value:
@@ -34,8 +37,13 @@ def _parse_dict_metric(
     if not value.get("hide_metrics", False):
         if "ci_lower_95" in value and "ci_upper_95" in value:
             val_str += f"\\\\{{\\tiny({value['ci_lower_95']:.{precision}f}, {value['ci_upper_95']:.{precision}f})}}"
-        if "p_value" in value and include_p_value:
-            val_str += f"\\\\{{p={value['p_value']:.{precision}f}}}"
+        if "p_value" in value:
+            if include_p_value:
+                val_str += f"\\\\{{p={value['p_value']:.{precision}f}}}"
+            if (
+                value["p_value"] >= 0.05 / num_tested_hypotheses
+            ):  # wiht Bonferroni correction
+                val_str = f"\\color{{lightgray}}{val_str.replace(r'\\', r'\\\color{lightgray}')}"
     val_str = f"\\makecell{{{val_str}}}"
     return val_str
 
@@ -105,6 +113,7 @@ def generate_latex_table(
     get_color_intensity: Callable[[float], float] | None = None,
     special_configs: dict | None = None,
     precision: int = 2,
+    num_tested_hypotheses: int = 1,
 ):
     """Generate LaTeX code for a table of annotators.
 
@@ -169,7 +178,11 @@ def generate_latex_table(
 
     def _get_str_value(value):
         if isinstance(value, dict):
-            return _parse_dict_metric(value, precision=precision)
+            return _parse_dict_metric(
+                value,
+                precision=precision,
+                num_tested_hypotheses=num_tested_hypotheses,
+            )
         return f"{value:.{precision}f}"
 
     # Data rows
@@ -295,6 +308,7 @@ def get_latex_top_and_bottom_annotators(
     bottom_n: int = 5,
     top_title: str = "Five most encouraged traits",
     bottom_title: str = "Five most discouraged traits",
+    num_tested_hypotheses: int = 1,
 ) -> str:
     """Generate LaTeX code for just the table content showing top and bottom annotators.
 
@@ -336,6 +350,7 @@ def get_latex_top_and_bottom_annotators(
         metric_col_width=SECOND_COLUMN_WIDTH,
         vertical_spacing=10,
         get_color_intensity=get_intensity_callable(max_abs_value, min_abs_value),
+        num_tested_hypotheses=num_tested_hypotheses,
     )
     latex.extend(top_table)
 
@@ -353,6 +368,7 @@ def get_latex_top_and_bottom_annotators(
         metric_col_width=SECOND_COLUMN_WIDTH,
         vertical_spacing=10,
         get_color_intensity=get_intensity_callable(max_abs_value, min_abs_value),
+        num_tested_hypotheses=num_tested_hypotheses,
     )
     latex.extend(bottom_table)
 
