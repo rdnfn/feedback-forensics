@@ -388,10 +388,10 @@ def compute_annotator_metrics(
             end_time = time.time()
             per_metric_time[metric_name] += end_time - start_time
 
-    logger.info("Time spent per metric:")
+    logger.debug("Time spent per metric:")
     for metric_name, time_spent in per_metric_time.items():
-        logger.info(f" - {metric_name}: {time_spent:.2f}s")
-    logger.info(f"Total time: {sum(per_metric_time.values()):.2f}s")
+        logger.debug(f" - {metric_name}: {time_spent:.2f}s")
+    logger.debug(f"Total time: {sum(per_metric_time.values()):.2f}s")
     return {
         "annotator_names": annotator_names,
         "num_pairs": num_pairs,
