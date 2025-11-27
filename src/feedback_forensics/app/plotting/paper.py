@@ -18,6 +18,37 @@ NEGATIVE_COLOR = "#ffadad"  # Light red
 ALTERNATE_ROW_COLOR = "#f5f5f5"  # Light grey for alternating rows
 
 
+def _get_sort_values(series: pd.Series):
+    """Get the strength sort key value for a series of values.
+
+    For use with sort_values in pd series/df."""
+    return series.apply(lambda x: x["strength"] if isinstance(x, dict) else x)
+
+
+def _parse_dict_metric(
+    value: dict, precision: int = 2, include_p_value: bool = False
+) -> str:
+    val_str = ""
+    if "strength" in value:
+        val_str += f"{value['strength']:.{precision}f}"
+    if not value.get("hide_metrics", False):
+        if "ci_lower_95" in value and "ci_upper_95" in value:
+            val_str += f"\\\\{{\\tiny({value['ci_lower_95']:.{precision}f}, {value['ci_upper_95']:.{precision}f})}}"
+        if "p_value" in value and include_p_value:
+            val_str += f"\\\\{{p={value['p_value']:.{precision}f}}}"
+    val_str = f"\\makecell{{{val_str}}}"
+    return val_str
+
+
+def _get_value(value: dict | float, format_values: bool) -> float:
+    """Some metrics are stored as dicts, some as floats. This function returns the value."""
+    if format_values:
+        if isinstance(value, dict):
+            return _parse_dict_metric(value)
+        return f"{value:.3f}"
+    return value
+
+
 def get_top_and_bottom_annotators(
     annotator_metrics: dict,
     top_n: int = 5,
@@ -37,38 +68,26 @@ def get_top_and_bottom_annotators(
     """
     metric_series = pd.Series(annotator_metrics)
 
-    if format_values:
-        top_n_annotators = [
-            [annotator, f"{float(value):.3f}"]
-            for annotator, value in metric_series.sort_values(ascending=False)
-            .head(top_n)
-            .items()
-        ]
-        bottom_n_annotators = [
-            [annotator, f"{float(value):.3f}"]
-            for annotator, value in metric_series.sort_values(ascending=True)
-            .head(bottom_n)
-            .items()
-        ]
-    else:
-        top_n_annotators = [
-            [annotator, float(value)]
-            for annotator, value in metric_series.sort_values(ascending=False)
-            .head(top_n)
-            .items()
-        ]
-        bottom_n_annotators = [
-            [annotator, float(value)]
-            for annotator, value in metric_series.sort_values(ascending=True)
-            .head(bottom_n)
-            .items()
-        ]
+    top_n_annotators = [
+        [annotator, _get_value(value, format_values)]
+        for annotator, value in metric_series.sort_values(
+            ascending=False,
+            key=_get_sort_values,
+        )
+        .head(top_n)
+        .items()
+    ]
+    bottom_n_annotators = [
+        [annotator, _get_value(value, format_values)]
+        for annotator, value in metric_series.sort_values(
+            ascending=True, key=_get_sort_values
+        )
+        .head(bottom_n)
+        .items()
+    ]
 
     # Find max absolute value for normalization
-    all_values = [
-        float(row[1]) if isinstance(row[1], str) else row[1]
-        for row in top_n_annotators + bottom_n_annotators
-    ]
+    all_values = _get_sort_values(metric_series).tolist()
     max_abs_value = abs(max(all_values))
     min_abs_value = abs(min(all_values))
 
@@ -143,6 +162,16 @@ def generate_latex_table(
     latex.append(header)
     latex.append(r"\toprule")
 
+    def _get_num_value(value):
+        if isinstance(value, dict):
+            return float(value["strength"])
+        return float(value)
+
+    def _get_str_value(value):
+        if isinstance(value, dict):
+            return _parse_dict_metric(value, precision=precision)
+        return f"{value:.{precision}f}"
+
     # Data rows
     for i, row_data in enumerate(annotators_data):
         annotator = row_data[0]
@@ -156,8 +185,10 @@ def generate_latex_table(
 
         for j, value in enumerate(values):
             col_name = metric_names[j]
+            num_val = _get_num_value(value)
+            str_val = _get_str_value(value)
 
-            intensity = get_color_intensity(value)
+            intensity = get_color_intensity(num_val)
             pos_color = "poscolor"
             neg_color = "negcolor"
 
@@ -165,17 +196,17 @@ def generate_latex_table(
             # overwrite default values
             if col_name in special_configs:
                 if "get_color_intensity" in special_configs[col_name]:
-                    intensity = special_configs[col_name]["get_color_intensity"](value)
+                    intensity = special_configs[col_name]["get_color_intensity"](
+                        num_val
+                    )
                 if "pos_color" in special_configs[col_name]:
                     pos_color = special_configs[col_name]["pos_color"]
                 if "neg_color" in special_configs[col_name]:
                     neg_color = special_configs[col_name]["neg_color"]
 
-            color_name = pos_color if value >= 0 else neg_color
+            color_name = pos_color if num_val >= 0 else neg_color
             # Default precision is 3 decimal places
-            row += (
-                f" & \\cellcolor{{{color_name}!{intensity}}}{{{value:.{precision}f}}}"
-            )
+            row += f" & \\cellcolor{{{color_name}!{intensity}}}{str_val}"
 
         row += " \\\\"
         latex.append(row)
@@ -283,7 +314,7 @@ def get_latex_top_and_bottom_annotators(
     """
     MINIPAGE_WIDTH = 0.48
     FIRST_COLUMN_WIDTH = 0.7
-    SECOND_COLUMN_WIDTH = 0.18
+    SECOND_COLUMN_WIDTH = 0.19
 
     top_n_annotators, bottom_n_annotators, max_abs_value, min_abs_value = (
         get_top_and_bottom_annotators(
