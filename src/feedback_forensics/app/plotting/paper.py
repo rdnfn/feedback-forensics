@@ -18,11 +18,18 @@ NEGATIVE_COLOR = "#ffadad"  # Light red
 ALTERNATE_ROW_COLOR = "#f5f5f5"  # Light grey for alternating rows
 
 
+def _get_num_value(value: dict | float):
+    """Get the numeric value for a metric."""
+    if isinstance(value, dict):
+        return value["strength"]
+    return value
+
+
 def _get_sort_values(series: pd.Series):
     """Get the strength sort key value for a series of values.
 
     For use with sort_values in pd series/df."""
-    return series.apply(lambda x: x["strength"] if isinstance(x, dict) else x)
+    return series.apply(_get_num_value)
 
 
 def _parse_dict_metric(
@@ -156,7 +163,7 @@ def generate_latex_table(
     for _ in metric_names:
         latex.append(r"    @{\hspace{" + str(vertical_spacing) + r"pt}} ")
         latex.append(
-            r"    >{\centering\arraybackslash}p{"
+            r"    >{\centering\arraybackslash}m{"
             + str(metric_col_width)
             + r"\linewidth}"
         )
@@ -381,14 +388,20 @@ def get_latex_table_from_metrics_df(
     metrics_df: pd.DataFrame,
     title: str,
     first_col_width: float = 0.2,
+    num_tested_hypotheses: int | None = None,
 ):
     latex = []
     # latex = add_table_preamble(latex, title=title)
 
     metric_col_width = (0.8 - first_col_width) / (len(metrics_df.columns[1:]) * 1.1)
 
-    max_abs_value = abs(metrics_df.iloc[:, 1:-1].max(axis=1).max())
-    min_abs_value = abs(metrics_df.iloc[:, 1:-1].min(axis=1).min())
+    all_values = metrics_df.iloc[:, 1:-1].map(_get_num_value).values.flatten()
+    if num_tested_hypotheses is None:
+        num_tested_hypotheses = len(all_values)
+    print(f"Number of tested hypotheses: {num_tested_hypotheses}")
+
+    max_abs_value = abs(all_values.max())
+    min_abs_value = abs(all_values.min())
 
     max_diff_value = metrics_df["Max diff"].max()
 
@@ -410,6 +423,7 @@ def get_latex_table_from_metrics_df(
                 "neg_color": "lightgrey",
             }
         },
+        num_tested_hypotheses=num_tested_hypotheses,
     )
     latex.extend(table)
     # latex = add_table_postamble(latex)
