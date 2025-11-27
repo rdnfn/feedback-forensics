@@ -157,7 +157,7 @@ def generate_latex_table(
     latex.append(r"\begin{tabular}{")
     # First column for annotator names
     latex.append(
-        r"    >{\raggedright\arraybackslash}p{" + str(first_col_width) + r"\linewidth}"
+        r"    >{\raggedright\arraybackslash}m{" + str(first_col_width) + r"\linewidth}"
     )
     # Add a column for each metric
     for _ in metric_names:
