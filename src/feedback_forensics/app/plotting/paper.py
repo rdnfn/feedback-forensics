@@ -32,6 +32,13 @@ def _get_sort_values(series: pd.Series):
     return series.apply(_get_num_value)
 
 
+def is_significant(
+    p_value: float, num_tested_hypotheses: int, signif_level: float = 0.05
+) -> bool:
+    """Check if a p-value is significant with Bonferroni correction."""
+    return p_value < signif_level / num_tested_hypotheses
+
+
 def _parse_dict_metric(
     value: dict,
     precision: int = 2,
@@ -47,10 +54,11 @@ def _parse_dict_metric(
         if "p_value" in value:
             if include_p_value:
                 val_str += f"\\\\{{p={value['p_value']:.{precision}f}}}"
-            if (
-                value["p_value"] >= 0.05 / num_tested_hypotheses
-            ):  # wiht Bonferroni correction
-                val_str = f"\\color{{lightgray}}{val_str.replace(r'\\', r'\\\color{lightgray}')}"
+            if not is_significant(
+                value["p_value"],
+                num_tested_hypotheses=num_tested_hypotheses,
+            ):
+                val_str = f"\\transparent{{0.3}}{val_str.replace(r'\\', r'\\\transparent{0.3}')}"
     val_str = f"\\makecell{{{val_str}}}"
     return val_str
 
