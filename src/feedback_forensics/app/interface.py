@@ -20,10 +20,28 @@ from feedback_forensics.app.info_texts import (
     get_datasets_description,
 )
 
+from feedback_forensics.app.styling import CUSTOM_CSS, THEME
 from feedback_forensics.app.utils import get_gradio_image_path
 from feedback_forensics.app.metrics import get_default_avail_metrics
 import feedback_forensics.app.callbacks
 from loguru import logger
+
+
+# Gradio v5 -> v6 introduced two breaking changes that affect this module:
+#   1. gr.Textbox: `show_copy_button=True` was replaced by `buttons=["copy"]`.
+#   2. gr.Blocks: `theme=` / `css=` are no longer accepted at construction time
+#      and must be passed to `.launch(...)` instead.
+# Detect the major version once and route kwargs accordingly so the same
+# codebase works on both Gradio 5 and 6.
+_GRADIO_MAJOR = int(gr.__version__.split(".")[0])
+_IS_GRADIO_V6_PLUS = _GRADIO_MAJOR >= 6
+
+_TEXTBOX_COPY_KWARGS = (
+    {"buttons": ["copy"]} if _IS_GRADIO_V6_PLUS else {"show_copy_button": True}
+)
+_BLOCKS_THEME_KWARGS = (
+    {} if _IS_GRADIO_V6_PLUS else {"theme": THEME, "css": CUSTOM_CSS}
+)
 
 
 def _add_title_row(title: str):
@@ -429,7 +447,7 @@ def _create_results_panel(inp: dict, out: dict):
         out["share_link"] = gr.Textbox(
             label="🔗 Share link",
             value="",
-            buttons=["copy"],
+            **_TEXTBOX_COPY_KWARGS,
             scale=2,
             interactive=True,
             show_label=True,
@@ -460,7 +478,7 @@ def generate():
     state = {}
     out = {}
 
-    with gr.Blocks() as demo:
+    with gr.Blocks(**_BLOCKS_THEME_KWARGS) as demo:
 
         state = _initialize_state(state)
 

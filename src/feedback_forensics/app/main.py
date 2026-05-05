@@ -16,6 +16,15 @@ import feedback_forensics.data.datasets
 gradio.themes.utils.fonts.GoogleFont.stylesheet = lambda self: None
 
 
+# In Gradio 6, theme/css must be passed to launch() rather than gr.Blocks().
+# In Gradio 5, they belong on gr.Blocks() (and launch() does not accept them),
+# so we only forward them here when running on v6+.
+_GRADIO_MAJOR = int(gr.__version__.split(".")[0])
+_LAUNCH_THEME_KWARGS = (
+    {"theme": THEME, "css": CUSTOM_CSS} if _GRADIO_MAJOR >= 6 else {}
+)
+
+
 def run():
     # parse command line arguments
     parser = argparse.ArgumentParser(
@@ -92,7 +101,7 @@ def run():
         auth = None
         auth_message = None
 
-    demo.launch(auth=auth, auth_message=auth_message, theme=THEME, css=CUSTOM_CSS)
+    demo.launch(auth=auth, auth_message=auth_message, **_LAUNCH_THEME_KWARGS)
 
 
 if __name__ == "__main__":
