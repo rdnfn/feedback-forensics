@@ -4,11 +4,25 @@ import gradio as gr
 from loguru import logger
 
 import feedback_forensics.app.interface as interface
-from feedback_forensics.app.constants import USERNAME, PASSWORD, HF_TOKEN, WEBAPP_MODE
+from feedback_forensics.app.constants import (
+    USERNAME,
+    PASSWORD,
+    WEBAPP_MODE,
+)
+from feedback_forensics.app.styling import CUSTOM_CSS, THEME
 import feedback_forensics.data.datasets
 
 # make gradio work offline
 gradio.themes.utils.fonts.GoogleFont.stylesheet = lambda self: None
+
+
+# In Gradio 6, theme/css must be passed to launch() rather than gr.Blocks().
+# In Gradio 5, they belong on gr.Blocks() (and launch() does not accept them),
+# so we only forward them here when running on v6+.
+_GRADIO_MAJOR = int(gr.__version__.split(".")[0])
+_LAUNCH_THEME_KWARGS = (
+    {"theme": THEME, "css": CUSTOM_CSS} if _GRADIO_MAJOR >= 6 else {}
+)
 
 
 def run():
@@ -67,7 +81,7 @@ def run():
 
     if len(available_datasets) == 0:
         logger.error(
-            "No datasets available. No local or standard datasets could be loaded. Please provide a path to a local dataset via --datapath (-d) flag (or alternatively enable loading online mode datasets via HF_TOKEN if you have permissions)."
+            "No datasets selected and successfully loaded. Please provide a path to a local dataset via --datapath (-d) flag. Alternatively, use --load-web-datasets to load standard web datasets from HuggingFace."
         )
         return
 
@@ -87,7 +101,7 @@ def run():
         auth = None
         auth_message = None
 
-    demo.launch(auth=auth, auth_message=auth_message)
+    demo.launch(auth=auth, auth_message=auth_message, **_LAUNCH_THEME_KWARGS)
 
 
 if __name__ == "__main__":

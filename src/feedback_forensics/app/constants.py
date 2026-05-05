@@ -35,7 +35,10 @@ DEFAULT_DATASET_NAMES = json.loads(os.getenv("FF_DEFAULT_DATASET_NAMES", "[]"))
 ENABLE_EXAMPLE_VIEWER = os.getenv("FF_ENABLE_EXAMPLE_VIEWER", "true").lower() == "true"
 # Default metrics available (in non-full metric mode)
 DEFAULT_AVAIL_METRICS = json.loads(
-    os.getenv("FF_AVAIL_METRICS", '["strength", "relevance", "cohens_kappa"]')
+    os.getenv(
+        "FF_AVAIL_METRICS",
+        '["strength", "strength_with_stats", "relevance", "cohens_kappa"]',
+    )
 )
 # Metric selected by default
 DEFAULT_SHOWN_METRIC = os.getenv("FF_SHOWN_METRIC", "strength")

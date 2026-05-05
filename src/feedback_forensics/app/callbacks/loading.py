@@ -10,12 +10,14 @@ import feedback_forensics.app.plotting
 from feedback_forensics.data.dataset_utils import (
     get_annotators_by_type,
     get_available_models,
+    get_default_annotator_rows,
 )
 from feedback_forensics.app.constants import (
     NONE_SELECTED_VALUE,
     APP_BASE_URL,
     PREFIX_MODEL_IDENTITY_ANNOTATORS,
     PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS,
+    PRINCIPLE_ANNOTATOR_TYPE,
 )
 from feedback_forensics.data.datasets import (
     get_available_datasets_names,
@@ -237,6 +239,7 @@ def generate(
 
         # check if config is None (did not parse correctly)
         if config is None:
+            logger.warning("Initial config parse failed. Using default dataset.")
             return {
                 inp["active_datasets_dropdown"]: gr.Dropdown(
                     choices=get_available_datasets_names(),
@@ -262,13 +265,11 @@ def generate(
         data[state["app_url"]] = app_url
 
         if "datasets" in config:
-
             # If multiple datasets are specified in URL, enable multiselect
             multiselect_enabled = len(config["datasets"]) > 1
             data[inp["active_datasets_dropdown"]] = (
                 config["datasets"] if multiselect_enabled else config["datasets"][0]
             )
-
             return_dict[inp["active_datasets_dropdown"]] = gr.Dropdown(
                 value=(
                     config["datasets"] if multiselect_enabled else config["datasets"][0]
@@ -283,127 +284,126 @@ def generate(
                     value=True,
                 )
 
-            # Only load the dataset when necessary (annotators or reference models are specified)
-            need_to_load_dataset = (
-                "annotator_rows" in config
-                or "annotator_cols" in config
-                or "reference_models" in config
+            initial_dataset_name = config["datasets"][0]
+        else:
+            initial_dataset_name = get_default_dataset_names()[0]
+
+        dataset_config = data[state["avail_datasets"]][initial_dataset_name]
+        base_votes_dict = None
+        reference_models = []
+
+        # Load the dataset to get access to model data
+        # May take seconds, but is necessary. Caching ensures we only pay this cost once.
+        results_dir = pathlib.Path(dataset_config.path)
+        handler = DatasetHandler(
+            cache=data[state["cache"]],
+            avail_datasets=data[state["avail_datasets"]],
+            reference_models=reference_models,
+        )
+        handler.load_data_from_names([initial_dataset_name])
+
+        base_votes_dict = handler.first_handler.votes_dict
+        base_votes_dict = get_votes_dict(results_dir, cache=data[state["cache"]])
+
+        if "reference_models" in config:
+            available_models = get_available_models(base_votes_dict["df"])
+
+            # Use URL parser utility to translate URL-encoded model names to their original form
+            url_reference_models = config["reference_models"]
+            reference_models = parse_list_param(
+                url_list=url_reference_models,
+                avail_nonurl_list=available_models,
+                param_name="reference_models",
             )
-            base_votes_dict = None
-            reference_models = []
 
-            if need_to_load_dataset:
-                # Load the dataset to get access to model data
-                # May take seconds, but is necessary. Caching ensures we only pay this cost once.
-                dataset_config = data[state["avail_datasets"]][config["datasets"][0]]
-                results_dir = pathlib.Path(dataset_config.path)
-                handler = DatasetHandler(
-                    cache=data[state["cache"]],
-                    avail_datasets=data[state["avail_datasets"]],
-                    reference_models=reference_models,
-                )
-                handler.load_data_from_names([config["datasets"][0]])
+            data[inp["reference_models_dropdown"]] = reference_models
+            return_dict[inp["reference_models_dropdown"]] = gr.Dropdown(
+                choices=sorted(available_models),
+                value=reference_models,
+                interactive=True,
+            )
 
-                base_votes_dict = handler.first_handler.votes_dict
-                base_votes_dict = get_votes_dict(
-                    results_dir, cache=data[state["cache"]]
-                )
+        # Add "virtual" annotators for the models (based on metadata)
+        votes_dict = add_virtual_annotators(
+            base_votes_dict,
+            cache=data[state["cache"]],
+            dataset_cache_key=results_dir,
+            reference_models=reference_models,
+            target_models=[],
+        )
 
-                if "reference_models" in config:
-                    available_models = get_available_models(base_votes_dict["df"])
+        annotator_types = get_annotators_by_type(votes_dict)
+        all_available_annotators = []
+        for _, annotators in annotator_types.items():
+            all_available_annotators.extend(annotators["visible_names"])
 
-                    # Use URL parser utility to translate URL-encoded model names to their original form
-                    url_reference_models = config["reference_models"]
-                    reference_models = parse_list_param(
-                        url_list=url_reference_models,
-                        avail_nonurl_list=available_models,
-                        param_name="reference_models",
-                    )
+        # If annotator columns are specified in the URL
+        if "annotator_cols" in config:
+            url_annotator_cols = config["annotator_cols"]
+            annotator_cols = parse_list_param(
+                url_list=url_annotator_cols,
+                avail_nonurl_list=all_available_annotators,
+                param_name="annotator_cols",
+            )
+            data[inp["annotator_cols_dropdown"]] = annotator_cols
+            return_dict[inp["annotator_cols_dropdown"]] = gr.Dropdown(
+                choices=sorted(all_available_annotators),
+                value=annotator_cols,
+                interactive=True,
+            )
 
-                    data[inp["reference_models_dropdown"]] = reference_models
-                    return_dict[inp["reference_models_dropdown"]] = gr.Dropdown(
-                        choices=sorted(available_models),
-                        value=reference_models,
-                        interactive=True,
-                    )
+            # also update model analysis tab
+            selected_model_annotator_names = [
+                name.replace(PREFIX_MODEL_IDENTITY_ANNOTATORS, "")
+                for name in annotator_cols
+                if PREFIX_MODEL_IDENTITY_ANNOTATORS in name
+            ]
+            all_available_model_annotator_names = [
+                name.replace(PREFIX_MODEL_IDENTITY_ANNOTATORS, "")
+                for name in all_available_annotators
+                if PREFIX_MODEL_IDENTITY_ANNOTATORS in name
+            ]
+            return_dict[inp["models_to_compare_dropdown"]] = gr.Dropdown(
+                choices=sorted(all_available_model_annotator_names),
+                value=selected_model_annotator_names,
+            )
 
-                votes_dict = add_virtual_annotators(
-                    base_votes_dict,
-                    cache=data[state["cache"]],
-                    dataset_cache_key=results_dir,
-                    reference_models=reference_models,
-                    target_models=[],
-                )
+            # also update annotation analysis tab
+            selected_annotation_annotator_names = [
+                name
+                for name in annotator_cols
+                if PREFIX_MODEL_IDENTITY_ANNOTATORS not in name
+                and PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS not in name
+            ]
+            all_available_annotation_annotator_names = [
+                name
+                for name in all_available_annotators
+                if PREFIX_MODEL_IDENTITY_ANNOTATORS not in name
+                and PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS not in name
+            ]
 
-                annotator_types = get_annotators_by_type(votes_dict)
-                all_available_annotators = []
-                for _, annotators in annotator_types.items():
-                    all_available_annotators.extend(annotators["visible_names"])
+            return_dict[inp["annotations_to_compare_dropdown"]] = gr.Dropdown(
+                choices=sorted(all_available_annotation_annotator_names),
+                value=selected_annotation_annotator_names,
+            )
 
-                # If annotator rows are specified in the URL
-                if "annotator_rows" in config:
-                    url_annotator_rows = config["annotator_rows"]
-                    annotator_rows = parse_list_param(
-                        url_list=url_annotator_rows,
-                        avail_nonurl_list=all_available_annotators,
-                        param_name="annotator_rows",
-                    )
-                    data[inp["annotator_rows_dropdown"]] = annotator_rows
-                    return_dict[inp["annotator_rows_dropdown"]] = gr.Dropdown(
-                        choices=sorted(all_available_annotators),
-                        value=annotator_rows,
-                        interactive=True,
-                    )
+        # set annotator rows dropdown
+        if "annotator_rows" in config:
+            url_annotator_rows = config["annotator_rows"]
+            annotator_rows = parse_list_param(
+                url_list=url_annotator_rows,
+                avail_nonurl_list=all_available_annotators,
+                param_name="annotator_rows",
+            )
+        else:
+            annotator_rows = get_default_annotator_rows(annotator_types)
 
-                # If annotator columns are specified in the URL
-                if "annotator_cols" in config:
-                    url_annotator_cols = config["annotator_cols"]
-                    annotator_cols = parse_list_param(
-                        url_list=url_annotator_cols,
-                        avail_nonurl_list=all_available_annotators,
-                        param_name="annotator_cols",
-                    )
-                    data[inp["annotator_cols_dropdown"]] = annotator_cols
-                    return_dict[inp["annotator_cols_dropdown"]] = gr.Dropdown(
-                        choices=sorted(all_available_annotators),
-                        value=annotator_cols,
-                        interactive=True,
-                    )
-
-                    # also update model analysis tab
-                    selected_model_annotator_names = [
-                        name.replace(PREFIX_MODEL_IDENTITY_ANNOTATORS, "")
-                        for name in annotator_cols
-                        if PREFIX_MODEL_IDENTITY_ANNOTATORS in name
-                    ]
-                    all_available_model_annotator_names = [
-                        name.replace(PREFIX_MODEL_IDENTITY_ANNOTATORS, "")
-                        for name in all_available_annotators
-                        if PREFIX_MODEL_IDENTITY_ANNOTATORS in name
-                    ]
-                    return_dict[inp["models_to_compare_dropdown"]] = gr.Dropdown(
-                        choices=sorted(all_available_model_annotator_names),
-                        value=selected_model_annotator_names,
-                    )
-
-                    # also update annotation analysis tab
-                    selected_annotation_annotator_names = [
-                        name
-                        for name in annotator_cols
-                        if PREFIX_MODEL_IDENTITY_ANNOTATORS not in name
-                        and PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS not in name
-                    ]
-                    all_available_annotation_annotator_names = [
-                        name
-                        for name in all_available_annotators
-                        if PREFIX_MODEL_IDENTITY_ANNOTATORS not in name
-                        and PREFIX_PRINICIPLE_FOLLOWING_ANNOTATORS not in name
-                    ]
-
-                    return_dict[inp["annotations_to_compare_dropdown"]] = gr.Dropdown(
-                        choices=sorted(all_available_annotation_annotator_names),
-                        value=selected_annotation_annotator_names,
-                    )
+        data[inp["annotator_rows_dropdown"]] = annotator_rows
+        return_dict[inp["annotator_rows_dropdown"]] = gr.Dropdown(
+            choices=sorted(all_available_annotators),
+            value=annotator_rows,
+            interactive=True,
+        )
 
         # Split dataset by column if specified in URL
         if "col" not in config:
