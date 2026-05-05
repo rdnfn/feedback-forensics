@@ -20,7 +20,6 @@ from feedback_forensics.app.info_texts import (
     get_datasets_description,
 )
 
-from feedback_forensics.app.styling import CUSTOM_CSS, THEME
 from feedback_forensics.app.utils import get_gradio_image_path
 from feedback_forensics.app.metrics import get_default_avail_metrics
 import feedback_forensics.app.callbacks
@@ -430,7 +429,7 @@ def _create_results_panel(inp: dict, out: dict):
         out["share_link"] = gr.Textbox(
             label="🔗 Share link",
             value="",
-            show_copy_button=True,
+            buttons=["copy"],
             scale=2,
             interactive=True,
             show_label=True,
@@ -461,7 +460,7 @@ def generate():
     state = {}
     out = {}
 
-    with gr.Blocks(theme=THEME, css=CUSTOM_CSS) as demo:
+    with gr.Blocks() as demo:
 
         state = _initialize_state(state)
 

@@ -4,7 +4,12 @@ import gradio as gr
 from loguru import logger
 
 import feedback_forensics.app.interface as interface
-from feedback_forensics.app.constants import USERNAME, PASSWORD, HF_TOKEN, WEBAPP_MODE
+from feedback_forensics.app.constants import (
+    USERNAME,
+    PASSWORD,
+    WEBAPP_MODE,
+)
+from feedback_forensics.app.styling import CUSTOM_CSS, THEME
 import feedback_forensics.data.datasets
 
 # make gradio work offline
@@ -87,7 +92,7 @@ def run():
         auth = None
         auth_message = None
 
-    demo.launch(auth=auth, auth_message=auth_message)
+    demo.launch(auth=auth, auth_message=auth_message, theme=THEME, css=CUSTOM_CSS)
 
 
 if __name__ == "__main__":
