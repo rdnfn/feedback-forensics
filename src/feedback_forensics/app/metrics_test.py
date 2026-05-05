@@ -73,20 +73,26 @@ def test_get_relevance():
 
 
 def test_get_principle_strength():
-    """Test principle strength calculation for different vote distributions."""
+    """Test principle strength calculation for different vote distributions.
+
+    ``get_principle_strength`` returns a dict of the form
+    ``{"strength": float, "hide_metrics": bool, "p_value": float}``.
+    """
     # Test with perfect performance
     value_counts = pd.Series({"Agree": 4, "Disagree": 0, "Not applicable": 1})
     expected = (1.0 - 0.5) * (4 / 5) * 2  # (acc - 0.5) * relevance * 2
-    assert get_principle_strength(value_counts) == expected
+    result = get_principle_strength(value_counts)
+    assert isinstance(result, dict)
+    assert result["strength"] == expected
 
     # Test with worst performance
     value_counts = pd.Series({"Agree": 0, "Disagree": 4, "Not applicable": 1})
     expected = (0.0 - 0.5) * (4 / 5) * 2
-    assert get_principle_strength(value_counts) == expected
+    assert get_principle_strength(value_counts)["strength"] == expected
 
     # Test with neutral performance
     value_counts = pd.Series({"Agree": 2, "Disagree": 2, "Not applicable": 1})
-    assert get_principle_strength(value_counts) == 0.0
+    assert get_principle_strength(value_counts)["strength"] == 0.0
 
 
 def test_get_cohens_kappa_randomized():
@@ -212,16 +218,23 @@ def test_compute_metrics():
     assert set(metrics["annotator_names"]) == {"p1", "p2"}
     assert metrics["num_pairs"] == 2
 
-    # Check metrics for p1
-    p1_metrics = {
-        metric: metrics["metrics"][metric]["p1"]
-        for metric in ["agreement", "acc", "relevance", "strength"]
-    }
+    # Check metrics for p1. Only the metrics in DEFAULT_AVAIL_METRICS
+    # (currently ``strength``, ``strength_with_stats``, ``relevance``,
+    # ``cohens_kappa``) are actually computed by ``compute_annotator_metrics``.
+    for metric in ["strength", "relevance", "cohens_kappa"]:
+        assert metric in metrics["metrics"], f"missing metric: {metric}"
+        assert "p1" in metrics["metrics"][metric]
 
-    # p1 agrees with preferred_text on example 1, disagrees on example 2
-    assert p1_metrics["agreement"] == 0.5  # 1 agree out of 2 total
-    assert p1_metrics["acc"] == 0.5  # 1 agree out of 2 relevant votes
-    assert p1_metrics["relevance"] == 1.0  # 2 relevant out of 2 total
+    # p1 agrees with preferred_text on example 1, disagrees on example 2 →
+    # 1 agree, 1 disagree, 0 not applicable.
+    assert metrics["metrics"]["relevance"]["p1"] == 1.0  # 2 relevant out of 2 total
+    # ``strength`` is now returned as a dict; the scalar lives under "strength".
+    p1_strength = metrics["metrics"]["strength"]["p1"]
+    assert isinstance(p1_strength, dict)
+    # acc=0.5, relevance=1.0 → strength = 2*(0.5-0.5)*1.0 = 0.0
+    assert p1_strength["strength"] == 0.0
+    # Adjusted Cohen's kappa = 2*(acc-0.5) = 0.0 here.
+    assert metrics["metrics"]["cohens_kappa"]["p1"] == 0.0
 
 
 def test_compute_metrics_empty_data():
