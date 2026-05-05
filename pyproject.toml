@@ -35,6 +35,7 @@ dependencies = [
   "msgspec",
   "ijson",
   "adjustText",
+  "aiofiles", # for ff_modelgen tool
 ]
 
 [project.optional-dependencies]
