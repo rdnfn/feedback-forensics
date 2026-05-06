@@ -79,7 +79,6 @@ def get_annotator_table_df(
     neutral_value: float = 0.0,
 ) -> pd.DataFrame:
 
-    initial_dataset = list(annotator_metrics.keys())[0]
     metric = metric_name  # Use the provided metric_name instead of hardcoded "strength"
     all_annotator_keys = set()
     for _, dataset_dict in annotator_metrics.items():
