@@ -140,6 +140,63 @@ def get_annotator_table_df(
 
     shown_values = shown_df.to_numpy()
 
+    def get_num_values(values):
+        num_values = []
+        for row in values:
+            num_row = []
+            for col in row:
+                if isinstance(col, dict):
+                    if "strength" in col:
+                        num_row.append(col["strength"])
+                    else:
+                        num_row.append(None)
+                elif isinstance(col, tuple):
+                    if len(col) > 0:
+                        num_row.append(col[0])
+                    else:
+                        num_row.append(None)
+                elif isinstance(col, (int, float)):
+                    num_row.append(col)
+                else:
+                    num_row.append(col)
+            num_values.append(num_row)
+        return num_values
+
+    def get_display_value(values):
+        display_values = []
+        for row in values:
+            display_row = []
+            for col in row:
+                if isinstance(col, float):
+                    display_row.append(f"{col:.2f}")
+                elif isinstance(col, dict):
+                    val_str = ""
+                    if "strength" in col:
+                        val_str += f"{col['strength']:.2f}"
+                    if not col.get("hide_metrics", False):
+                        if "ci_lower_95" in col and "ci_upper_95" in col:
+                            val_str += (
+                                f" ({col['ci_lower_95']:.2f}, {col['ci_upper_95']:.2f})"
+                            )
+                        if "p_value" in col:
+                            val_str += f" (p={col['p_value']:.2f})"
+                    display_row.append(val_str)
+
+                elif isinstance(col, tuple):
+                    if len(col) == 3:
+                        val_str = f"{col[0]:.2f} ({col[1]:.2f}, {col[2]:.2f})"
+
+                        # add significance indicator
+                        if (col[1] > 0 and col[2] > 0) or (col[1] < 0 and col[2] < 0):
+                            val_str += " *"
+                    else:
+                        val_str = " | ".join([f"{value:.2f}" for value in col])
+                    display_row.append(val_str)
+                else:
+                    display_row.append(col)
+            display_values.append(display_row)
+        return display_values
+
     def get_styling(values):
         display_values = []
         positive_color = "#9eb0ff"  # matplotlib.colors.rgb2hex(cmap(0.0))
@@ -187,46 +244,12 @@ def get_annotator_table_df(
             display_values.append(display_row)
         return display_values
 
-    def get_display_value(values):
-        display_values = []
-        for row in values:
-            display_row = []
-            for col in row:
-                if isinstance(col, float):
-                    display_row.append(f"{col:.2f}")
-                elif isinstance(col, dict):
-                    val_str = ""
-                    if "strength" in col:
-                        val_str += f"{col['strength']:.2f}"
-                    if not col.get("hide_metrics", False):
-                        if "ci_lower_95" in col and "ci_upper_95" in col:
-                            val_str += (
-                                f" ({col['ci_lower_95']:.2f}, {col['ci_upper_95']:.2f})"
-                            )
-                        if "p_value" in col:
-                            val_str += f" (p={col['p_value']:.2f})"
-                    display_row.append(val_str)
-
-                elif isinstance(col, tuple):
-                    if len(col) == 3:
-                        val_str = f"{col[0]:.2f} ({col[1]:.2f}, {col[2]:.2f})"
-
-                        # add significance indicator
-                        if (col[1] > 0 and col[2] > 0) or (col[1] < 0 and col[2] < 0):
-                            val_str += " *"
-                    else:
-                        val_str = " | ".join([f"{value:.2f}" for value in col])
-                    display_row.append(val_str)
-                else:
-                    display_row.append(col)
-            display_values.append(display_row)
-        return display_values
-
-    styling = get_styling(shown_values)
+    num_values = get_num_values(shown_values)
     display_value = get_display_value(shown_values)
+    styling = get_styling(shown_values)
 
     value = {
-        "data": shown_values,
+        "data": num_values,
         "headers": headers,
         "metadata": {
             "styling": styling,
