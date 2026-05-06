@@ -6,7 +6,7 @@ Our toolkit supports computing the annotation metric below, for comparing two se
 
 ### 1. Relevance
 
-Relevance is the proportion of annotations that are valid. We define the *relevance* of one set of annotations over a given set of datapoints as $\texttt{relevance} = n_{\text{valid}}/ n_{\text{total}}$, where $n_{\text{valid}}$ is the number of datapoints with valid votes selecting one response over the other (*response A* or *response B*). This number excludes *tie* (*both*/*neither*) and *invalid* votes. When comparing two sets of annotations ($A$ and $B$), the relevance of annotations $A$ (e.g. personality annotations selecting for more confident responses) over annotations $B$ (e.g. human preference annotations) is the proportion of valid votes over the set of all datapoints included in both annotation sets.
+Relevance is the proportion of annotations that are valid. We define the *relevance* of one set of annotations over a given set of datapoints as $\texttt{relevance} = n_{\text{valid}}/ n_{\text{total}}$, where $n_{\text{valid}}$ is the number of datapoints with valid votes selecting one response over the other (*response A* or *response B*). This number excludes *tie* (*both*/*neither*) and *invalid* votes. When comparing two sets of annotations ($A$ and $B$), the relevance of annotations $A$ (e.g. personality annotations selecting for more confident responses) over annotations $B$ (e.g. human preference annotations) is the proportion of valid votes in set A over the set of all datapoints included in both annotation sets.
 
 ### 2. Cohen's kappa ($\kappa$)
 
@@ -14,13 +14,13 @@ Cohen's kappa is a metric of inter-annotator agreement between two sets of annot
 
 $$\kappa = \frac{p_o - p_e}{1 - p_e},$$
 
-where $p_o$ is the observed proportion of datapoints where annotators agree, and $p_e$ is the proportion of datapoints for which agreement is expected by chance. $p_e$ can be estimated using the observed distribution of labels, as in $p_e=(n_{a_1=A}n_{a_2=A})/N^2 + (n_{a_1=B}n_{a_2=B})/N^2$, where $n_{a_i = X}$ is the number of times annotator $i$ was observed voting for response in position $X$ and $N$ is the total number of observations. For the computation of this metric, we only consider *valid* votes excluding *tie* (*both*/*neither*) and *invalid* votes.
+where $p_o$ is the observed proportion of datapoints where annotators agree, and $p_e$ is the proportion of datapoints for which agreement is expected by chance. $p_e$ can be estimated using the observed distribution of labels, as in $p_e=(n_{a_1=A}n_{a_2=A})/N^2 + (n_{a_1=B}n_{a_2=B})/N^2$, where $n_{a_i = X}$ is the number of times annotator $i$ was observed voting for response in position $X$ and $N$ is the total number of observations. For the computation of this metric, we only consider *valid* votes by both annotators, excluding any datapoints where either annotator has a *tie* (*both*/*neither*) or *invalid* votes.
 
 > **Note:** When one of the annotators does not have access to the order of responses (e.g. because they are always shuffled) the expected chance agreement $p_e$ is $0.5$ by design, even if the other annotator is highly biased to one position (e.g. first response). Cohen's kappa in Feedback Forensics is computed under this assumption, given that this randomization is integrated into our personality selecting reference annotators. This kappa version is also used for the computation of the strength metric.
 
 ### 3. Strength
 
-Finally, for our specific use-case, we combine *Cohen's kappa* with *relevance* to obtain a measure of *relevant agreement beyond chance*: *strength*. We refer to this metrics as *strength*, defined as
+For our specific use-case, we combine *Cohen's kappa* with *relevance* to obtain a measure of *relevant agreement beyond chance*: *strength*. We refer to this metrics as *strength*, defined as
 
 $$\texttt{strength} = \kappa \times \texttt{relevance}.$$
 
@@ -50,6 +50,15 @@ name: fig-method
 ---
 **Interpretation of strength metric** comparing *target model* and *personality trait* annotations
 ```
+
+
+### 4. Strength with statistics
+
+Under the metric option `Strength with stats (95% CI, p-value)`, we further provide additional statistics to help interpret the robustness of each *strength* value.
+
+**Confidence Interval:** We include a bootstrapped 95% *confidence interval* (CI). This CI is generated in a bootstrapped manner by resampling the vote counts where the annotator agreed or disagreed  with the reference annotator, or where the annotator was not applicable, taking the empirically observed proportions as probabilities of each kind of vote occuring. The numbers are resampled 10,000 times by default. Additionally, we add a weak prior of 1 vote in each category to ensure none has zero probability. Inherently, the CI results are random and may vary, however for large annotation datasets the variability is minimal (likely below the visible precision).
+
+**Significance test:** We further include *one-tailed binomial test* to provide a significance measure for each strength value. Given a trait with high strength, our test considers the null hypothesis that the true underlying probability of the two annotators agreeing is nevertheless at or below chance agreement ($\text{prob}(\text{agree})<0.5$). We reject the null hypothesis at p-values below 0.05, then considering a strength result significant. Given a trait with negative strength, we consider the inverse test with a null hypothesis of chance or above agreement between annotators. In the tables, insignificant strength values are shown greyed out. Note that users should be mindful that the app allows running multiple statistical tests simoultaneously, affecting the interpretation of the p-value. Apply correction methods when relevant (e.g. Bonferroni), as is done in the Feedback Forensics paper plots.
 
 ## General Statistics
 
