@@ -1,6 +1,7 @@
 import pandas as pd
 import gradio as gr
 import numpy as np
+import random
 
 
 def generate_dataframes(
@@ -79,7 +80,7 @@ def get_annotator_table_df(
     neutral_value: float = 0.0,
 ) -> pd.DataFrame:
 
-    metric = metric_name  # Use the provided metric_name instead of hardcoded "strength"
+    metric = metric_name
     all_annotator_keys = set()
     for _, dataset_dict in annotator_metrics.items():
         all_annotator_keys.update(list(dataset_dict["metrics"][metric].keys()))
@@ -246,6 +247,13 @@ def get_annotator_table_df(
     num_values = get_num_values(shown_values)
     display_value = get_display_value(shown_values)
     styling = get_styling(shown_values)
+
+    # BUGFIX for issue where gradio dataframe does not update
+    # display value unless the data (num_values) changes
+    # a bit, thus adding noise that shouldn't be visible or
+    # change anything
+    # TODO: remove if no longer necessary
+    num_values[0][1] += random.uniform(-1e-12, 1e-12)
 
     value = {
         "data": num_values,
