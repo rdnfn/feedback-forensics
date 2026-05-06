@@ -1,9 +1,11 @@
 """Compute metrics"""
 
+import time
 import pandas as pd
 import gradio as gr
 import numpy as np
 import sklearn.metrics
+import scipy.stats
 
 from loguru import logger
 
@@ -84,6 +86,95 @@ def get_cohens_kappa_randomized(
     return 2 * (accuracy - 0.5)
 
 
+def get_strength_CI(
+    value_counts: pd.Series,
+    *,
+    annotation_a=None,
+    annotation_b=None,
+    num_resamples=10000,
+) -> float:
+    """Confidence interval for Cohen's kappa using bootstrapping.
+
+    Computes strength in parallel with different re-samples of the data.
+
+    Strength = 2 * (a/(a+b) - 0.5) * (a+b)/(a+b+c)
+
+    Where a is the number of agreed votes, b is the number of disagreed votes, and c is the number of not applicable/invalid votes.
+    """
+
+    # the prior adds a baseline noise assumption about agreement
+    # if the number of datapoints is small, the prior will dominate the result
+    # if larger, the prior will have less of an effect
+    prior_weight = 1
+
+    og_agreed = value_counts.get("Agree", 0) + prior_weight
+    og_disagreed = value_counts.get("Disagree", 0) + prior_weight
+    og_non_applicable = value_counts.get("Not applicable", 0) + prior_weight
+    total = og_agreed + og_disagreed + og_non_applicable
+
+    # resampled the data n_resamples times
+    rng = np.random.default_rng()
+    resamples = rng.multinomial(
+        total,
+        [og_agreed / total, og_disagreed / total, og_non_applicable / total],
+        size=num_resamples,
+    )
+
+    # get vectors of each category
+    agreed = resamples[:, 0]
+    disagreed = resamples[:, 1]
+    non_applicable = resamples[:, 2]
+
+    kappas = 2 * (agreed / (agreed + disagreed) - 0.5)
+    kappas = np.where(np.isnan(kappas), 0, kappas)  # replace nan with 0
+    relevance = (agreed + disagreed) / (agreed + disagreed + non_applicable)
+    strengths = kappas * relevance
+
+    ci = np.percentile(strengths, [2.5, 5, 95, 97.5])
+    return {
+        "ci_lower_95": ci[0],
+        "ci_lower_90": ci[1],
+        "ci_upper_90": ci[2],
+        "ci_upper_95": ci[3],
+    }
+
+
+def get_binom_significance(
+    value_counts: pd.Series, *, annotation_a=None, annotation_b=None
+) -> float:
+    """
+    Binomial significance: measures the significance of the difference between two proportions.
+    """
+    metric_dict = {
+        "p_value": 1.0,
+    }
+
+    agree = value_counts.get("Agree", 0)
+    disagree = value_counts.get("Disagree", 0)
+    total = agree + disagree
+    direction = "greater" if agree > disagree else "less"
+
+    if total > 0:
+        result = scipy.stats.binomtest(k=agree, n=total, p=0.5, alternative=direction)
+        metric_dict["p_value"] = result.pvalue
+
+    return metric_dict
+
+
+def get_strength_with_stats(
+    value_counts: pd.Series, *, annotation_a=None, annotation_b=None
+) -> dict:
+    """
+    Strength with statistics: combines strength with confidence interval and p-value.
+    """
+    return {
+        **get_principle_strength(value_counts),
+        **get_strength_CI(value_counts),
+        **get_binom_significance(value_counts),
+        "hide_metrics": False,  # needed to show metrics in the table (first dict hides by default)
+    }
+
+
 def get_relevance(
     value_counts: pd.Series, *, annotation_a=None, annotation_b=None
 ) -> float:
@@ -105,7 +196,12 @@ def get_principle_strength(
         value_counts, annotation_a=annotation_a, annotation_b=annotation_b
     )
     relevance = get_relevance(value_counts)
-    return cohens_kappa * relevance
+    strength = float(cohens_kappa * relevance)
+    return {
+        "strength": strength,
+        "hide_metrics": True,
+        **get_binom_significance(value_counts),
+    }
 
 
 def get_num_votes(
@@ -130,7 +226,7 @@ def get_not_applicable(
     return value_counts.get("Not applicable", 0)
 
 
-def get_metrics():
+def get_all_defined_metrics() -> dict:
     return {
         "agreement": {
             "name": "Agreement",
@@ -155,6 +251,24 @@ def get_metrics():
             "short": "Strength",
             "descr": "Principle strength: relevance * Cohen's kappa, or relevance * 2 * (accuracy - 0.5)",
             "fn": get_principle_strength,
+        },
+        "strength_with_stats": {
+            "name": "Principle strength (with statistics)",
+            "short": "Strength with stats (95% CI, p-value)",
+            "descr": "Principle strength with 95% confidence interval and p-value based on binomial test of agreement vs. disagreement. A p-value of 0.05 or less indicates that the difference is statistically significant (indicated with *).",
+            "fn": get_strength_with_stats,
+        },
+        "strength_ci": {
+            "name": "Principle strength (Confidence interval)",
+            "short": "Strength with CI",
+            "descr": "Principle strength: relevance * Cohen's kappa, or relevance * 2 * (accuracy - 0.5)",
+            "fn": get_strength_CI,
+        },
+        "agreement_binomial_significance": {
+            "name": "Binomial significance",
+            "short": "Strength with p-value",
+            "descr": "Strength with p-value based on binomial test of agreement vs. disagreement. A p-value of 0.05 or less indicates that the difference is statistically significant.",
+            "fn": get_binom_significance,
         },
         "cohens_kappa_og": {
             "name": "Cohen's kappa (non-adjusted)",
@@ -192,6 +306,15 @@ def get_metrics():
     }
 
 
+def get_avail_metrics() -> dict:
+    full_metric_dict = get_all_defined_metrics()
+    return {
+        metric_name: metric_dict
+        for metric_name, metric_dict in full_metric_dict.items()
+        if metric_name in DEFAULT_AVAIL_METRICS
+    }
+
+
 def compute_annotator_metrics(
     votes_df: pd.DataFrame,
     annotator_metadata: dict,
@@ -202,7 +325,7 @@ def compute_annotator_metrics(
     # votes_df is a pd.DataFrame with one row
     # per vote, and columns "comparison_id", "principle", "vote"
 
-    metric_dicts = get_metrics()
+    metric_dicts = get_avail_metrics()
 
     # check that ref annotator col only contains "text_a" or "text_b"
     if not all(votes_df[ref_annotator_col].isin(["text_a", "text_b"])):
@@ -220,6 +343,9 @@ def compute_annotator_metrics(
     num_pairs = len(votes_df)
 
     metrics = {}
+    per_metric_time = {}
+    for metric_name in metric_dicts.keys():
+        per_metric_time[metric_name] = 0
 
     for annotator_col in annotator_cols:
 
@@ -229,7 +355,13 @@ def compute_annotator_metrics(
             df=votes_df, col_a=annotator_col, col_b=ref_annotator_col
         )
 
-        valid_votes_mask = votes_df[annotator_col].isin(["text_a", "text_b"])
+        valid_votes_mask = votes_df[annotator_col].isin(
+            ["text_a", "text_b"]
+        ) & votes_df[ref_annotator_col].isin(["text_a", "text_b"])
+        # note that in line above adding the ref annotator col shouldn't change
+        # anything in most cases, as the ref anntotator col is generally
+        # assumed to be fully valid. Added for symmetry purposes.
+
         agree_mask = (
             votes_df[annotator_col] == votes_df[ref_annotator_col]
         ) & valid_votes_mask
@@ -252,13 +384,20 @@ def compute_annotator_metrics(
         value_counts = value_counts.fillna(0)
 
         for metric_name, metric_dict in metric_dicts.items():
+            start_time = time.time()
             metric_fn = metric_dict["fn"]
             if metric_name not in metrics:
                 metrics[metric_name] = {}
             metrics[metric_name][annotator_name] = metric_fn(
                 value_counts, annotation_a=annotation_a, annotation_b=annotation_b
             )
+            end_time = time.time()
+            per_metric_time[metric_name] += end_time - start_time
 
+    logger.debug("Time spent per metric:")
+    for metric_name, time_spent in per_metric_time.items():
+        logger.debug(f" - {metric_name}: {time_spent:.2f}s")
+    logger.debug(f"Total time: {sum(per_metric_time.values()):.2f}s")
     return {
         "annotator_names": annotator_names,
         "num_pairs": num_pairs,
@@ -366,7 +505,7 @@ def ensure_categories_identical(
 
 
 def get_default_avail_metrics():
-    all_metrics = get_metrics()
+    all_metrics = get_avail_metrics()
 
     # sanity check that metric config is valid
     assert isinstance(

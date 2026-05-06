@@ -16,6 +16,13 @@ from feedback_forensics.app.metrics import (
 )
 
 
+def _get_sort_values(series: pd.Series):
+    """Get the strength sort key value for a series of values.
+
+    For use with sort_values in pd series/df."""
+    return series.apply(lambda x: x["strength"] if isinstance(x, dict) else x)
+
+
 def _get_annotator_df_col_names(
     annotator_visible_names: list[str], votes_dicts: dict[str, dict]
 ) -> list[str]:
@@ -583,12 +590,17 @@ class DatasetHandler:
         }
         metrics_df = pd.DataFrame(metrics_df)
         if add_max_diff_col:
+            numeric_cols = metrics_df.map(
+                lambda x: x["strength"] if isinstance(x, dict) else x
+            )
             metrics_df["Max diff"] = abs(
-                metrics_df.iloc[:, 0:].max(axis=1) - metrics_df.iloc[:, 0:].min(axis=1)
+                numeric_cols.max(axis=1) - numeric_cols.min(axis=1)
             )
             # by default, sort by max diff, then by annotator names
             sort_by = ["Max diff"] + list(metrics_df.columns[0:])
-            metrics_df = metrics_df.sort_values(by=sort_by, ascending=False)
+            metrics_df = metrics_df.sort_values(
+                by=sort_by, ascending=False, key=_get_sort_values
+            )
 
         # Add index column with name
         # IMPORTANT: index column does not exist before, thus starting from 0 there

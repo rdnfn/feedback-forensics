@@ -1,7 +1,7 @@
 # Book settings
 title: Feedback Forensics Docs
 author: rdnfn, timokau
-copyright: "2025"
+copyright: "2025-2026"
 logo: ../src/feedback_forensics/assets/feedback_forensics_logo.png
 
 # Force re-execution of notebooks on each build.

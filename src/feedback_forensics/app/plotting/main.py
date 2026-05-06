@@ -1,6 +1,7 @@
 import pandas as pd
 import gradio as gr
 import numpy as np
+import random
 
 
 def generate_dataframes(
@@ -79,8 +80,7 @@ def get_annotator_table_df(
     neutral_value: float = 0.0,
 ) -> pd.DataFrame:
 
-    initial_dataset = list(annotator_metrics.keys())[0]
-    metric = metric_name  # Use the provided metric_name instead of hardcoded "strength"
+    metric = metric_name
     all_annotator_keys = set()
     for _, dataset_dict in annotator_metrics.items():
         all_annotator_keys.update(list(dataset_dict["metrics"][metric].keys()))
@@ -112,25 +112,90 @@ def get_annotator_table_df(
             **metric_columns,
         }
     )
+    numeric_cols = shown_df.iloc[:, 1:].map(
+        lambda x: x["strength"] if isinstance(x, dict) else x
+    )
     if len(metric_columns) > 1:
-        shown_df["Max diff"] = abs(
-            shown_df.iloc[:, 1:].max(axis=1) - shown_df.iloc[:, 1:].min(axis=1)
-        )
+        # Extract first value from tuples if present, otherwise use value as-is
+        shown_df["Max diff"] = abs(numeric_cols.max(axis=1) - numeric_cols.min(axis=1))
         headers.append("Max diff")
     else:
         sort_by = list(metric_columns.keys())[0]
 
     # get max and min numerical value in the dataframe (ignoring non-numeric values)
-    max_value = shown_df.select_dtypes(include=[np.number]).max().max()
-    min_value = shown_df.select_dtypes(include=[np.number]).min().min()
+    max_value = numeric_cols.max(axis=1).max()
+    min_value = numeric_cols.min(axis=1).min()
 
     # sort by
     if sort_by is None:
         sort_by = list(metric_columns.keys())[0]
 
-    shown_df = shown_df.sort_values(by=sort_by, ascending=sort_ascending)
+    shown_df = shown_df.sort_values(
+        by=sort_by,
+        ascending=sort_ascending,
+        key=lambda series: series.apply(
+            lambda x: x["strength"] if isinstance(x, dict) else x
+        ),
+    )
 
     shown_values = shown_df.to_numpy()
+
+    def get_num_values(values):
+        num_values = []
+        for row in values:
+            num_row = []
+            for col in row:
+                if isinstance(col, dict):
+                    if "strength" in col:
+                        num_row.append(col["strength"])
+                    else:
+                        num_row.append(None)
+                elif isinstance(col, tuple):
+                    if len(col) > 0:
+                        num_row.append(col[0])
+                    else:
+                        num_row.append(None)
+                elif isinstance(col, (int, float)):
+                    num_row.append(col)
+                else:
+                    num_row.append(col)
+            num_values.append(num_row)
+        return num_values
+
+    def get_display_value(values):
+        display_values = []
+        for row in values:
+            display_row = []
+            for col in row:
+                if isinstance(col, float):
+                    display_row.append(f"{col:.2f}")
+                elif isinstance(col, dict):
+                    val_str = ""
+                    if "strength" in col:
+                        val_str += f"{col['strength']:.2f}"
+                    if not col.get("hide_metrics", False):
+                        if "ci_lower_95" in col and "ci_upper_95" in col:
+                            val_str += (
+                                f" ({col['ci_lower_95']:.2f}, {col['ci_upper_95']:.2f})"
+                            )
+                        if "p_value" in col:
+                            val_str += f" (p={col['p_value']:.2f})"
+                    display_row.append(val_str)
+
+                elif isinstance(col, tuple):
+                    if len(col) == 3:
+                        val_str = f"{col[0]:.2f} ({col[1]:.2f}, {col[2]:.2f})"
+
+                        # add significance indicator
+                        if (col[1] > 0 and col[2] > 0) or (col[1] < 0 and col[2] < 0):
+                            val_str += " *"
+                    else:
+                        val_str = " | ".join([f"{value:.2f}" for value in col])
+                    display_row.append(val_str)
+                else:
+                    display_row.append(col)
+            display_values.append(display_row)
+        return display_values
 
     def get_styling(values):
         display_values = []
@@ -139,7 +204,13 @@ def get_annotator_table_df(
         for row in values:
             display_row = []
             for col in row:
-                if isinstance(col, float):
+                if isinstance(col, float) or isinstance(col, dict):
+                    text_color = "var(--body-text-color)"
+                    if isinstance(col, dict):
+                        col_dict = col
+                        col = col_dict["strength"]
+                        if "p_value" in col_dict and col_dict["p_value"] >= 0.05:
+                            text_color = "rgba(0, 0, 0, 0.3)"
                     if col > neutral_value:
                         denominator = max_value - neutral_value
                         if denominator != 0:
@@ -165,7 +236,7 @@ def get_annotator_table_df(
                     )
                     # Apply the color with opacity
                     display_row.append(
-                        f"background-color: rgba({int(color_to_use[1:3], 16)}, {int(color_to_use[3:5], 16)}, {int(color_to_use[5:7], 16)}, {opacity}); color: var(--body-text-color);"
+                        f"background-color: rgba({int(color_to_use[1:3], 16)}, {int(color_to_use[3:5], 16)}, {int(color_to_use[5:7], 16)}, {opacity}); color: {text_color};"
                         # f"background-color: color-mix(in srgb, {color_to_use} {opacity * 100}%, var(--body-background-fill)); color: var(--body-text-color);" # alternative with no line alternating color
                     )
                 else:
@@ -173,23 +244,19 @@ def get_annotator_table_df(
             display_values.append(display_row)
         return display_values
 
-    def get_display_value(values):
-        display_values = []
-        for row in values:
-            display_row = []
-            for col in row:
-                if isinstance(col, float):
-                    display_row.append(f"{col:.2f}")
-                else:
-                    display_row.append(col)
-            display_values.append(display_row)
-        return display_values
-
-    styling = get_styling(shown_values)
+    num_values = get_num_values(shown_values)
     display_value = get_display_value(shown_values)
+    styling = get_styling(shown_values)
+
+    # BUGFIX for issue where gradio dataframe does not update
+    # display value unless the data (num_values) changes
+    # a bit, thus adding noise that shouldn't be visible or
+    # change anything
+    # TODO: remove if no longer necessary
+    num_values[0][1] += random.uniform(-1e-12, 1e-12)
 
     value = {
-        "data": shown_values,
+        "data": num_values,
         "headers": headers,
         "metadata": {
             "styling": styling,

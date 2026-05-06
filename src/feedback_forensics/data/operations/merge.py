@@ -1,7 +1,6 @@
 """Merge operation for AnnotatedPairs datasets."""
 
-from pathlib import Path
-from typing import Dict, List, Optional, Union, Any, Tuple
+from typing import Dict, List, Optional, Any, Tuple
 from loguru import logger
 import datetime
 
@@ -167,7 +166,9 @@ def _merge_dict(dict1: Dict, dict2: Dict, context: str, strict: bool) -> Dict:
     for key in dict1.keys() & dict2.keys():
         if dict1[key] != dict2[key]:
             base_msg = f'Conflicting value for "{key}" key in {context}: "{dict1[key]}" vs "{dict2[key]}"'
-            if strict:
+            if str(dict1[key]) == str(dict2[key]):
+                logger.warning("Letting pass because string values identical.")
+            elif strict:
                 raise ValueError(f"{base_msg}. No mismatch allowed in this field.")
             else:
                 logger.warning(f"{base_msg}, using first dataset value")
