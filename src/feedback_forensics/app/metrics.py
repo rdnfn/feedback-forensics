@@ -355,7 +355,13 @@ def compute_annotator_metrics(
             df=votes_df, col_a=annotator_col, col_b=ref_annotator_col
         )
 
-        valid_votes_mask = votes_df[annotator_col].isin(["text_a", "text_b"])
+        valid_votes_mask = votes_df[annotator_col].isin(
+            ["text_a", "text_b"]
+        ) & votes_df[ref_annotator_col].isin(["text_a", "text_b"])
+        # note that in line above adding the ref annotator col shouldn't change
+        # anything in most cases, as the ref anntotator col is generally
+        # assumed to be fully valid. Added for symmetry purposes.
+
         agree_mask = (
             votes_df[annotator_col] == votes_df[ref_annotator_col]
         ) & valid_votes_mask
