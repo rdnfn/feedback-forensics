@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 import scienceplots
 
-
 plt.style.use(["science", "nature"])
 
 TITLE_FONT_SIZE = 14
@@ -397,11 +396,14 @@ def get_latex_table_from_metrics_df(
     title: str,
     first_col_width: float = 0.2,
     num_tested_hypotheses: int | None = None,
+    overall_width: float = 0.8,  # relative to linewidth in latex
 ):
     latex = []
     # latex = add_table_preamble(latex, title=title)
 
-    metric_col_width = (0.8 - first_col_width) / (len(metrics_df.columns[1:]) * 1.1)
+    metric_col_width = (overall_width - first_col_width) / (
+        len(metrics_df.columns[1:]) * 1.1
+    )
 
     all_values = metrics_df.iloc[:, 1:-1].map(_get_num_value).values.flatten()
     if num_tested_hypotheses is None:
