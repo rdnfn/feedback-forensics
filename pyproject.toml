@@ -1,6 +1,6 @@
 [project]
 name = "feedback-forensics"
-version = "0.4.7"
+version = "0.5.0"
 authors = [
   { name="rdnfn", email="hi@arduin.io" },
   { name="timokau", email="timo.kaufmann@ifi.lmu.de"},
@@ -65,7 +65,7 @@ build-backend = "hatchling.build"
 packages = ["src/feedback_forensics"]
 
 [tool.bumpversion]
-current_version = "0.4.7"
+current_version = "0.5.0"
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
 serialize = ["{major}.{minor}.{patch}"]
 search = "{current_version}"
