@@ -4,7 +4,7 @@ import time
 import msgspec.json as mjson
 import pandas as pd
 from loguru import logger
-from inverse_cai.data.annotated_pairs_format import hash_string
+from feedback_forensics.data.ap_format import hash_string
 from feedback_forensics.app.utils import get_csv_columns
 from feedback_forensics.app.constants import (
     DEFAULT_ANNOTATOR_COL_NAME,
@@ -38,6 +38,13 @@ def convert_vote_to_string(vote: bool | None) -> str:
         return "Not applicable"
     elif vote == "invalid":
         return "Invalid"
+    elif isinstance(vote, str) and vote.lower() in (
+        "both",
+        "neither",
+        "position_inconsistent",
+    ):
+        # No preference for either response
+        return "Not applicable"
     else:
         raise ValueError(f"Completely invalid vote value: {vote}")
 

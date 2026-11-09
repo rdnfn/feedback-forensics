@@ -2,7 +2,7 @@
 
 import pandas as pd
 import pytest
-from inverse_cai.data.annotated_pairs_format import hash_string
+from feedback_forensics.data.ap_format import hash_string
 
 from feedback_forensics.app.model_annotators import generate_model_identity_annotators
 from feedback_forensics.app.constants import (

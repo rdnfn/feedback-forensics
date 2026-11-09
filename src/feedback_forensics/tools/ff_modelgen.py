@@ -4,8 +4,8 @@ import pathlib
 import json
 from datetime import datetime
 from tqdm import tqdm
-import inverse_cai.models
-import inverse_cai.data.annotated_pairs_format
+import feedback_forensics.models
+from feedback_forensics.data.ap_format import hash_string
 import asyncio
 import aiofiles
 from typing import List
@@ -38,12 +38,12 @@ def run_model_on_prompts(prompts: list[str], model_name: str, output_path: str):
     # Get already processed prompt IDs
     processed_ids = get_processed_ids()
 
-    model = inverse_cai.models.get_model(model_name, max_tokens=16384)
+    model = feedback_forensics.models.get_model(model_name, max_tokens=16384)
 
     # Open file in append mode to continue where we left off
     with open(output_file, "a") as f:
         for prompt in tqdm(prompts, total=len(prompts)):
-            prompt_id = inverse_cai.data.annotated_pairs_format.hash_string(prompt)
+            prompt_id = hash_string(prompt)
 
             # Skip if already processed
             if prompt_id in processed_ids:
@@ -126,27 +126,20 @@ async def run_model_on_prompts_async(
                     pass
 
         # Print how many prompts we're skipping
-        skipped = len(
-            processed_ids.intersection(
-                [
-                    inverse_cai.data.annotated_pairs_format.hash_string(p)
-                    for p in prompts
-                ]
-            )
-        )
+        skipped = len(processed_ids.intersection([hash_string(p) for p in prompts]))
         if skipped > 0:
             print(f"Skipping {skipped} already processed prompts")
 
     # Create file lock to prevent race conditions
     file_lock = asyncio.Lock()
-    model = inverse_cai.models.get_model(model_name, max_tokens=max_tokens)
+    model = feedback_forensics.models.get_model(model_name, max_tokens=max_tokens)
 
     # Create a thread pool for running synchronous model calls
     thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=max_concurrent)
 
     async def process_prompt(prompt, index):
         nonlocal completed
-        prompt_id = inverse_cai.data.annotated_pairs_format.hash_string(prompt)
+        prompt_id = hash_string(prompt)
 
         # Skip if already processed
         if prompt_id in processed_ids:

@@ -3,12 +3,12 @@
 from pathlib import Path
 from typing import Dict, Union, Any
 
-from inverse_cai.data.annotated_pairs_format import (
+from feedback_forensics.data.ap_format import (
     load_annotated_pairs_from_file,
     save_annotated_pairs_to_file,
     create_annotated_pairs,
+    load_preference_data,
 )
-from inverse_cai.data.loader.standard import load
 
 
 def load_ap(file_path: Union[str, Path]) -> Dict[str, Any]:
@@ -54,5 +54,5 @@ def csv_to_ap(csv_path: Union[str, Path], dataset_name: str) -> Dict[str, Any]:
         FileNotFoundError: If CSV file doesn't exist
         ValueError: If CSV is missing required columns
     """
-    df = load(str(csv_path))
+    df = load_preference_data(csv_path)
     return create_annotated_pairs(df, dataset_name)

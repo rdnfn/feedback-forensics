@@ -7,7 +7,7 @@ import pathlib
 # App/package version
 import importlib.metadata
 
-from inverse_cai.data.annotated_pairs_format import (
+from feedback_forensics.data.ap_format import (
     hash_string,
     DEFAULT_ANNOTATOR_DESCRIPTION,
 )

@@ -1,29 +1,21 @@
-"""CLI for running ICAI experiments with simplified parameters."""
+"""CLI for annotating datasets with principle-following AI annotators."""
 
 import argparse
 import json
-import subprocess
+
 from loguru import logger
 
-from inverse_cai.experiment.config import default_principles
+from feedback_forensics.annotation import annotate_dataset
+from feedback_forensics.annotation.principles import get_default_principles
+
+DEFAULT_ANNOTATOR_MODEL = "openrouter/google/gemini-2.5-flash"
+
+__all__ = ["run", "get_default_principles"]
 
 
-def get_default_principles(version: str = "v1") -> list[str]:
-    """Get the default principles."""
-    match version:
-        case "v1":
-            return default_principles.DEFAULT_PRINCIPLES["v4"]
-        case "null" | "None" | "":
-            return []
-        case _:
-            raise ValueError(f"Unknown principles version: {version}.")
-
-
-def run():
-    """Annotate your data using the ICAI experiment pipeline with simplified parameters."""
-    # parse command line arguments
+def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="CLI command for annotating datasets for Feedback Forensics with ICAI pipeline."
+        description="CLI command for annotating datasets for Feedback Forensics."
     )
     parser.add_argument(
         "-d",
@@ -65,57 +57,80 @@ def run():
         "-m",
         "--model",
         type=str,
-        default="openrouter/google/gemini-2.5-flash",
-        help="Model to use to annotate the data (default: openrouter/google/gemini-2.5-flash)",
+        default=DEFAULT_ANNOTATOR_MODEL,
+        help=f"Model to use to annotate the data (default: {DEFAULT_ANNOTATOR_MODEL})",
     )
-
-    args = parser.parse_args()
-
-    logger.info(
-        f"Feedback Forensics is using the Inverse Constitutional AI (ICAI) pipeline to annotate your data."
+    parser.add_argument(
+        "--position-debias",
+        action="store_true",
+        help=(
+            "Annotate each comparison twice, with both response orders (A/B and B/A), "
+            "and only keep votes that agree across orders. Reduces position bias of "
+            "the AI annotator at ~2x annotation cost. Votes that disagree are stored "
+            "without preference (reason: 'position_inconsistent')."
+        ),
     )
+    parser.add_argument(
+        "--max-output-tokens",
+        type=int,
+        default=3000,
+        help=(
+            "Maximum output tokens per annotation call, including reasoning tokens "
+            "of reasoning models (default: 3000). Calls hitting the limit produce "
+            "invalid votes and are reported at the end of the run."
+        ),
+    )
+    parser.add_argument(
+        "--reasoning-effort",
+        type=str,
+        default=None,
+        choices=["minimal", "low", "medium", "high"],
+        help="Reasoning effort for reasoning models (default: provider default)",
+    )
+    parser.add_argument(
+        "--log-api-calls",
+        action="store_true",
+        help=(
+            "Log full request messages and responses of all API calls to "
+            "<output-dir>/api_calls.jsonl (token usage and cost are always logged)."
+        ),
+    )
+    parser.add_argument(
+        "--max-concurrent",
+        type=int,
+        default=400,
+        help="Maximum number of concurrent API calls (default: 400)",
+    )
+    return parser
 
-    # Set up the ICAI command with fixed parameters
-    icai_cmd = [
-        "icai-exp",
-        f'data_path="{args.datapath}"',
-        "annotator.skip=true",
-        "s0_skip_principle_generation=true",
-        "async_task_num=400",
-        "s3_num_seeds_to_reannotate_with=1",
-    ]
 
-    if args.output_dir is not None:
-        icai_cmd.append(f'hydra.run.dir="{args.output_dir}"')
+def run(argv: list[str] | None = None) -> int:
+    """Annotate your data with principle-following AI annotators."""
+    args = get_parser().parse_args(argv)
 
-    if args.model is not None:
-        icai_cmd.append(f'alg_model="{args.model}"')
-
-    # Collect principles to test
-    principles_to_test = []
+    principles = []
     if args.principles_version is not None:
-        principles_to_test.extend(get_default_principles(args.principles_version))
+        principles.extend(get_default_principles(args.principles_version))
     if args.principles is not None:
-        principles_to_test.extend(args.principles)
+        principles.extend(args.principles)
 
-    principle_str = json.dumps(principles_to_test, separators=(",", ":")).replace(
-        '"', '\\"'
+    if not principles:
+        logger.error("No principles to annotate with. Set --principles(-version).")
+        return 1
+
+    annotate_dataset(
+        datapath=args.datapath,
+        principles=principles,
+        model=args.model,
+        output_dir=args.output_dir,
+        position_debias=args.position_debias,
+        max_concurrent_tasks=args.max_concurrent,
+        max_output_tokens=args.max_output_tokens,
+        reasoning_effort=args.reasoning_effort,
+        log_api_calls=args.log_api_calls,
     )
-    icai_cmd.append(f'"s0_added_principles_to_test={principle_str}"')
-
-    cmd_str = " ".join(icai_cmd)
-
-    logger.info(f"Running ICAI experiment: {cmd_str}")
-
-    try:
-        # Run the ICAI command
-        process = subprocess.run(cmd_str, shell=True, check=True)
-
-        return process.returncode
-    except subprocess.CalledProcessError as e:
-        logger.error(f"ICAI experiment failed with exit code {e.returncode}")
-        return e.returncode
+    return 0
 
 
 if __name__ == "__main__":
-    run()  # pylint: disable=no-value-for-parameter
+    raise SystemExit(run())

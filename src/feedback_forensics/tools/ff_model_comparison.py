@@ -5,13 +5,14 @@ Uses generations created by ff_modelgen."""
 import asyncio
 import pathlib
 import pandas as pd
-import subprocess
 import shutil
 import feedback_forensics.tools.ff_modelgen as modelgen
 from loguru import logger
 import argparse
 import json
 from feedback_forensics.data.operations import load_ap, save_ap, merge_ap, csv_to_ap
+from feedback_forensics.annotation import annotate_dataset, get_default_principles
+from feedback_forensics.tools.ff_annotate import DEFAULT_ANNOTATOR_MODEL
 
 
 def create_pairwise_datasets(
@@ -80,18 +81,22 @@ def compare_models(
     model_names: list[str],
     reference_models: list[str],
     output_path: str = "output/",
+    annotator_model: str = DEFAULT_ANNOTATOR_MODEL,
+    position_debias: bool = False,
 ):
     """Compare models' personalities.
 
     First creates generations for the given set of prompts.
     Then creates pairwise dataset for each model against the reference models.
-    Then annotates the pairwise dataset using inverse-cai package.
+    Then annotates the pairwise datasets with principle-following AI annotators.
 
     Args:
         prompts: List of prompts to compare.
         model_names: List of model names to compare.
         reference_models: List of reference model names to compare against.
         output_path: Path to save the results.
+        annotator_model: Model used to annotate the pairwise datasets.
+        position_debias: Annotate in both response orders, only keep agreeing votes.
     """
 
     logger.info(f"Comparing models: {model_names} against {reference_models}")
@@ -145,21 +150,15 @@ def compare_models(
         final_annotation_path = final_annotations_dir / (csv_file.stem + "_ap.json")
 
         if not final_annotation_path.exists():
-            subprocess.run(
-                [
-                    "ff-annotate",
-                    "--datapath",
-                    str(csv_file),
-                    "--output-dir",
-                    str(tmp_output_dir),
-                ],
-                check=True,
+            ap_path = annotate_dataset(
+                datapath=csv_file,
+                principles=get_default_principles(),
+                model=annotator_model,
+                output_dir=tmp_output_dir,
+                position_debias=position_debias,
             )
             # Move the annotation to the final output path
-            shutil.copyfile(
-                src=tmp_output_dir / "results" / "070_annotations_train_ap.json",
-                dst=final_annotation_path,
-            )
+            shutil.copyfile(src=ap_path, dst=final_annotation_path)
         else:
             logger.info(f"Annotation already exists for {csv_file}. Skipping...")
 
@@ -235,6 +234,19 @@ def run():
         help="Path to save results (default: output/)",
     )
 
+    parser.add_argument(
+        "--annotator-model",
+        type=str,
+        default=DEFAULT_ANNOTATOR_MODEL,
+        help=f"Model used to annotate the comparisons (default: {DEFAULT_ANNOTATOR_MODEL})",
+    )
+    parser.add_argument(
+        "--position-debias",
+        action="store_true",
+        help="Annotate each comparison in both response orders and only keep "
+        "votes that agree (~2x annotation cost). See ff-annotate --help.",
+    )
+
     args = parser.parse_args()
 
     # Parse prompts
@@ -265,6 +277,8 @@ def run():
         model_names=args.models,
         reference_models=args.reference_models,
         output_path=args.output_path,
+        annotator_model=args.annotator_model,
+        position_debias=args.position_debias,
     )
     logger.success(
         f"Model personality comparison data generated successfully! To see results, run\n   feedback-forensics -d {args.output_path}/annotations/combined_ap.json"

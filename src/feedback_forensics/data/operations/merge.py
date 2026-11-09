@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Any, Tuple
 from loguru import logger
 import datetime
 
-from inverse_cai.data.annotated_pairs_format import hash_comparison
+from feedback_forensics.data.ap_format import hash_comparison
 
 
 def merge_ap(
