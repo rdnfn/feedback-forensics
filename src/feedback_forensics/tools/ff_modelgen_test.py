@@ -181,11 +181,14 @@ def test_expired_batch_keeps_partial_results(tmp_path, fake_api):
     assert not modelgen._get_batch_paths(tmp_path, MODEL)[1].exists()
 
 
-def test_failed_batch_raises(tmp_path, fake_api):
-    fake_api(status="failed")
+def test_failed_batch_falls_back_to_live(tmp_path, fake_api):
+    # e.g. batch variant listed, but deprecated by provider
+    api = fake_api(status="failed")
+    api.failed_prompts = PROMPTS  # failed batches have no successful results
     modelgen.submit_batch(PROMPTS, MODEL, tmp_path)
-    with pytest.raises(RuntimeError, match="rejected"):
-        modelgen.collect_batch(PROMPTS, MODEL, tmp_path, deadline=0)
+    # done (no batch pending), so caller generates missing prompts via live API
+    assert modelgen.collect_batch(PROMPTS, MODEL, tmp_path, deadline=0)
+    assert not modelgen._get_batch_paths(tmp_path, MODEL)[1].exists()
 
 
 def test_compare_models_skips_pending_batch(tmp_path, fake_api, monkeypatch):
@@ -404,3 +407,140 @@ def test_compare_models_collects_removed_model_batch(tmp_path, fake_api, monkeyp
         )
     assert modelgen.get_pending_batch_models(tmp_path) == []
     assert len(_read_generations(tmp_path)) == 3
+
+
+@pytest.mark.parametrize(
+    "response, finish_reason, expected",
+    [
+        ("text", "stop", None),
+        ("text", None, None),  # some providers report no finish reason
+        ("partial", "length", "length"),
+        ("", "length", "length"),
+        ("text", "error", "error"),
+        ("text", "content_filter", "content_filter"),
+        ("text", "tool_calls", "tool_calls"),
+        ("", "stop", "empty"),
+        ("  \n ", None, "empty"),
+        (None, "stop", "empty"),
+    ],
+)
+def test_get_failure(response, finish_reason, expected):
+    live = {"response_metadata": {"finish_reason": finish_reason}}
+    batch = {"choices": [{"finish_reason": finish_reason}]}
+    assert modelgen.get_failure(response, live) == expected
+    assert modelgen.get_failure(response, batch) == expected
+
+
+def test_batch_records_generation_params_and_provider(tmp_path, fake_api, monkeypatch):
+    api = fake_api()
+    original_call = api.__class__.__call__
+
+    def with_provider(self, method, path, **kwargs):
+        response = original_call(self, method, path, **kwargs)
+        if method == "GET" and path.startswith("/batches/"):
+            response.update(provider="OpenAI", model="openai/gpt-6-sol-20260922")
+        return response
+
+    monkeypatch.setattr(api.__class__, "__call__", with_provider)
+    modelgen.submit_batch(PROMPTS, MODEL, tmp_path, max_tokens=123)
+    assert modelgen.collect_batch(PROMPTS, MODEL, tmp_path, deadline=0)
+    record = _read_generations(tmp_path)[0]
+    assert record["generation_params"] == {
+        "api": "batch",
+        "max_tokens": 123,
+        "temperature": 0.0,
+    }
+    assert record["provider"] == "OpenAI"
+    assert record["provider_model"] == "openai/gpt-6-sol-20260922"
+
+
+def test_get_provider_info(monkeypatch):
+    monkeypatch.setattr(modelgen.time, "sleep", lambda s: None)
+    calls = []
+
+    def fake_request(method, path, **kwargs):
+        calls.append(kwargs["params"]["id"])
+        if len(calls) == 1:  # not registered yet
+            raise modelgen.OpenRouterError(404, "not found")
+        return {"data": {"provider_name": "Mistral", "model": "mistralai/m-2026"}}
+
+    monkeypatch.setattr(modelgen, "_openrouter_request", fake_request)
+    assert modelgen._get_provider_info("gen-1") == {
+        "provider": "Mistral",
+        "provider_model": "mistralai/m-2026",
+    }
+    # missing id or persistent errors: no provider info, but no exception
+    assert modelgen._get_provider_info(None) == {"provider": None, "provider_model": None}
+    monkeypatch.setattr(
+        modelgen,
+        "_openrouter_request",
+        lambda *a, **k: (_ for _ in ()).throw(modelgen.OpenRouterError(500, "x")),
+    )
+    assert modelgen._get_provider_info("gen-2")["provider"] is None
+
+
+def test_cut_off_batch_result_saved_as_failure(tmp_path, fake_api, monkeypatch):
+    api = fake_api()
+    original_result = api._result
+
+    def cut_off_prompt_two(custom_id):
+        result = original_result(custom_id)
+        finish_reason = "length" if custom_id == hash_string("prompt two") else "stop"
+        result["response"]["body"]["choices"][0]["finish_reason"] = finish_reason
+        return result
+
+    monkeypatch.setattr(api, "_result", cut_off_prompt_two)
+    modelgen.submit_batch(PROMPTS, MODEL, tmp_path)
+    assert modelgen.collect_batch(PROMPTS, MODEL, tmp_path, deadline=0)
+    failures = {r["prompt"]: r["failure"] for r in _read_generations(tmp_path)}
+    assert failures == {"prompt one": None, "prompt two": "length", "prompt three": None}
+
+    # failed generation counts as processed: not resubmitted
+    modelgen.submit_batch(PROMPTS, MODEL, tmp_path)
+    assert len(api.submitted) == 1
+
+
+def test_load_generations_derives_failure_for_old_records(tmp_path):
+    output_file, _ = modelgen._get_batch_paths(tmp_path, MODEL)
+    output_file.parent.mkdir(parents=True)
+    # old records have no 'failure' field
+    records = [
+        {"prompt": "a", "response": "x", "full_response": {"response_metadata": {"finish_reason": "stop"}}},
+        {"prompt": "b", "response": "", "full_response": {"response_metadata": {"finish_reason": "length"}}},
+    ]
+    output_file.write_text("".join(json.dumps(r) + "\n" for r in records))
+    generations = modelgen.load_generations(tmp_path, MODEL)
+    assert generations["failure"].tolist() == [None, "length"]
+
+
+def test_pairwise_skips_failed_generations(tmp_path):
+    import pandas as pd
+
+    def gens(rows):
+        return pd.DataFrame(
+            [{"prompt": p, "prompt_id": p, "response": r, "failure": f} for p, r, f in rows]
+        )
+
+    ref = "openrouter/openai/gpt-4o"
+    generations = {
+        ref: gens(
+            [
+                ("ok", "ref ok", None),
+                ("model cut off", "ref ok", None),
+                ("ref cut off", "ref partial", "length"),  # kept: non-empty
+                ("ref empty", "", "length"),  # skipped
+            ]
+        ),
+        MODEL: gens(
+            [
+                ("ok", "model ok", None),
+                ("model cut off", "model partial", "length"),  # skipped
+                ("ref cut off", "model ok", None),
+                ("ref empty", "model ok", None),
+                ("ref missing", "model ok", None),  # skipped
+            ]
+        ),
+    }
+    model_comparison.create_pairwise_datasets([MODEL, ref], [ref], generations, tmp_path)
+    df = pd.read_csv(tmp_path / f"{MODEL.replace('/', '_')}.csv")
+    assert df["prompt"].tolist() == ["ok", "ref cut off"]

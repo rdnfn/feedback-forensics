@@ -15,6 +15,12 @@ import json
 from feedback_forensics.data.operations import load_ap, save_ap, merge_ap, csv_to_ap
 
 
+def _is_failed(row) -> bool:
+    """Whether generation failed (see ff_modelgen.get_failure())."""
+    failure = row.get("failure")
+    return isinstance(failure, str) and bool(failure)
+
+
 def create_pairwise_datasets(
     model_names: list[str],
     reference_models: list[str],
@@ -49,23 +55,47 @@ def create_pairwise_datasets(
         model_gens = generations[model_name]
 
         for reference_model in reference_models:
-            ref_gens = generations[reference_model]
+            ref_rows = {
+                row["prompt"]: row
+                for _, row in generations[reference_model].iterrows()
+            }
+            skipped = {"model failed": 0, "reference missing": 0, "reference empty": 0}
 
             # Create pairwise comparisons for each prompt
             for _, model_row in model_gens.iterrows():
                 prompt = model_row["prompt"]
-                ref_row = ref_gens[ref_gens["prompt"] == prompt].iloc[0]
-
-                if len(ref_row) > 0:
-                    data.append(
-                        {
-                            "prompt": prompt,
-                            "text_a": model_row["response"],
-                            "text_b": ref_row["response"],
-                            "model_a": model_name,
-                            "model_b": reference_model,
-                        }
+                ref_row = ref_rows.get(prompt)
+                if _is_failed(model_row):
+                    skipped["model failed"] += 1
+                    continue
+                if ref_row is None:
+                    skipped["reference missing"] += 1
+                    continue
+                if _is_failed(ref_row):
+                    # Kept (e.g. reference stuck in a loop is its real behavior),
+                    # unless empty, since it is shared by all comparisons
+                    if not str(ref_row["response"] or "").strip():
+                        skipped["reference empty"] += 1
+                        continue
+                    logger.warning(
+                        f"Keeping failed ({ref_row['failure']}) but non-empty "
+                        f"reference generation of {reference_model} for prompt "
+                        f"{ref_row['prompt_id']}."
                     )
+                data.append(
+                    {
+                        "prompt": prompt,
+                        "text_a": model_row["response"],
+                        "text_b": ref_row["response"],
+                        "model_a": model_name,
+                        "model_b": reference_model,
+                    }
+                )
+            if any(skipped.values()):
+                logger.warning(
+                    f"Skipped prompts for {model_name} vs {reference_model}: "
+                    f"{ {k: v for k, v in skipped.items() if v} }"
+                )
 
         # Save pairwise dataset
         if data:

@@ -24,6 +24,85 @@ NONBATCH_SUFFIX = ":nonbatch"  # Our suffix to disable batch API for model
 BATCH_NOT_FOUND_GRACE = 600  # Seconds after submission to treat 404 as pending
 
 
+FAILED_FINISH_REASONS = {
+    "length": "length",  # cut off at max tokens (e.g. all used for reasoning)
+    "error": "error",  # provider error during generation
+    "content_filter": "content_filter",  # stopped by provider's content filter
+    "tool_calls": "tool_calls",  # model tried to call a tool (none offered)
+}
+
+
+def get_failure(response: str | None, full_response: dict) -> str | None:
+    """Get failure reason of a generation, None if successful.
+
+    Failed generations are saved (and thus not retried, e.g. a model running into
+    its token limit would most likely do so again), but excluded from comparisons
+    (except non-empty reference generations, see create_pairwise_datasets()).
+
+    Failures: a finish reason in FAILED_FINISH_REASONS (whether or not the response
+    has text), otherwise 'empty' if the response is empty or only whitespace.
+
+    Args:
+        response: Response text of the generation.
+        full_response: Full response of live (langchain message) or batch
+            (OpenAI chat completion) generation.
+    """
+    finish_reason = (full_response.get("response_metadata") or {}).get(
+        "finish_reason"
+    )
+    if finish_reason is None:
+        choices = full_response.get("choices") or [{}]
+        finish_reason = choices[0].get("finish_reason")
+    if finish_reason in FAILED_FINISH_REASONS:
+        return FAILED_FINISH_REASONS[finish_reason]
+    if not isinstance(response, str) or not response.strip():
+        return "empty"
+    return None
+
+
+TEMPERATURE = 0.0  # Used for all generations (live and batch)
+
+
+def _generation_params(api: str, max_tokens: int | None) -> dict:
+    """Parameters a generation was created with (saved with each record)."""
+    return {"api": api, "max_tokens": max_tokens, "temperature": TEMPERATURE}
+
+
+def _get_provider_info(generation_id: str | None) -> dict:
+    """Get provider and exact model version that served an OpenRouter generation.
+
+    Best effort: OpenRouter may take a moment to register a generation, and
+    missing provider info should never lose a (paid) generation.
+    """
+    if generation_id:
+        error = None
+        for attempt in range(5):
+            time.sleep(2**attempt)  # 1s, 2s, 4s, ...
+            try:
+                data = _openrouter_request(
+                    "GET", "/generation", params={"id": generation_id}
+                )["data"]
+            except (OpenRouterError, requests.RequestException) as e:
+                error = e
+                continue
+            # Right after generation, fields may not be populated yet
+            if data.get("provider_name"):
+                return {
+                    "provider": data["provider_name"],
+                    "provider_model": data.get("model"),
+                }
+            error = "provider not populated yet"
+        logger.warning(f"No provider info for generation {generation_id}: {error}")
+    return {"provider": None, "provider_model": None}
+
+
+def _log_failure(record: dict):
+    logger.warning(
+        f"Generation failed ({record['failure']}) for {record['model']} on prompt "
+        f"{record['prompt_id']}: saved as failed, not retried."
+    )
+
+
 def run_model_on_prompts(prompts: list[str], model_name: str, output_path: str):
 
     output_path = pathlib.Path(output_path)
@@ -150,7 +229,9 @@ async def run_model_on_prompts_async(
 
     # Create file lock to prevent race conditions
     file_lock = asyncio.Lock()
-    model = inverse_cai.models.get_model(model_name, max_tokens=max_tokens)
+    model = inverse_cai.models.get_model(
+        model_name, temp=TEMPERATURE, max_tokens=max_tokens
+    )
 
     # Create a thread pool for running synchronous model calls
     thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=max_concurrent)
@@ -174,14 +255,27 @@ async def run_model_on_prompts_async(
             )
 
             # Create a record with prompt, response, and metadata
+            full_response = dict(generation)
             record = {
                 "prompt_id": prompt_id,
                 "prompt": prompt,
                 "response": generation.content,
-                "full_response": dict(generation),
+                "full_response": full_response,
                 "model": model_name,
                 "timestamp": datetime.now().isoformat(),
+                "failure": get_failure(generation.content, full_response),
+                "generation_params": _generation_params("live", max_tokens),
             }
+            if model_name.startswith("openrouter/"):
+                record.update(
+                    await loop.run_in_executor(
+                        thread_pool,
+                        _get_provider_info,
+                        full_response.get("response_metadata", {}).get("id"),
+                    )
+                )
+            if record["failure"]:
+                _log_failure(record)
 
             # Write the record to the file with lock to prevent race conditions
             async with file_lock:
@@ -471,7 +565,7 @@ def submit_batch(
                     "body": {
                         "messages": [{"role": "user", "content": prompt}],
                         "max_tokens": max_tokens,
-                        "temperature": 0.0,
+                        "temperature": TEMPERATURE,
                     },
                 }
             )
@@ -490,6 +584,7 @@ def submit_batch(
         "batch_id": None,
         "model": model_name,
         "num_requests": len(requests_list),
+        "max_tokens": max_tokens,
         "submitted_at": _now().isoformat(),
     }
     _write_json_atomic(state_file, state)
@@ -518,20 +613,27 @@ def submit_batch(
     )
 
 
-def _parse_batch_result(result: dict, prompts_by_id: dict, model_name, batch_id):
+def _parse_batch_result(
+    result: dict, prompts_by_id: dict, model_name: str, batch: dict, state: dict
+):
     """Convert successful batch result to generation record (None if failed)."""
     response = result.get("response")
     if result.get("error") or not response or response.get("status_code") != 200:
         return None
     body = response["body"]
+    message = body["choices"][0]["message"]
     return {
         "prompt_id": result["custom_id"],
         "prompt": prompts_by_id[result["custom_id"]],
-        "response": body["choices"][0]["message"]["content"] or "",
+        "response": message["content"] or "",
         "full_response": body,
         "model": model_name,
         "timestamp": _now().isoformat(),
-        "batch_id": batch_id,
+        "batch_id": batch["id"],
+        "failure": get_failure(message.get("content"), body),
+        "generation_params": _generation_params("batch", state.get("max_tokens")),
+        "provider": body.get("provider") or batch.get("provider"),
+        "provider_model": body.get("model") or batch.get("model"),
     }
 
 
@@ -606,7 +708,9 @@ def collect_batch(
     records, unparsed, num_failed = [], [], 0
     for result in batch.get("results") or []:
         try:
-            record = _parse_batch_result(result, prompts_by_id, model_name, batch_id)
+            record = _parse_batch_result(
+                result, prompts_by_id, model_name, batch, state
+            )
         except (KeyError, IndexError, TypeError) as e:
             logger.warning(f"Could not parse result in batch {batch_id}: {e!r}")
             unparsed.append(result)
@@ -617,6 +721,8 @@ def collect_batch(
             # (otherwise already saved in previous, interrupted run)
             records.append(record)
             processed_ids.add(record["prompt_id"])
+            if record["failure"]:
+                _log_failure(record)
 
     if unparsed:
         unparsed_file = state_file.parent / "unparsed" / f"{batch_id}.json"
@@ -633,18 +739,26 @@ def collect_batch(
     # Only remove state once results are safely saved
     state_file.unlink()
     logger.info(
-        f"Batch {batch_id} for {model_name} {status}: saved {len(records)} generations, "
+        f"Batch {batch_id} for {model_name} {status}: saved {len(records)} generations "
+        f"({sum(bool(r['failure']) for r in records)} failed generations), "
         f"{num_failed} failed requests. Cost: {(batch.get('usage') or {}).get('cost')}"
     )
     if status == "failed":
-        raise RuntimeError(
-            f"Batch {batch_id} for {model_name} failed: {batch.get('error')}"
+        # E.g. batch variant listed by OpenRouter, but deprecated by provider
+        logger.error(
+            f"Batch {batch_id} for {model_name} failed: {batch.get('error')}. "
+            "Falling back to live API for missing prompts."
         )
+        return True
     # Expired/cancelled batches: missing prompts are generated in next run
     return status == "completed"
 
 def load_generations(output_path: str, model_name: str):
-    """Load generations from output path."""
+    """Load generations from output path.
+
+    Column 'failure' is (re)derived from full responses (see get_failure()),
+    so that it is also set for generations saved before failures were recorded.
+    """
 
     output_path = pathlib.Path(output_path)
     output_file = (
@@ -660,4 +774,15 @@ def load_generations(output_path: str, model_name: str):
             except json.JSONDecodeError:
                 if line.strip():
                     logger.warning(f"Skipping malformed line {line_num} in {output_file}")
-    return pd.read_json(io.StringIO("".join(valid_lines)), lines=True)
+    generations = pd.read_json(io.StringIO("".join(valid_lines)), lines=True)
+    generations["failure"] = [
+        get_failure(r, fr)
+        for r, fr in zip(generations["response"], generations["full_response"])
+    ]
+    num_failed = generations["failure"].notna().sum()
+    if num_failed:
+        logger.warning(
+            f"{model_name}: {num_failed}/{len(generations)} generations failed "
+            f"({generations['failure'].value_counts().to_dict()})."
+        )
+    return generations
