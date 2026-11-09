@@ -99,6 +99,7 @@ def clone_file(
             download_url,
             timeout=60 * 5,  # max 5 mins
         )
+        response.raise_for_status()
         with open(destination_dir / file_name, "wb") as f:
             f.write(response.content)
         logger.info("File cloned successfully.")
