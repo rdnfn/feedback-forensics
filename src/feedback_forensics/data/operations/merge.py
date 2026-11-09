@@ -163,11 +163,18 @@ def _merge_value(value1: Any, value2: Any, context: str, strict: bool) -> Any:
 
 def _merge_dict(dict1: Dict, dict2: Dict, context: str, strict: bool) -> Dict:
     """Generic dictionary merging with optional strict conflict checking."""
+    _nan_values = ["nan", "NaN", "null", "None"]
     for key in dict1.keys() & dict2.keys():
         if dict1[key] != dict2[key]:
             base_msg = f'Conflicting value for "{key}" key in {context}: "{dict1[key]}" vs "{dict2[key]}"'
             if str(dict1[key]) == str(dict2[key]):
-                logger.warning("Letting pass because string values identical.")
+                logger.warning(
+                    f"Letting pass because string values identical for key {key} (str value: {dict1[key]}, types:{type(dict1[key])}, {type(dict2[key])})."
+                )
+            elif str(dict1[key]) in _nan_values and str(dict2[key]) in _nan_values:
+                logger.warning(
+                    f"Observed two different versions of nan values for key {key}, letting pass (values: {str(dict1[key])}, {str(dict2[key])})."
+                )
             elif strict:
                 raise ValueError(f"{base_msg}. No mismatch allowed in this field.")
             else:
