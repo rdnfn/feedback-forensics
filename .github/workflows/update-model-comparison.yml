@@ -4,6 +4,13 @@ name: Update Model Personality Comparison Dataset
 # model comparison tool for a given prompt set.
 # This workflow will check if any new model has been added
 # and the dataset needs to be updated accordingly.
+#
+# New models are generated via the OpenRouter batch API if available
+# (cheaper, but may take up to 24h). Add suffix ':nonbatch' to a model
+# to use the live API instead. Batches still pending at the end of
+# a run are picked up by the next (manually triggered) run. Partial results
+# of failed runs are saved to the 'wip' branch of the HF dataset and
+# automatically reused by the next run.
 
 on:
   # allow manual triggering
@@ -13,12 +20,18 @@ env:
   HF_DATASET: "rdnfn/ff-model-personality"
   VERSION_PATH: "data/v2"
   # Models must be space separated
-  MODELS: openrouter/openai/gpt-4o-2024-11-20 openrouter/openai/gpt-4.1-mini openrouter/x-ai/grok-4 openrouter/google/gemini-2.5-pro openrouter/moonshotai/kimi-k2 openrouter/meta-llama/llama-4-maverick openrouter/mistralai/magistral-medium-2506 openrouter/anthropic/claude-sonnet-4 openrouter/openai/gpt-oss-20b openrouter/openai/gpt-5 openrouter/mistralai/mistral-medium-3.1 openrouter/anthropic/claude-sonnet-4.5 openrouter/z-ai/glm-4.6 openrouter/anthropic/claude-haiku-4.5 openrouter/google/gemini-3-pro-preview  openrouter/openai/gpt-5.1 openrouter/openai/gpt-5.1-chat  openrouter/allenai/olmo-3-32b-think openrouter/allenai/olmo-3-7b-instruct openrouter/allenai/olmo-3-7b-think openrouter/mistralai/mistral-large-2512 openrouter/google/gemini-3.1-pro-preview openrouter/mistralai/mistral-medium-3-5 openrouter/anthropic/claude-opus-4.7 openrouter/openai/gpt-5.3-chat openrouter/anthropic/claude-3.7-sonnet openrouter/openai/gpt-5-chat openrouter/openai/gpt-3.5-turbo #openrouter/anthropic/claude-3.5-haiku-20241022 #openrouter/mistralai/devstral-medium openrouter/deepseek/deepseek-chat-v3-0324
+  MODELS: openrouter/openai/gpt-4o-2024-11-20 openrouter/openai/gpt-4.1-mini openrouter/x-ai/grok-4 openrouter/google/gemini-2.5-pro openrouter/moonshotai/kimi-k2 openrouter/meta-llama/llama-4-maverick openrouter/mistralai/magistral-medium-2506 openrouter/anthropic/claude-sonnet-4 openrouter/openai/gpt-oss-20b openrouter/openai/gpt-5 openrouter/mistralai/mistral-medium-3.1 openrouter/anthropic/claude-sonnet-4.5 openrouter/z-ai/glm-4.6 openrouter/anthropic/claude-haiku-4.5 openrouter/google/gemini-3-pro-preview  openrouter/openai/gpt-5.1 openrouter/openai/gpt-5.1-chat  openrouter/allenai/olmo-3-32b-think openrouter/allenai/olmo-3-7b-instruct openrouter/allenai/olmo-3-7b-think openrouter/mistralai/mistral-large-2512 openrouter/google/gemini-3.1-pro-preview openrouter/mistralai/mistral-medium-3-5 openrouter/anthropic/claude-opus-4.7 openrouter/openai/gpt-5.3-chat openrouter/anthropic/claude-3.7-sonnet openrouter/openai/gpt-5-chat openrouter/openai/gpt-3.5-turbo openrouter/openai/gpt-5.6-sol openrouter/openai/gpt-6-sol openrouter/openai/gpt-6.1-sol openrouter/mistralai/mistral-large-4-0 #openrouter/anthropic/claude-3.5-haiku-20241022 #openrouter/mistralai/devstral-medium openrouter/deepseek/deepseek-chat-v3-0324
   REFERENCE_MODELS: openrouter/openai/gpt-4o-2024-11-20
 
 jobs:
   update-hf-model-comparison-data:
     runs-on: ubuntu-latest
+    # never run twice at the same time (would double-submit work)
+    concurrency:
+      group: update-model-comparison
+      cancel-in-progress: false
+    outputs:
+      pending_batches: ${{ steps.pending.outputs.pending_batches }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -52,12 +65,28 @@ jobs:
         run: |
           git clone https://huggingface.co/datasets/${{ env.HF_DATASET }} hf-dataset
 
+      - name: Restore partial results from previous failed run (if any)
+        working-directory: hf-dataset
+        run: |
+          # 'wip' always contains main + partial results, as it is
+          # created from main by the failure step below and deleted on success.
+          if git ls-remote --exit-code --heads origin wip; then
+            git fetch origin wip
+            # --no-overlay: also remove files deleted in wip (e.g. state files
+            # of already collected batches)
+            git checkout --no-overlay FETCH_HEAD -- ${{ env.VERSION_PATH }}
+            echo "Restored partial results from 'wip' branch"
+          fi
+
       - name: Install additional dependencies
         run: |
           pip install datasets huggingface_hub
 
       - name: Run model comparison
+        id: comparison
         working-directory: hf-dataset
+        # stop before the 6h job limit, so that partial results can still be saved
+        timeout-minutes: 330
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
@@ -65,7 +94,16 @@ jobs:
             --prompts-file ${{ env.VERSION_PATH }}/config/prompts.json \
             --models ${{ env.MODELS }} \
             --reference-models ${{ env.REFERENCE_MODELS }} \
-            --output-path ${{ env.VERSION_PATH }}
+            --output-path ${{ env.VERSION_PATH }} \
+            --batch-max-wait 180
+
+      - name: Check for pending batches
+        id: pending
+        working-directory: hf-dataset
+        run: |
+          if ls ${{ env.VERSION_PATH }}/batches/*.json > /dev/null 2>&1; then
+            echo "pending_batches=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: "Clean-up (tmp files)"
         working-directory: hf-dataset
@@ -83,14 +121,22 @@ jobs:
             git commit -m "GH Action: Update data" -m "$(date '+%Y-%m-%d %H:%M:%S'), $JOB_URL"
             git push origin main
           fi
+          # partial results (if any) are now included in main
+          if git ls-remote --exit-code --heads origin wip; then
+            git push origin --delete wip
+          fi
 
-      - name: Commit and push backup results (failure)
-        if: failure() || cancelled()
+      - name: Commit and push partial results to 'wip' branch (failure)
+        # only if comparison started, otherwise old wip would be overwritten
+        # without its partial results having been restored
+        if: (failure() || cancelled()) && steps.comparison.outcome != 'skipped'
         working-directory: hf-dataset
         run: |
+          JOB_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           git add .
-          git commit -m "GH Action: Update data (failure)" -m "$(date '+%Y-%m-%d %H:%M:%S'), $JOB_URL"
-          git push origin HEAD:backup-$(date '+%Y-%m-%d-%H-%M-%S')
+          git commit -m "GH Action: Update data (failure)" -m "$(date '+%Y-%m-%d %H:%M:%S'), $JOB_URL" || echo "No changes to commit"
+          # force: new wip is based on latest main and contains all of old wip (restored above)
+          git push --force origin HEAD:wip
 
       - name: Cleanup credentials
         if: always()
@@ -100,3 +146,24 @@ jobs:
           git config --global --unset credential.helper || true
           # Clear any cached credentials
           git credential-cache exit 2>/dev/null || true
+
+  # If batches are still pending, trigger another run once they are
+  # (almost) certainly done (OpenRouter batches finish within 24h).
+  follow-up-run:
+    needs: update-hf-model-comparison-data
+    if: needs.update-hf-model-comparison-data.outputs.pending_batches == 'true'
+    runs-on: ubuntu-latest
+    # Delay via environment wait timer (no runner minutes used while waiting).
+    # One-time setup: Settings > Environments > 'annotation-batch-follow-up' >
+    # Wait timer: 1380 minutes (23h). Without it, this triggers immediately.
+    environment: annotation-batch-follow-up
+    permissions:
+      actions: write
+    steps:
+      - name: Trigger follow-up run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run update-model-comparison.yml \
+            --repo ${{ github.repository }} \
+            --ref ${{ github.ref_name }}
