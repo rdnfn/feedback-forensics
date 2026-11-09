@@ -1,6 +1,6 @@
 {
 	"name": "Feedback Forensics",
-	"image": "mcr.microsoft.com/devcontainers/python:1-3.10-bullseye",
+	"image": "mcr.microsoft.com/devcontainers/python:3-3.13-trixie",
 	"forwardPorts": [7860],
 	"features": {
 		// Required to fetch datasets from huggingface
