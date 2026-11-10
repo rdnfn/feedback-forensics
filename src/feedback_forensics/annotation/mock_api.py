@@ -1,5 +1,8 @@
 """Deterministic mock of an OpenAI-compatible chat completions API (for tests).
 
+The mock also implements Anthropic's Messages API (same answers, Anthropic's
+request and response format).
+
 The mock answers annotation (voting) prompts. Its answers depend only on the
 *content* of a request, never on the order in which the two samples are shown:
 for each principle the selected sample is determined by hashing the principle
@@ -11,7 +14,9 @@ test that the native FF annotation reproduces the former ICAI pipeline.
 To exercise error handling, the mock also deterministically (based on content)
 produces: non-applicable/"Both"/"Neither"/unknown vote values, missing votes,
 malformed and markdown-wrapped responses, truncated responses
-(finish_reason "length") and transient HTTP 500 errors.
+(finish_reason "length") and transient HTTP 500 errors. Optionally, it fails the
+first attempts of every request (HTTP errors, dropped or stalled connections),
+to test retries beyond the API clients' own retries.
 
 With `position_bias=True`, some principles are answered with "A" regardless of
 content (to test position debiasing).
@@ -22,7 +27,9 @@ import hashlib
 import json
 import re
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import urlsplit
 
 VOTING_PROMPT_REGEX = re.compile(
     r"Sample A:\n(?P<a>.*)\n\nSample B:\n(?P<b>.*)\n\n"
@@ -125,14 +132,37 @@ def mock_response(messages: list[dict], position_bias: bool = False) -> tuple[st
     return text, "stop"
 
 
+def anthropic_to_openai_messages(body: dict) -> list[dict]:
+    """Messages of an Anthropic Messages API request, in OpenAI's format."""
+
+    def text(content) -> str:
+        if isinstance(content, str):
+            return content
+        return "".join(b.get("text", "") for b in content if b.get("type") == "text")
+
+    messages = (
+        [{"role": "system", "content": text(body["system"])}]
+        if body.get("system")
+        else []
+    )
+    return messages + [
+        {"role": m["role"], "content": text(m["content"])}
+        for m in body.get("messages", [])
+    ]
+
+
 class MockLLMServer:
-    """Threaded HTTP server implementing `POST /v1/chat/completions`."""
+    """Threaded HTTP server implementing `POST /v1/chat/completions` (OpenAI API)
+    and `POST /v1/messages` (Anthropic API)."""
 
     def __init__(
         self,
         position_bias: bool = False,
         fail_first_attempts: bool = False,
         keep_alive: bool = False,
+        fail_attempts: int = 0,
+        failure: int | str = 500,
+        stall_s: float = 2.0,
     ):
         """
         Args:
@@ -141,10 +171,28 @@ class MockLLMServer:
                 requests (to test retries).
             keep_alive: Use HTTP/1.1 keep-alive connections (default: HTTP/1.0,
                 closing the connection after each request).
+            fail_attempts: Fail the first `fail_attempts` attempts of every
+                request with `failure`. Error responses then ask the API clients
+                to retry without delay (`retry-after-ms` header).
+            failure: HTTP status code, "disconnect" (close the connection
+                without a response) or "stall" (no response for `stall_s`
+                seconds, then disconnect).
+            stall_s: See `failure`.
         """
+        if not (isinstance(failure, int) or failure in ("disconnect", "stall")):
+            raise ValueError(f"Unknown failure: {failure}")
         self.position_bias = position_bias
         self.fail_first_attempts = fail_first_attempts
+        self.fail_attempts = fail_attempts
+        self.failure = failure
+        self.stall_s = stall_s
+        # Bodies of answered requests
         self.requests: list[dict] = []
+        # Request targets of all requests (absolute URLs if sent via a proxy)
+        self.paths: list[str] = []
+        # (HTTP status, body) of every response as sent, incl. errors: what the
+        # (mock) provider reported, e.g. token usage and cost
+        self.responses: list[tuple[int, dict]] = []
         self.num_failed_attempts = 0
         self._attempts: dict[str, int] = {}
         self._lock = threading.Lock()
@@ -159,11 +207,25 @@ class MockLLMServer:
             def do_POST(self):
                 length = int(self.headers.get("Content-Length", 0))
                 body = json.loads(self.rfile.read(length))
-                status, payload = server._handle(body)
+                with server._lock:
+                    server.paths.append(self.path)
+                if urlsplit(self.path).path.endswith("/messages"):
+                    status, payload = server._handle_anthropic(body)
+                else:
+                    status, payload = server._handle(body)
+                if status is None:  # dropped or stalled connection
+                    if server.failure == "stall":
+                        time.sleep(server.stall_s)
+                    self.close_connection = True
+                    return
+                with server._lock:
+                    server.responses.append((status, payload))
                 data = json.dumps(payload).encode("utf-8")
                 self.send_response(status)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(data)))
+                if status >= 400 and server.fail_attempts:
+                    self.send_header("retry-after-ms", "1")
                 self.end_headers()
                 self.wfile.write(data)
 
@@ -174,6 +236,16 @@ class MockLLMServer:
     @property
     def base_url(self) -> str:
         return f"http://127.0.0.1:{self._server.server_address[1]}/v1"
+
+    @property
+    def anthropic_base_url(self) -> str:
+        return f"http://127.0.0.1:{self._server.server_address[1]}"
+
+    @property
+    def num_attempts(self) -> int:
+        """Number of requests received, incl. failed attempts."""
+        with self._lock:
+            return sum(self._attempts.values())
 
     def __enter__(self):
         self._thread.start()
@@ -186,11 +258,45 @@ class MockLLMServer:
     def reset(self):
         with self._lock:
             self.requests = []
+            self.paths = []
+            self.responses = []
             self.num_failed_attempts = 0
             self._attempts = {}
 
-    def _handle(self, body: dict) -> tuple[int, dict]:
-        messages = body.get("messages", [])
+    def _handle_anthropic(self, body: dict) -> tuple[int | None, dict]:
+        """Like `_handle`, for the Anthropic Messages API."""
+        status, payload = self._handle(body, anthropic_to_openai_messages(body))
+        if status != 200:
+            error = {"type": "api_error", "message": "Mock error"}
+            return status, {"type": "error", "error": error}
+        choice = payload["choices"][0]
+        return status, {
+            "id": "msg_mock",
+            "type": "message",
+            "role": "assistant",
+            "model": body.get("model"),
+            "content": [{"type": "text", "text": choice["message"]["content"]}],
+            "stop_reason": {"stop": "end_turn", "length": "max_tokens"}[
+                choice["finish_reason"]
+            ],
+            "stop_sequence": None,
+            "usage": {
+                "input_tokens": payload["usage"]["prompt_tokens"],
+                "output_tokens": payload["usage"]["completion_tokens"],
+            },
+        }
+
+    def _handle(
+        self, body: dict, messages: list[dict] | None = None
+    ) -> tuple[int | None, dict]:
+        """Returns (HTTP status or None for no response, response payload).
+
+        Args:
+            body: Request body (OpenAI chat completions API).
+            messages: Request messages (default: `body["messages"]`).
+        """
+        if messages is None:
+            messages = body.get("messages", [])
         request_key = json.dumps(messages, sort_keys=True)
         with self._lock:
             self._attempts[request_key] = self._attempts.get(request_key, 0) + 1
@@ -205,6 +311,15 @@ class MockLLMServer:
                 with self._lock:
                     self.num_failed_attempts += 1
                 return 500, {"error": {"message": "Mock server error", "code": 500}}
+
+        if attempt <= self.fail_attempts:
+            with self._lock:
+                self.num_failed_attempts += 1
+            if self.failure in ("disconnect", "stall"):
+                return None, {}
+            return self.failure, {
+                "error": {"message": "Mock error", "code": self.failure}
+            }
 
         with self._lock:
             self.requests.append(body)

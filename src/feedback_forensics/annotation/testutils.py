@@ -1,10 +1,15 @@
-"""Helpers for annotation tests: mock LLM server fixture, test data, expected votes."""
+"""Helpers for annotation tests: fixtures (mock LLM server, log messages), test
+data, expected votes."""
 
+import asyncio
 import contextlib
 import itertools
+from types import SimpleNamespace
 
+import backoff
 import pandas as pd
 import pytest
+from loguru import logger
 
 from feedback_forensics.annotation.mock_api import (
     FAIL_ONCE_RANGE,
@@ -36,6 +41,34 @@ def mock_llm_server(monkeypatch):
             return server
 
         yield start
+
+
+@pytest.fixture
+def retry_waits(monkeypatch) -> list[float]:
+    """Skip the waits between FF's retries (`backoff`), returns the waits."""
+    waits = []
+
+    async def sleep(delay, *args, **kwargs):
+        waits.append(delay)
+        await asyncio.sleep(0)
+
+    # Only for `backoff`: other libraries (e.g. anyio) may import `asyncio.sleep`
+    monkeypatch.setattr(
+        backoff._async, "asyncio", SimpleNamespace(**{**vars(asyncio), "sleep": sleep})
+    )
+    return waits
+
+
+@pytest.fixture
+def log_messages():
+    """(level, message) of everything logged (INFO and above) during the test."""
+    messages = []
+    handler_id = logger.add(
+        lambda m: messages.append((m.record["level"].name, m.record["message"])),
+        level="INFO",
+    )
+    yield messages
+    logger.remove(handler_id)
 
 
 def make_pairs_df(

@@ -3,7 +3,8 @@
 Ported from `inverse_cai.data.annotated_pairs_format` (inverse-cai v0.4.8) so that
 standard annotation does not depend on the ICAI package. Hashing functions MUST stay
 byte-for-byte identical to the ICAI implementation: comparison ids and annotator ids
-of existing published datasets depend on them (see `ap_format_test.py`).
+of existing published datasets depend on them (pinned by golden values in
+`ap_format_test.py`).
 """
 
 import datetime

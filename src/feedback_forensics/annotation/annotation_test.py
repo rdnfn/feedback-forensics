@@ -3,6 +3,7 @@
 import ast
 import hashlib
 import json
+import random
 from collections import Counter
 
 import pandas as pd
@@ -14,6 +15,7 @@ from feedback_forensics.annotation.mock_api import (
     MARKDOWN_RANGE,
     PRINCIPLE_POSITIONAL,
     TRUNCATED_RANGE,
+    VOTING_PROMPT_REGEX,
 )
 from feedback_forensics.annotation.mock_api import _h, pair_key, principle_behaviour
 from feedback_forensics.annotation.prompts import VOTING_PROMPT
@@ -131,7 +133,9 @@ def test_repeated_runs_in_one_process(tmp_path, mock_llm_server):
         assert usage["num_failed_calls"] == 0
         assert usage["num_calls"] == 2 * len(df)
         assert_votes_match_mock(df, output_dir, principles, position_debias=False)
-    assert server.num_failed_attempts > 0  # retries were exercised
+    # The API client's own retries were exercised (FF's retries on top of them are
+    # tested in http_client_test.py)
+    assert server.num_failed_attempts > 0
 
 
 def test_runs_are_reproducible(tmp_path, mock_llm_server):
@@ -152,10 +156,40 @@ def test_runs_are_reproducible(tmp_path, mock_llm_server):
         )
     assert requests_per_run[0] == requests_per_run[1]
     # Both orders are used (roughly balanced)
-    flipped = Counter(
-        json.loads(line)["flipped"] for line in open(tmp_path / "run0/api_calls.jsonl")
-    )
+    entries = [json.loads(line) for line in open(tmp_path / "run0/api_calls.jsonl")]
+    flipped = Counter(e["flipped"] for e in entries if not e.get("started"))
     assert flipped[True] > 5 and flipped[False] > 5
+
+
+def test_ab_order_as_documented(tmp_path, mock_llm_server):
+    """The A/B orders are ICAI's random sequence (seed 1: shuffle of the principles,
+    then one draw per comparison and pass), drawn in row order (see the `voting`
+    module docstring). Changing them changes votes of position-biased annotators."""
+    server = mock_llm_server()
+    df = make_pairs_df(30, seed="b")
+    df.to_csv(tmp_path / "data.csv", index=False)
+    principles = get_default_principles() + EXTRA_PRINCIPLES  # two passes
+    annotate_dataset(
+        tmp_path / "data.csv", principles, MOCK_MODEL, output_dir=tmp_path / "out"
+    )
+
+    # (pass, sample A, sample B) of each request (pass 1: 40 principles, pass 2: 2)
+    shown = set()
+    for request in server.requests:
+        match = VOTING_PROMPT_REGEX.search(request["messages"][1]["content"])
+        num_principles = len(ast.literal_eval(match["principles"]))
+        shown.add((1 if num_principles == 40 else 2, match["a"], match["b"]))
+    flipped = []  # per pass and row: rejected response shown as sample A
+    for pass_number in (1, 2):
+        for _, row in df.iterrows():
+            preferred, rejected = get_preferred_text(row), get_rejected_text(row)
+            swapped = (pass_number, rejected, preferred) in shown
+            assert swapped != ((pass_number, preferred, rejected) in shown)
+            flipped.append(swapped)
+
+    rng = random.Random(1)
+    rng.shuffle(list(range(len(principles))))
+    assert flipped == [rng.choice([True, False]) for _ in range(2 * len(df))]
 
 
 def test_position_debias(tmp_path, mock_llm_server):
@@ -240,26 +274,47 @@ def test_usage_and_cost_logging(tmp_path, mock_llm_server):
     )
 
     entries = [json.loads(line) for line in open(tmp_path / "out/api_calls.jsonl")]
+    # The start and the result of each call
+    started = [e for e in entries if e.get("started")]
+    entries = [e for e in entries if not e.get("started")]
     assert len(entries) == len(server.requests) == len(df)
+    assert sorted(e["call_id"] for e in started) == sorted(
+        e["call_id"] for e in entries
+    )
 
     # Totals match what the (mock) provider reported
     summary = json.load(open(tmp_path / "out/results/080_api_usage_summary.json"))
-    num_truncated = sum(
-        _h(pair_key(*(get_preferred_text(r), get_rejected_text(r)))) % 100
-        in TRUNCATED_RANGE
+    assert all(status == 200 for status, _ in server.responses)
+    reported = [body["usage"] for _, body in server.responses]
+    finish_reasons = [
+        body["choices"][0]["finish_reason"] for _, body in server.responses
+    ]
+    assert summary["num_calls"] == len(server.responses) == len(df)
+    assert summary["num_failed_calls"] == 0
+    assert summary["num_truncated_calls"] == finish_reasons.count("length") > 0
+    assert summary["input_tokens"] == sum(u["prompt_tokens"] for u in reported) > 0
+    assert summary["output_tokens"] == sum(u["completion_tokens"] for u in reported)
+    assert summary["reasoning_tokens"] == sum(
+        u["completion_tokens_details"]["reasoning_tokens"] for u in reported
+    )
+    assert summary["cost_usd"] == pytest.approx(sum(u["cost"] for u in reported))
+    assert summary["cost_usd"] > 0 and summary["cost_complete"] is True
+    assert summary["num_calls_with_cost"] == len(df)
+    assert summary["list_price_cost_usd"] is None  # only for openrouter models
+
+    # Malformed, markdown-wrapped and truncated responses are unparsable
+    num_unparsable = sum(
+        _h(pair_key(get_preferred_text(r), get_rejected_text(r))) % 100
+        in (*MALFORMED_RANGE, *MARKDOWN_RANGE, *TRUNCATED_RANGE)
         for _, r in df.iterrows()
     )
-    assert num_truncated > 0
-    assert summary["num_calls"] == len(df)
-    assert summary["num_failed_calls"] == 0
-    assert summary["num_truncated_calls"] == num_truncated
-    assert summary["num_unparsable_responses"] > 0
-    assert summary["input_tokens"] == sum(e["input_tokens"] for e in entries) > 0
-    assert summary["output_tokens"] == sum(e["output_tokens"] for e in entries) > 0
-    assert summary["reasoning_tokens"] == 7 * len(df)
-    assert summary["cost_usd"] == pytest.approx(sum(e["cost_usd"] for e in entries))
-    assert summary["cost_usd"] > 0 and summary["cost_complete"] is True
-    assert summary["list_price_cost_usd"] is None  # only for openrouter models
+    this_run = summary.pop("this_run")
+    assert this_run.pop("num_unparsable_responses") == num_unparsable > 0
+    # A new output directory: all calls are of this run
+    votes = [v for vs in read_votes(tmp_path / "out").values() for v in vs.values()]
+    assert summary.pop("num_votes") == len(votes) == 40 * len(df)
+    assert summary.pop("num_invalid_votes") == votes.count(INVALID_VOTE) > 0
+    assert this_run == summary
 
     # Full request/response content logged with log_api_calls=True
     sent_messages = sorted(json.dumps(r["messages"]) for r in server.requests)
@@ -271,14 +326,25 @@ def test_usage_and_cost_logging(tmp_path, mock_llm_server):
 
 def test_resume_from_cache(tmp_path, mock_llm_server):
     server = mock_llm_server()
-    make_pairs_df(20, seed="c").to_csv(tmp_path / "data.csv", index=False)
+    df = make_pairs_df(20, seed="c")
+    df.to_csv(tmp_path / "data.csv", index=False)
     args = (tmp_path / "data.csv", get_default_principles(), MOCK_MODEL)
 
     first = json.load(open(annotate_dataset(*args, output_dir=tmp_path / "out")))
-    num_requests = len(server.requests)
+    first_requests = server.requests
+    server.reset()
     second = json.load(open(annotate_dataset(*args, output_dir=tmp_path / "out")))
-    assert len(server.requests) == num_requests  # all votes from cache
     assert first["comparisons"] == second["comparisons"]
+
+    # Votes are loaded from the cache. Only requests without any valid vote
+    # (here: unparsable responses) are not cached, and are repeated.
+    num_unparsable = sum(
+        _h(pair_key(get_preferred_text(r), get_rejected_text(r))) % 100
+        in (*MALFORMED_RANGE, *MARKDOWN_RANGE, *TRUNCATED_RANGE)
+        for _, r in df.iterrows()
+    )
+    assert 0 < len(server.requests) == num_unparsable < len(first_requests)
+    assert all(request in first_requests for request in server.requests)
 
 
 def test_cli(tmp_path, mock_llm_server):

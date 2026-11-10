@@ -1,7 +1,9 @@
 """Append-only, file-locked JSONL cache for annotation votes.
 
 Ported from `inverse_cai.algorithm.cache` (inverse-cai v0.4.8). Allows interrupted
-annotation runs to be resumed when re-run with the same output directory.
+annotation runs to be resumed when re-run with the same output directory. Unlike
+ICAI's, vote keys also cover the annotator's generation settings and are not
+truncated to 32 bits (see `get_vote_hash`), so ICAI vote caches are not reused.
 """
 
 import hashlib
@@ -118,7 +120,10 @@ class VoteCache:
 
 def _get_hash(dict_to_hash: dict) -> str:
     string = json.dumps(dict_to_hash, sort_keys=True)
-    return hashlib.md5(string.encode("utf-8")).hexdigest()[:8]
+    # Full 128-bit hash: votes are looked up by hash only, and truncated hashes
+    # (ICAI uses 32 bits) collide at realistic dataset sizes, silently giving one
+    # comparison the vote of another.
+    return hashlib.md5(string.encode("utf-8")).hexdigest()
 
 
 def get_vote_hash(
@@ -126,21 +131,30 @@ def get_vote_hash(
     rejected: str,
     principle: str,
     model_name: str,
+    max_output_tokens: int,
+    reasoning_effort: str | None,
     shown_first: str | None = None,
 ) -> str:
-    """Hash identifying a single vote.
+    """Hash identifying a single vote (its key in the vote cache).
+
+    Covers the comparison, the principle, the annotator model and its generation
+    settings: votes are only reused from the cache by runs with the same settings
+    (e.g. re-running with a larger `max_output_tokens` repeats the API calls).
+    Not covered (as in ICAI): the other principles voted on in the same request
+    and, without position debiasing, the order in which the responses were shown.
 
     Args:
         shown_first: For position-debiased annotation, which response was shown
-            as sample A ("preferred" or "rejected"). None for standard annotation
-            (in which case the hash is identical to ICAI's vote hash).
+            as sample A ("preferred" or "rejected"). None for standard annotation.
     """
-    to_hash = dict(
-        preferred=preferred,
-        rejected=rejected,
-        principle=principle,
-        model_name=model_name,
+    return _get_hash(
+        dict(
+            preferred=preferred,
+            rejected=rejected,
+            principle=principle,
+            model_name=model_name,
+            max_output_tokens=max_output_tokens,
+            reasoning_effort=reasoning_effort,
+            shown_first=shown_first,
+        )
     )
-    if shown_first is not None:
-        to_hash["shown_first"] = shown_first
-    return _get_hash(to_hash)

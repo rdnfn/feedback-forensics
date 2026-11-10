@@ -7,10 +7,37 @@ from loguru import logger
 
 from feedback_forensics.annotation import annotate_dataset
 from feedback_forensics.annotation.principles import get_default_principles
+from feedback_forensics.models import check_model_settings
 
 DEFAULT_ANNOTATOR_MODEL = "openrouter/google/gemini-2.5-flash"
 
 __all__ = ["run", "get_default_principles"]
+
+
+def parse_principles(value: str) -> list[str]:
+    """Parse --principles: a JSON list of principles, or a JSON object mapping ids
+    to principles (e.g. ICAI's results/030_distilled_principles_per_cluster.json)."""
+    try:
+        principles = json.loads(value)
+    except json.JSONDecodeError as e:
+        raise argparse.ArgumentTypeError(f"invalid JSON ({e})") from e
+    if isinstance(principles, dict):
+        principles = list(principles.values())
+    if not isinstance(principles, list) or not all(
+        isinstance(principle, str) for principle in principles
+    ):
+        raise argparse.ArgumentTypeError(
+            "expected a JSON list of principles (strings), or a JSON object "
+            "mapping ids to principles"
+        )
+    return principles
+
+
+def positive_int(value: str) -> int:
+    number = int(value)
+    if number < 1:
+        raise argparse.ArgumentTypeError(f"must be a positive integer, got {value}")
+    return number
 
 
 def get_parser() -> argparse.ArgumentParser:
@@ -38,12 +65,14 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "-p",
         "--principles",
-        type=json.loads,
+        type=parse_principles,
         default=None,
         help=(
-            "List of custom principles to test (default: None). "
-            "E.g. \"['Select the response that is more confident', "
-            "'Select the response that is more friendly']\""
+            "Custom principles to test (default: None): a JSON list of principles, "
+            'e.g. ["Select the response that is more confident", '
+            '"Select the response that is more friendly"], or a JSON object mapping '
+            "ids to principles (e.g. the content of ICAI's "
+            "results/030_distilled_principles_per_cluster.json)."
         ),
     )
     parser.add_argument(
@@ -72,7 +101,7 @@ def get_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--max-output-tokens",
-        type=int,
+        type=positive_int,
         default=3000,
         help=(
             "Maximum output tokens per annotation call, including reasoning tokens "
@@ -85,7 +114,11 @@ def get_parser() -> argparse.ArgumentParser:
         type=str,
         default=None,
         choices=["minimal", "low", "medium", "high"],
-        help="Reasoning effort for reasoning models (default: provider default)",
+        help=(
+            "Reasoning effort for reasoning models (default: provider default). "
+            "Not supported for anthropic/ models: use openrouter/anthropic/... "
+            "instead."
+        ),
     )
     parser.add_argument(
         "--log-api-calls",
@@ -97,7 +130,7 @@ def get_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--max-concurrent",
-        type=int,
+        type=positive_int,
         default=400,
         help="Maximum number of concurrent API calls (default: 400)",
     )
@@ -106,7 +139,12 @@ def get_parser() -> argparse.ArgumentParser:
 
 def run(argv: list[str] | None = None) -> int:
     """Annotate your data with principle-following AI annotators."""
-    args = get_parser().parse_args(argv)
+    parser = get_parser()
+    args = parser.parse_args(argv)
+    try:
+        check_model_settings(args.model, args.reasoning_effort)
+    except ValueError as e:
+        parser.error(str(e))
 
     principles = []
     if args.principles_version is not None:

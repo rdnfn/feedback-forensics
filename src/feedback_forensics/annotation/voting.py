@@ -13,10 +13,30 @@ according to each principle. Votes are expressed relative to the reference
   order of the two responses was swapped
 
 Ported from `inverse_cai.algorithm.voting` (inverse-cai v0.4.8). With
-`position_debias=False` the same prompts (incl. principle order and A/B order) are
-sent as by ICAI with FF's former `ff-annotate` configuration (one seed, seed 1).
-Differences to ICAI: all API calls of a run share one event loop and HTTP client,
-network errors are retried, and A/B orders are drawn upfront (reproducible).
+`position_debias=False`, the prompts are the same as ICAI's with FF's former
+`ff-annotate` configuration (one seed, seed 1), except for the order of the two
+responses: same system prompt, principles and principle order, and model
+parameters. Differences to ICAI:
+
+- A/B order: the random A/B orders (same random sequence as ICAI's) are drawn
+  upfront and assigned to the comparisons in row order, making runs
+  reproducible. ICAI assigned them in the order in which its async tasks
+  happened to start (and backoff jitter of retries consumed random numbers
+  too), so the A/B order of a given comparison (in a given pass) matches ICAI's
+  only by chance, about half of the time. This only matters to the extent that
+  the annotator is position-biased.
+- HTTP: all API calls of a run share one event loop and an HTTP client bound to
+  it, with request timeouts and TCP keepalive (see
+  `feedback_forensics.models.create_async_http_client`).
+- Retries: connection errors, timeouts and HTTP 409 (conflict, also retried by
+  the OpenAI and Anthropic API clients) are retried like rate limits and server
+  errors (ICAI only retried the latter), with the same retry budget as ICAI (see
+  `run_with_http_retries`).
+- OpenRouter requests also ask for the cost to be reported (`usage`), and
+  identify FF instead of ICAI in their headers.
+- Vote cache (resuming runs): requests without any valid vote are not cached,
+  so that they are repeated when a run is resumed, and votes are only reused for
+  the same generation settings (see `feedback_forensics.annotation.cache`).
 """
 
 import ast
@@ -27,6 +47,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+import anthropic
 import backoff
 import httpx
 import openai
@@ -41,6 +62,9 @@ from feedback_forensics.annotation.usage import UsageTracker
 INVALID_VOTE = "invalid"
 POSITION_INCONSISTENT_VOTE = "position_inconsistent"
 SHOWN_FIRST_VALUES = ("preferred", "rejected")
+# Finish reasons of complete responses: "stop" (OpenAI-compatible APIs), "end_turn"
+# and "stop_sequence" (Anthropic)
+COMPLETE_FINISH_REASONS = ("stop", "end_turn", "stop_sequence")
 
 VALID_VOTE_VALUES = {
     "A": True,
@@ -67,6 +91,13 @@ class VotingConfig:
     # Annotate each comparison in both orders (A/B and B/A) and only keep votes
     # that agree across orders. Doubles the number of API calls.
     position_debias: bool = False
+
+    def __post_init__(self):
+        # Fail early: e.g. 0 concurrent tasks would make every API call wait forever
+        for name in ("max_principles_per_prompt", "max_concurrent_tasks"):
+            value = getattr(self, name)
+            if value < 1:
+                raise ValueError(f"{name} must be at least 1, got {value}")
 
 
 @dataclass
@@ -128,7 +159,9 @@ def get_votes_for_principles(
         cache_path: Base path for the vote cache (None to disable caching).
         usage_tracker: Tracker to record API usage and cost.
         model: LangChain chat model (default: created from `config.model`
-            inside the event loop).
+            inside the event loop). Its own generation settings apply, not
+            `config.max_output_tokens` and `config.reasoning_effort` (which,
+            with `config.model`, still key its votes in the vote cache).
     """
     return asyncio.run(
         get_votes_for_principles_async(
@@ -165,21 +198,13 @@ async def get_votes_for_principles_async(
     if model is not None or len(principles) == 0:
         return await _get_votes(**args, model=model)
 
-    from feedback_forensics.models import get_model
-
-    if config.model.startswith("anthropic/"):
-        model = get_model(config.model, max_tokens=config.max_output_tokens)
-        return await _get_votes(**args, model=model)
+    from feedback_forensics.models import create_async_http_client, get_model
 
     # Use an HTTP client bound to the current event loop instead of LangChain's
     # process-wide cached client: the cached client's connections break
     # ("Event loop is closed") when used from a later `asyncio.run()`.
-    async with httpx.AsyncClient(
-        limits=httpx.Limits(
-            max_connections=max(config.max_concurrent_tasks, 10),
-            max_keepalive_connections=100,
-        ),
-        timeout=httpx.Timeout(600.0, connect=30.0),
+    async with create_async_http_client(
+        config.model, max_connections=max(config.max_concurrent_tasks, 10)
     ) as http_client:
         model = get_model(
             config.model,
@@ -234,6 +259,8 @@ async def _get_votes(
             rejected=rejected,
             principle=principle,
             model_name=config.model,
+            max_output_tokens=config.max_output_tokens,
+            reasoning_effort=config.reasoning_effort,
             shown_first=shown_first,
         )
 
@@ -327,7 +354,11 @@ async def _run_pass(
     vote_cache: VoteCache | None,
     usage_tracker: UsageTracker,
 ) -> dict:
-    """Run all vote requests (single pass over the data), returns hash -> vote."""
+    """Run all vote requests (single pass over the data), returns hash -> vote.
+
+    Requests without any valid vote (failed API call, truncated or unparsable
+    response) are not cached, so that they are repeated when the run is resumed.
+    """
     cached_votes = vote_cache.get_cached_votes() if vote_cache is not None else {}
     semaphore = asyncio.Semaphore(config.max_concurrent_tasks)
 
@@ -348,7 +379,9 @@ async def _run_pass(
             hash_str: vote.get(principle, INVALID_VOTE)
             for principle, hash_str in request.hashes.items()
         }
-        if vote_cache is not None:
+        if vote_cache is not None and any(
+            v != INVALID_VOTE for v in hashed_vote.values()
+        ):
             for hash_str, vote_value in hashed_vote.items():
                 vote_cache.update_cache(hash_str, vote_value)
         return hashed_vote
@@ -388,6 +421,9 @@ async def get_vote_for_single_comparison(
     )
 
     vote = None
+    # Logged before the call: calls in flight when the run is interrupted (e.g.
+    # with Ctrl-C) remain without result, but may still be billed
+    call_id = usage_tracker.record_start(model_name)
     start = time.monotonic()
     try:
         response = await run_with_http_retries(model.ainvoke, messages)
@@ -396,13 +432,17 @@ async def get_vote_for_single_comparison(
             response=response,
             latency_s=time.monotonic() - start,
             messages=messages,
+            call_id=call_id,
             num_principles=len(principles),
             flipped=flipped,
         )
-        if response.response_metadata.get("finish_reason") != "stop":
+        # OpenAI-compatible APIs report a finish reason, Anthropic a stop reason
+        metadata = response.response_metadata
+        finish_reason = metadata.get("finish_reason") or metadata.get("stop_reason")
+        if finish_reason not in COMPLETE_FINISH_REASONS:
             logger.warning(
                 f"Vote did not finish with 'stop' reason, instead with "
-                f"'{response.response_metadata.get('finish_reason')}' reason. "
+                f"'{finish_reason}' reason. "
                 "This will likely lead to invalid votes. For reasoning models, "
                 "consider increasing max output tokens or lowering reasoning effort."
             )
@@ -422,6 +462,7 @@ async def get_vote_for_single_comparison(
                 latency_s=time.monotonic() - start,
                 error=e,
                 messages=messages,
+                call_id=call_id,
             )
         else:
             logger.error(f"Failed to parse votes: {vote} ({e})")
@@ -489,11 +530,18 @@ def clean_vote_json(vote_json: str, summaries_len: int) -> str:
 
 # --- Retries ------------------------------------------------------------------
 
+# As ICAI (403: OpenAI moderation), plus 409 (conflict, e.g. lock timeouts)
 RETRYABLE_HTTP_CODES = (403, 408, 409, 420, 429, 444, 498, 499)
+CONNECTION_ERRORS = (
+    openai.APIConnectionError,  # incl. timeouts (openai.APITimeoutError)
+    anthropic.APIConnectionError,  # incl. timeouts (anthropic.APITimeoutError)
+    httpx.TransportError,
+    asyncio.TimeoutError,
+)
 
 
 def _get_http_code(err) -> int | None:
-    if isinstance(err, openai.APIStatusError):
+    if isinstance(err, (openai.APIStatusError, anthropic.APIStatusError)):
         return err.status_code
     if len(err.args) > 0 and isinstance(err.args[0], dict) and "code" in err.args[0]:
         return err.args[0]["code"]
@@ -506,14 +554,12 @@ def _get_http_code(err) -> int | None:
 def _fatal_model_error(err) -> bool:
     """Whether to give up retrying (True) for a given error.
 
-    Retries network errors/timeouts, rate limits and server errors. Gives up on
-    other client errors (e.g. invalid request or API key) and on non-API errors
-    (e.g. bugs), which would fail again.
+    Retries network errors/timeouts, rate limits, server errors and other
+    transient HTTP errors (`RETRYABLE_HTTP_CODES`). Gives up on other client
+    errors (e.g. invalid request or API key) and on non-API errors (e.g. bugs),
+    which would fail again.
     """
-    if isinstance(
-        err,
-        (openai.APIConnectionError, httpx.TransportError, asyncio.TimeoutError),
-    ):
+    if isinstance(err, CONNECTION_ERRORS):
         logger.warning(f"Connection error, retrying: {err}")
         return False
     code = _get_http_code(err)
@@ -528,9 +574,15 @@ def _fatal_model_error(err) -> bool:
 @backoff.on_exception(
     backoff.expo,
     Exception,
-    max_tries=8,
-    max_value=60,
+    max_tries=10,
     giveup=_fatal_model_error,
 )
 async def run_with_http_retries(fn, *args, **kwargs):
+    """Call `fn`, retrying failed API calls (see `_fatal_model_error`).
+
+    Same retry budget as ICAI (`inverse_cai.algorithm.utils`): up to 10 tries,
+    waiting a random time of up to 1, 2, 4, ..., 256 s (exponential backoff with
+    full jitter, about 4 min in total on average) between them. Each try includes
+    the API client's own retries (2 by default for the OpenAI and Anthropic SDKs).
+    """
     return await fn(*args, **kwargs)

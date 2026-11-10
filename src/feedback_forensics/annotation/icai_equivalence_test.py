@@ -3,8 +3,12 @@
 Both pipelines annotate the same datasets against the same deterministic mock LLM
 API (see `mock_api.py`). The mock's answers depend only on content (never on which
 response is shown first), so the outputs MUST be identical: any difference is a
-bug in the port. Additionally, the exact set of API requests (prompts, principle
-order, A/B order, model parameters) must be identical.
+bug in the port. Additionally, the API requests must be identical up to the order
+of the two responses in each prompt (system prompt, principles and their order,
+model parameters). The A/B order itself is not compared: FF assigns its random A/B
+orders to the comparisons in row order, ICAI in the (non-reproducible) order in
+which its async tasks start, so the A/B order of a comparison matches ICAI's only
+by chance, about half of the time (see `canonical_requests`).
 
 ICAI is run exactly as `ff-annotate` invoked it before annotation became native.
 Requires the `inverse-cai` package (`icai-exp` command), skipped otherwise.
@@ -78,10 +82,12 @@ def canonical_requests(requests: list[dict]) -> list[str]:
 
     ICAI's A/B order is not reproducible: tasks are started via
     `asyncio.as_completed` (used by `tqdm.gather`), which iterates over a *set*
-    of coroutines, so random A/B flips get assigned to comparisons in memory
-    address order. Hence requests can only be compared modulo A/B order; all
-    else (system prompt, principles and their order, model parameters) must be
-    identical. Vote equality is unaffected since the mock is order-invariant.
+    of coroutines, so random A/B flips get assigned to comparisons in set
+    iteration order (which depends on the coroutines' memory addresses), and
+    the backoff jitter of retries also draws random numbers. Hence requests can
+    only be compared modulo A/B order; all else (system prompt, principles and
+    their order, model parameters) must be identical. Vote equality is
+    unaffected since the mock is order-invariant.
     """
     canonical = []
     for request in requests:
