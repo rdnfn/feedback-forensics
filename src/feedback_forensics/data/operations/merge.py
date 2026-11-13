@@ -289,6 +289,10 @@ def _merge_metadata(meta1: Dict, meta2: Dict) -> Dict:
             f"merged: {meta1.get('annotation')} vs {meta2.get('annotation')}. The "
             "merged dataset's metadata has no annotation settings."
         )
+    # API usage of the first dataset's annotation does not describe the merged
+    # dataset (ff-model-comparison adds the usage of all merged files itself)
+    merged_metadata.pop("annotation_usage", None)
+    merged_metadata.pop("annotation_usage_per_file", None)
 
     # Drop None values returned by the individual merge calls
     return {k: v for k, v in merged_metadata.items() if v is not None}

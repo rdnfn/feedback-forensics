@@ -302,6 +302,12 @@ def test_usage_and_cost_logging(tmp_path, mock_llm_server):
     assert summary["num_calls_with_cost"] == len(df)
     assert summary["list_price_cost_usd"] is None  # only for openrouter models
 
+    # The annotations record the usage of all API calls that created them
+    ap = json.load(open(tmp_path / "out/results/070_annotations_train_ap.json"))
+    assert ap["metadata"]["annotation_usage"] == {
+        k: v for k, v in summary.items() if k != "this_run"
+    }
+
     # Malformed, markdown-wrapped and truncated responses are unparsable
     num_unparsable = sum(
         _h(pair_key(get_preferred_text(r), get_rejected_text(r))) % 100

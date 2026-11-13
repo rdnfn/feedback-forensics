@@ -99,8 +99,8 @@ def test_rerun_with_other_annotation_settings_fails_before_api_calls(
 
 
 def test_all_existing_annotations_are_checked(tmp_path, mock_llm_server, generations):
-    """Also annotations of models not compared in this run, and an earlier combined
-    dataset: all files in the annotations directory are merged."""
+    """Also annotations of models not compared in this run (all annotation files are
+    merged), and an earlier combined dataset."""
     mock_llm_server()
     compare(tmp_path, [MODEL_X, MODEL_Y], annotator_model="openai/annotator-a")
     annotations_dir = tmp_path / "annotations"
@@ -143,6 +143,34 @@ def test_rerun_with_same_settings_reuses_annotations(
         "max_output_tokens": 3000,
         "reasoning_effort": None,
     }
+
+    # API usage of each annotation file (both orders per comparison) and in total
+    usage_per_file = combined["metadata"]["annotation_usage_per_file"]
+    assert list(usage_per_file) == ["openai_model-x_ap.json", "openai_model-y_ap.json"]
+    for name, usage in usage_per_file.items():
+        assert usage["num_calls"] == 2 * len(PROMPTS)
+        file_ap = load_ap(tmp_path / "annotations" / name)
+        assert file_ap["metadata"]["annotation_usage"] == usage
+    usage = combined["metadata"]["annotation_usage"]
+    assert usage["num_annotation_runs"] == 2
+    assert usage["num_calls"] == 4 * len(PROMPTS)
+    assert usage["cost_complete"] is True
+
+
+def test_earlier_combined_dataset_is_not_merged(tmp_path, mock_llm_server, generations):
+    """Its votes could be outdated (e.g. of a deleted annotation file) and would take
+    precedence over the annotation files' votes when merged first."""
+    mock_llm_server()
+    compare(tmp_path, [MODEL_X])
+    combined_path = tmp_path / "annotations" / "combined_ap.json"
+    outdated = load_ap(combined_path)
+    outdated["comparisons"].append({**outdated["comparisons"][0], "id": "outdated"})
+    save_ap(outdated, combined_path)
+
+    compare(tmp_path, [MODEL_X])
+    combined = load_ap(combined_path)
+    assert "outdated" not in {c["id"] for c in combined["comparisons"]}
+    assert len(combined["comparisons"]) == len(PROMPTS)
 
 
 def unparsable_response(handle, body):

@@ -28,7 +28,11 @@ from feedback_forensics.annotation.testutils import (
     expected_vote,
     make_pairs_df,
 )
-from feedback_forensics.annotation.usage import UsageTracker, summarise_usage
+from feedback_forensics.annotation.usage import (
+    UsageTracker,
+    combine_usage_summaries,
+    summarise_usage,
+)
 from feedback_forensics.annotation.voting import (
     INVALID_VOTE,
     SHOWN_FIRST_VALUES,
@@ -417,6 +421,9 @@ def test_usage_summary_covers_interrupted_and_resumed_run(
     assert_usage_as_reported(summary["this_run"], server.responses[5:])
     assert summary["num_calls"] > summary["this_run"]["num_calls"] >= len(df) - 5
     assert summary["cost_complete"] is True
+    # The annotations' usage also covers the interrupted run
+    ap = json.load(open(tmp_path / "out/results/070_annotations_train_ap.json"))
+    assert ap["metadata"]["annotation_usage"]["num_calls"] == summary["num_calls"]
     assert summary["num_unfinished_calls"] == 0
     results = [e for e in read_log(tmp_path / "out") if not e.get("started")]
     assert summary["num_calls"] == len(results)
@@ -680,3 +687,60 @@ def test_usage_log_with_incomplete_last_line(tmp_path, log_messages):
     assert (total.num_calls, total.input_tokens) == (2, 300)
     warnings = [m for level, m in log_messages if level == "WARNING"]
     assert any(m.startswith("Skipping malformed line") for m in warnings)
+
+
+def test_combine_usage_summaries():
+    def summary(calls, cost, list_cost, model="m1"):
+        return {
+            "num_calls": calls,
+            "num_failed_calls": 1,
+            "num_truncated_calls": 0,
+            "num_unfinished_calls": 0,
+            "input_tokens": 10 * calls,
+            "output_tokens": 2 * calls,
+            "reasoning_tokens": 0,
+            "cost_usd": cost,
+            "num_calls_with_cost": calls - 1 if cost is not None else 0,
+            "cost_complete": cost is not None,
+            "list_price_cost_usd": list_cost,
+            "list_price_per_token": {model: {"prompt": 1e-7, "completion": 1e-6}},
+            "num_votes": 5 * calls,
+            "num_invalid_votes": 1,
+        }
+
+    combined = combine_usage_summaries(
+        [summary(3, 0.5, 0.4), summary(2, 0.25, 0.2, model="m2")]
+    )
+    assert combined == {
+        "num_annotation_runs": 2,
+        "num_annotation_runs_without_usage": 0,
+        "num_calls": 5,
+        "num_failed_calls": 2,
+        "num_truncated_calls": 0,
+        "num_unfinished_calls": 0,
+        "input_tokens": 50,
+        "output_tokens": 10,
+        "reasoning_tokens": 0,
+        "cost_usd": 0.75,
+        "num_calls_with_cost": 3,
+        "cost_complete": True,
+        "list_price_cost_usd": pytest.approx(0.6),
+        "list_price_per_token": {
+            "m1": {"prompt": 1e-7, "completion": 1e-6},
+            "m2": {"prompt": 1e-7, "completion": 1e-6},
+        },
+        "num_votes": 25,
+        "num_invalid_votes": 2,
+    }
+
+    # Cost only a lower bound if not reported for all runs (or unknown usage)
+    partial = combine_usage_summaries([summary(3, 0.5, 0.4), summary(2, None, None)])
+    assert partial["cost_usd"] == 0.5
+    assert partial["cost_complete"] is False
+    assert partial["list_price_cost_usd"] is None
+    unknown = combine_usage_summaries([summary(3, 0.5, 0.4), None])
+    assert unknown["num_annotation_runs_without_usage"] == 1
+    assert unknown["num_calls"] == 3
+    assert unknown["cost_complete"] is False
+    assert unknown["list_price_cost_usd"] is None
+    assert combine_usage_summaries([])["cost_usd"] is None

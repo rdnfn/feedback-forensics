@@ -1,8 +1,11 @@
 """Tests for batch generation in ff_modelgen (OpenRouter API mocked)."""
 
+import asyncio
 import json
 import pytest
+from langchain_core.messages import AIMessage
 
+import feedback_forensics.models
 import feedback_forensics.tools.ff_modelgen as modelgen
 import feedback_forensics.tools.ff_model_comparison as model_comparison
 from feedback_forensics.data.ap_format import hash_string
@@ -470,7 +473,10 @@ def test_get_provider_info(monkeypatch):
         "provider_model": "mistralai/m-2026",
     }
     # missing id or persistent errors: no provider info, but no exception
-    assert modelgen._get_provider_info(None) == {"provider": None, "provider_model": None}
+    assert modelgen._get_provider_info(None) == {
+        "provider": None,
+        "provider_model": None,
+    }
     monkeypatch.setattr(
         modelgen,
         "_openrouter_request",
@@ -493,7 +499,11 @@ def test_cut_off_batch_result_saved_as_failure(tmp_path, fake_api, monkeypatch):
     modelgen.submit_batch(PROMPTS, MODEL, tmp_path)
     assert modelgen.collect_batch(PROMPTS, MODEL, tmp_path, deadline=0)
     failures = {r["prompt"]: r["failure"] for r in _read_generations(tmp_path)}
-    assert failures == {"prompt one": None, "prompt two": "length", "prompt three": None}
+    assert failures == {
+        "prompt one": None,
+        "prompt two": "length",
+        "prompt three": None,
+    }
 
     # failed generation counts as processed: not resubmitted
     modelgen.submit_batch(PROMPTS, MODEL, tmp_path)
@@ -505,8 +515,16 @@ def test_load_generations_derives_failure_for_old_records(tmp_path):
     output_file.parent.mkdir(parents=True)
     # old records have no 'failure' field
     records = [
-        {"prompt": "a", "response": "x", "full_response": {"response_metadata": {"finish_reason": "stop"}}},
-        {"prompt": "b", "response": "", "full_response": {"response_metadata": {"finish_reason": "length"}}},
+        {
+            "prompt": "a",
+            "response": "x",
+            "full_response": {"response_metadata": {"finish_reason": "stop"}},
+        },
+        {
+            "prompt": "b",
+            "response": "",
+            "full_response": {"response_metadata": {"finish_reason": "length"}},
+        },
     ]
     output_file.write_text("".join(json.dumps(r) + "\n" for r in records))
     generations = modelgen.load_generations(tmp_path, MODEL)
@@ -518,7 +536,10 @@ def test_pairwise_skips_failed_generations(tmp_path):
 
     def gens(rows):
         return pd.DataFrame(
-            [{"prompt": p, "prompt_id": p, "response": r, "failure": f} for p, r, f in rows]
+            [
+                {"prompt": p, "prompt_id": p, "response": r, "failure": f}
+                for p, r, f in rows
+            ]
         )
 
     ref = "openrouter/openai/gpt-4o"
@@ -541,6 +562,101 @@ def test_pairwise_skips_failed_generations(tmp_path):
             ]
         ),
     }
-    model_comparison.create_pairwise_datasets([MODEL, ref], [ref], generations, tmp_path)
+    model_comparison.create_pairwise_datasets(
+        [MODEL, ref], [ref], generations, tmp_path
+    )
     df = pd.read_csv(tmp_path / f"{MODEL.replace('/', '_')}.csv")
     assert df["prompt"].tolist() == ["ok", "ref cut off"]
+
+
+OPENROUTER_USAGE = {
+    "prompt_tokens": 12,
+    "completion_tokens": 300,
+    "completion_tokens_details": {"reasoning_tokens": 250},
+    "cost": 0.0042,
+}
+EXPECTED_USAGE = {
+    "input_tokens": 12,
+    "output_tokens": 300,
+    "reasoning_tokens": 250,
+    "cost_usd": 0.0042,
+}
+NO_USAGE = dict.fromkeys(EXPECTED_USAGE)
+
+
+@pytest.mark.parametrize(
+    "full_response, expected",
+    [
+        # live (LangChain message) and batch (chat completion) via OpenRouter
+        ({"response_metadata": {"token_usage": OPENROUTER_USAGE}}, EXPECTED_USAGE),
+        ({"choices": [], "usage": OPENROUTER_USAGE}, EXPECTED_USAGE),
+        # cost not reported (e.g. older generations), no reasoning details
+        (
+            {"usage": {"prompt_tokens": 1, "completion_tokens": 2}},
+            {**NO_USAGE, "input_tokens": 1, "output_tokens": 2},
+        ),
+        # e.g. Anthropic API via LangChain: only LangChain's usage metadata
+        (
+            {
+                "response_metadata": {"usage": {"input_tokens": 5}},
+                "usage_metadata": {
+                    "input_tokens": 5,
+                    "output_tokens": 7,
+                    "output_token_details": {"reasoning": 3},
+                },
+            },
+            {**NO_USAGE, "input_tokens": 5, "output_tokens": 7, "reasoning_tokens": 3},
+        ),
+        ({"choices": []}, NO_USAGE),
+    ],
+)
+def test_get_usage(full_response, expected):
+    assert modelgen.get_usage(full_response) == expected
+
+
+def test_batch_records_usage(tmp_path, fake_api, monkeypatch):
+    api = fake_api()
+    original_result = api._result
+
+    def with_usage(custom_id):
+        result = original_result(custom_id)
+        result["response"]["body"]["usage"] = OPENROUTER_USAGE
+        return result
+
+    monkeypatch.setattr(api, "_result", with_usage)
+    modelgen.submit_batch(PROMPTS, MODEL, tmp_path)
+    # cost of each request is requested (as for live generations)
+    assert all(
+        r["body"]["usage"] == {"include": True} for r in api.submitted[0]["requests"]
+    )
+    assert modelgen.collect_batch(PROMPTS, MODEL, tmp_path, deadline=0)
+    assert [r["usage"] for r in _read_generations(tmp_path)] == [EXPECTED_USAGE] * 3
+
+
+def test_live_records_usage(tmp_path, monkeypatch):
+    class FakeModel:
+        def invoke(self, messages):
+            return AIMessage(
+                content="answer",
+                response_metadata={
+                    "finish_reason": "stop",
+                    "token_usage": OPENROUTER_USAGE,
+                },
+                usage_metadata={
+                    "input_tokens": 12,
+                    "output_tokens": 300,
+                    "total_tokens": 312,
+                },
+            )
+
+    monkeypatch.setattr(
+        feedback_forensics.models, "get_model", lambda *args, **kwargs: FakeModel()
+    )
+    asyncio.run(
+        modelgen.run_model_on_prompts_async(PROMPTS, "openai/fake", str(tmp_path))
+    )
+    output_file, _ = modelgen._get_batch_paths(tmp_path, "openai/fake")
+    records = [json.loads(line) for line in output_file.read_text().splitlines()]
+    assert len(records) == 3
+    assert all(r["usage"] == EXPECTED_USAGE for r in records)
+    assert all(r["failure"] is None for r in records)

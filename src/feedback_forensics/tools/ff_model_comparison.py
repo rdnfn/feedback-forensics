@@ -14,7 +14,10 @@ import json
 from feedback_forensics.data.operations import load_ap, save_ap, merge_ap, csv_to_ap
 from feedback_forensics.annotation import annotate_dataset, get_default_principles
 from feedback_forensics.annotation.pipeline import USAGE_SUMMARY_FILENAME
+from feedback_forensics.annotation.usage import combine_usage_summaries
 from feedback_forensics.tools.ff_annotate import DEFAULT_ANNOTATOR_MODEL
+
+COMBINED_AP_FILENAME = "combined_ap.json"
 
 
 def get_annotation_settings(annotator_model: str, position_debias: bool) -> dict:
@@ -114,8 +117,7 @@ def create_pairwise_datasets(
 
         for reference_model in reference_models:
             ref_rows = {
-                row["prompt"]: row
-                for _, row in generations[reference_model].iterrows()
+                row["prompt"]: row for _, row in generations[reference_model].iterrows()
             }
             skipped = {"model failed": 0, "reference missing": 0, "reference empty": 0}
 
@@ -318,8 +320,19 @@ def compare_models(
     # Merge annotations
     logger.info("Merging annotations")
 
-    ap_files = list(final_annotations_dir.glob("*.json"))
-    ap_files = [load_ap(file) for file in ap_files]
+    # Not the combined file of an earlier run: it may contain outdated votes
+    # (e.g. of annotation files deleted to annotate again), which could take
+    # precedence when merging
+    ap_paths = sorted(
+        path
+        for path in final_annotations_dir.glob("*.json")
+        if path.name != COMBINED_AP_FILENAME
+    )
+    ap_files = [load_ap(path) for path in ap_paths]
+    usage_per_file = {
+        path.name: ap["metadata"].get("annotation_usage")
+        for path, ap in zip(ap_paths, ap_files)
+    }
     for ap in ap_files:
         # All files were created with these settings (checked above), also those
         # without recorded settings (ICAI-era)
@@ -340,10 +353,14 @@ def compare_models(
                 + "see https://huggingface.co/datasets/rdnfn/ff-model-personality "
                 + "for more details.",
             )
-    save_ap(combined_ap, final_annotations_dir / "combined_ap.json")
-    logger.info(
-        f"Saved combined annotation to {final_annotations_dir / 'combined_ap.json'}"
+    # API usage (tokens, cost) of annotating all merged files, and of each file
+    combined_ap["metadata"]["annotation_usage"] = combine_usage_summaries(
+        list(usage_per_file.values())
     )
+    combined_ap["metadata"]["annotation_usage_per_file"] = usage_per_file
+    combined_path = final_annotations_dir / COMBINED_AP_FILENAME
+    save_ap(combined_ap, combined_path)
+    logger.info(f"Saved combined annotation to {combined_path}")
 
     logger.info(f"Comparison complete. Results in {output_path}")
 

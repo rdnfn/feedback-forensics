@@ -360,6 +360,20 @@ class TestMergeMetadata:
             assert "annotation" not in _merge_metadata(meta2, meta1)
             assert "annotation settings" in mock_logger.warning.call_args.args[0]
 
+    def test_merge_metadata_drops_annotation_usage(self):
+        """API usage of one dataset's annotation does not describe the merged one."""
+        meta = {
+            "dataset_name": "A",
+            "annotation_usage": {"num_calls": 3},
+            "annotation_usage_per_file": {"a_ap.json": {"num_calls": 3}},
+        }
+        for merged in (
+            _merge_metadata(meta, {"dataset_name": "B"}),
+            _merge_metadata(meta, meta),
+        ):
+            assert "annotation_usage" not in merged
+            assert "annotation_usage_per_file" not in merged
+
 
 class TestMergeAP:
     """Tests for merge_ap function (data-only merging)."""

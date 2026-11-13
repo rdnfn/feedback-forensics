@@ -47,9 +47,7 @@ def get_failure(response: str | None, full_response: dict) -> str | None:
         full_response: Full response of live (langchain message) or batch
             (OpenAI chat completion) generation.
     """
-    finish_reason = (full_response.get("response_metadata") or {}).get(
-        "finish_reason"
-    )
+    finish_reason = (full_response.get("response_metadata") or {}).get("finish_reason")
     if finish_reason is None:
         choices = full_response.get("choices") or [{}]
         finish_reason = choices[0].get("finish_reason")
@@ -58,6 +56,42 @@ def get_failure(response: str | None, full_response: dict) -> str | None:
     if not isinstance(response, str) or not response.strip():
         return "empty"
     return None
+
+
+def get_usage(full_response: dict) -> dict:
+    """Get token usage and cost of a generation (None where not reported).
+
+    `cost_usd` is the cost reported by OpenRouter (incl. batch discount), which
+    other providers do not report. Output tokens include reasoning tokens.
+
+    Args:
+        full_response: Full response of live (langchain message) or batch
+            (OpenAI chat completion) generation.
+    """
+    # OpenAI-compatible usage (incl. OpenRouter): live and batch generations
+    usage = (full_response.get("response_metadata") or {}).get(
+        "token_usage"
+    ) or full_response.get("usage")
+    if isinstance(usage, dict) and usage.get("prompt_tokens") is not None:
+        cost = usage.get("cost")
+        return {
+            "input_tokens": usage.get("prompt_tokens"),
+            "output_tokens": usage.get("completion_tokens"),
+            "reasoning_tokens": (usage.get("completion_tokens_details") or {}).get(
+                "reasoning_tokens"
+            ),
+            "cost_usd": float(cost) if cost is not None else None,
+        }
+    # Otherwise LangChain's provider-independent usage (e.g. Anthropic API)
+    usage_metadata = full_response.get("usage_metadata") or {}
+    return {
+        "input_tokens": usage_metadata.get("input_tokens"),
+        "output_tokens": usage_metadata.get("output_tokens"),
+        "reasoning_tokens": (usage_metadata.get("output_token_details") or {}).get(
+            "reasoning"
+        ),
+        "cost_usd": None,
+    }
 
 
 TEMPERATURE = 0.0  # Used for all generations (live and batch)
@@ -257,6 +291,7 @@ async def run_model_on_prompts_async(
                 "model": model_name,
                 "timestamp": datetime.now().isoformat(),
                 "failure": get_failure(generation.content, full_response),
+                "usage": get_usage(full_response),
                 "generation_params": _generation_params("live", max_tokens),
             }
             if model_name.startswith("openrouter/"):
@@ -559,6 +594,8 @@ def submit_batch(
                         "messages": [{"role": "user", "content": prompt}],
                         "max_tokens": max_tokens,
                         "temperature": TEMPERATURE,
+                        # Report cost of each request (see get_usage())
+                        "usage": {"include": True},
                     },
                 }
             )
@@ -624,6 +661,7 @@ def _parse_batch_result(
         "timestamp": _now().isoformat(),
         "batch_id": batch["id"],
         "failure": get_failure(message.get("content"), body),
+        "usage": get_usage(body),
         "generation_params": _generation_params("batch", state.get("max_tokens")),
         "provider": body.get("provider") or batch.get("provider"),
         "provider_model": body.get("model") or batch.get("model"),
@@ -694,9 +732,7 @@ def collect_batch(
         time.sleep(poll_interval)
 
     # Save results (also for expired/cancelled batches, which may have partial results)
-    prompts_by_id = {
-        hash_string(p): p for p in prompts
-    }
+    prompts_by_id = {hash_string(p): p for p in prompts}
     processed_ids = _get_processed_ids(output_file)
     records, unparsed, num_failed = [], [], 0
     for result in batch.get("results") or []:
@@ -746,6 +782,7 @@ def collect_batch(
     # Expired/cancelled batches: missing prompts are generated in next run
     return status == "completed"
 
+
 def load_generations(output_path: str, model_name: str):
     """Load generations from output path.
 
@@ -766,7 +803,9 @@ def load_generations(output_path: str, model_name: str):
                 valid_lines.append(line.rstrip("\n") + "\n")
             except json.JSONDecodeError:
                 if line.strip():
-                    logger.warning(f"Skipping malformed line {line_num} in {output_file}")
+                    logger.warning(
+                        f"Skipping malformed line {line_num} in {output_file}"
+                    )
     generations = pd.read_json(io.StringIO("".join(valid_lines)), lines=True)
     generations["failure"] = [
         get_failure(r, fr)

@@ -66,7 +66,13 @@ def run_icai_annotation(datapath, output_dir, principles, model, base_url, cwd):
 def normalise_ap(ap: dict) -> dict:
     """Remove metadata that legitimately differs (timestamps, names, descriptions)."""
     ap = json.loads(json.dumps(ap))
-    for key in ("created_at", "dataset_name", "description", "annotation"):
+    for key in (
+        "created_at",
+        "dataset_name",
+        "description",
+        "annotation",
+        "annotation_usage",
+    ):
         ap["metadata"].pop(key, None)
     return ap
 
