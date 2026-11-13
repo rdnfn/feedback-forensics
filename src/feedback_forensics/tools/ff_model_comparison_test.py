@@ -161,13 +161,13 @@ def test_earlier_combined_dataset_is_not_merged(tmp_path, mock_llm_server, gener
     """Its votes could be outdated (e.g. of a deleted annotation file) and would take
     precedence over the annotation files' votes when merged first."""
     mock_llm_server()
-    compare(tmp_path, [MODEL_X])
+    compare(tmp_path, [MODEL_X], annotator_model="openai/annotator-a")
     combined_path = tmp_path / "annotations" / "combined_ap.json"
     outdated = load_ap(combined_path)
     outdated["comparisons"].append({**outdated["comparisons"][0], "id": "outdated"})
     save_ap(outdated, combined_path)
 
-    compare(tmp_path, [MODEL_X])
+    compare(tmp_path, [MODEL_X], annotator_model="openai/annotator-a")
     combined = load_ap(combined_path)
     assert "outdated" not in {c["id"] for c in combined["comparisons"]}
     assert len(combined["comparisons"]) == len(PROMPTS)

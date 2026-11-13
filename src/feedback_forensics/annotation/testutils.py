@@ -30,6 +30,10 @@ MOCK_MODEL = "openai/mock-annotator"
 @pytest.fixture
 def mock_llm_server(monkeypatch):
     """Factory fixture: start a mock LLM server and point the OpenAI client to it."""
+    # Only openai/ models use the mock: without keys (e.g. loaded from secrets.toml),
+    # other models fail instead of calling the real (paid) API
+    for var in ("OPENROUTER_API_KEY", "ANTHROPIC_API_KEY"):
+        monkeypatch.delenv(var, raising=False)
 
     with contextlib.ExitStack() as stack:
 
