@@ -6,13 +6,71 @@ import asyncio
 import pathlib
 import time
 import pandas as pd
-import subprocess
 import shutil
 import feedback_forensics.tools.ff_modelgen as modelgen
 from loguru import logger
 import argparse
 import json
 from feedback_forensics.data.operations import load_ap, save_ap, merge_ap, csv_to_ap
+from feedback_forensics.annotation import annotate_dataset, get_default_principles
+from feedback_forensics.annotation.pipeline import USAGE_SUMMARY_FILENAME
+from feedback_forensics.tools.ff_annotate import DEFAULT_ANNOTATOR_MODEL
+
+
+def get_annotation_settings(annotator_model: str, position_debias: bool) -> dict:
+    """Annotation settings of compare_models (as in `metadata.annotation` of ff-annotate
+    output). Only the annotator model and position debiasing are configurable: the
+    other settings are fixed to keep annotations of models added over time comparable.
+    """
+    return {
+        "annotator_model": annotator_model,
+        "position_debias": position_debias,
+        "max_output_tokens": 3000,
+        "reasoning_effort": None,
+    }
+
+
+# Settings of annotation files without `metadata.annotation` (or null): created by
+# the former ICAI-based ff-annotate, which always used these settings.
+LEGACY_ANNOTATION_SETTINGS = get_annotation_settings(
+    annotator_model="openrouter/google/gemini-2.5-flash", position_debias=False
+)
+
+
+class AnnotationSettingsError(ValueError):
+    """Existing annotations were created with other settings than requested."""
+
+
+def check_annotation_settings(annotations_dir: pathlib.Path, settings: dict) -> None:
+    """Check that all annotation files in a directory were created with `settings`.
+
+    Existing annotation files are reused (not annotated again) and merged into the
+    combined dataset, so files annotated with other settings would be mixed in.
+
+    Raises:
+        AnnotationSettingsError: if any file was created with other settings.
+    """
+    mismatches = []
+    for path in sorted(annotations_dir.glob("*.json")):
+        recorded = load_ap(path)["metadata"].get("annotation")
+        if recorded is None:
+            recorded = LEGACY_ANNOTATION_SETTINGS
+        differences = [
+            f"{key}={recorded.get(key)!r} (requested: {value!r})"
+            for key, value in settings.items()
+            if recorded.get(key) != value
+        ]
+        if differences:
+            mismatches.append(f"  - {path}: {', '.join(differences)}")
+    if mismatches:
+        raise AnnotationSettingsError(
+            f"Existing annotations in {annotations_dir} were created with other "
+            "annotation settings than requested:\n"
+            + "\n".join(mismatches)
+            + "\nThey would be reused and merged with new annotations. Use a new "
+            "output path (--output-path), or delete these files to annotate again "
+            "with the requested settings."
+        )
 
 
 def _is_failed(row) -> bool:
@@ -112,12 +170,14 @@ def compare_models(
     reference_models: list[str],
     output_path: str = "output/",
     batch_max_wait: float = 24 * 60,
+    annotator_model: str = DEFAULT_ANNOTATOR_MODEL,
+    position_debias: bool = False,
 ):
     """Compare models' personalities.
 
     First creates generations for the given set of prompts.
     Then creates pairwise dataset for each model against the reference models.
-    Then annotates the pairwise dataset using inverse-cai package.
+    Then annotates the pairwise datasets with principle-following AI annotators.
 
     Args:
         prompts: List of prompts to compare.
@@ -128,7 +188,18 @@ def compare_models(
         output_path: Path to save the results.
         batch_max_wait: Minutes to wait for batches. Models with batches still
             pending afterwards are skipped (and picked up again in next run).
+        annotator_model: Model used to annotate the pairwise datasets.
+        position_debias: Annotate in both response orders, only keep agreeing votes.
+
+    Raises:
+        AnnotationSettingsError: if existing annotations in the output path were
+            created with other annotation settings (checked before any API calls).
     """
+
+    # Existing annotations are reused: check their settings before any API calls
+    annotation_settings = get_annotation_settings(annotator_model, position_debias)
+    final_annotations_dir = pathlib.Path(output_path) / "annotations"
+    check_annotation_settings(final_annotations_dir, annotation_settings)
 
     batch_models = modelgen.get_batch_models(model_names, output_path)
     model_names = [modelgen.strip_nonbatch_suffix(m) for m in model_names]
@@ -206,7 +277,6 @@ def compare_models(
     logger.info("Stage 3: Annotating pairwise datasets")
     # Annotate each pairwise dataset
     annotation_tmp_dir = pathlib.Path(output_path) / "tmp" / "annotations"
-    final_annotations_dir = pathlib.Path(output_path) / "annotations"
     annotation_tmp_dir.mkdir(parents=True, exist_ok=True)
     final_annotations_dir.mkdir(parents=True, exist_ok=True)
 
@@ -216,21 +286,32 @@ def compare_models(
         final_annotation_path = final_annotations_dir / (csv_file.stem + "_ap.json")
 
         if not final_annotation_path.exists():
-            subprocess.run(
-                [
-                    "ff-annotate",
-                    "--datapath",
-                    str(csv_file),
-                    "--output-dir",
-                    str(tmp_output_dir),
-                ],
-                check=True,
+            ap_path = annotate_dataset(
+                datapath=csv_file,
+                principles=get_default_principles(),
+                model=annotation_settings["annotator_model"],
+                output_dir=tmp_output_dir,
+                position_debias=annotation_settings["position_debias"],
+                max_output_tokens=annotation_settings["max_output_tokens"],
+                reasoning_effort=annotation_settings["reasoning_effort"],
             )
             # Move the annotation to the final output path
-            shutil.copyfile(
-                src=tmp_output_dir / "results" / "070_annotations_train_ap.json",
-                dst=final_annotation_path,
-            )
+            shutil.copyfile(src=ap_path, dst=final_annotation_path)
+            with open(ap_path.parent / USAGE_SUMMARY_FILENAME) as f:
+                this_run = json.load(f)["this_run"]
+            failed = this_run["num_failed_calls"]
+            truncated = this_run["num_truncated_calls"]
+            unparsable = this_run["num_unparsable_responses"]
+            if failed or truncated or unparsable:
+                # Unlike with annotate_dataset, re-running does not repeat them
+                logger.warning(
+                    f"While annotating {csv_file}, {failed} API calls failed (no "
+                    f"response after retries), {truncated} were truncated and "
+                    f"{unparsable} had an unparsable response (votes invalid). Later "
+                    f"runs reuse its annotations: to repeat these calls, delete "
+                    f"{final_annotation_path} and re-run (other calls are not "
+                    f"repeated as long as {tmp_output_dir} is kept)."
+                )
         else:
             logger.info(f"Annotation already exists for {csv_file}. Skipping...")
 
@@ -239,6 +320,10 @@ def compare_models(
 
     ap_files = list(final_annotations_dir.glob("*.json"))
     ap_files = [load_ap(file) for file in ap_files]
+    for ap in ap_files:
+        # All files were created with these settings (checked above), also those
+        # without recorded settings (ICAI-era)
+        ap["metadata"]["annotation"] = annotation_settings
     combined_ap = ap_files[0]
     if len(ap_files) > 1:
         for ap_file in ap_files[1:]:
@@ -317,6 +402,18 @@ def run():
             "(default: 1440)"
         ),
     )
+    parser.add_argument(
+        "--annotator-model",
+        type=str,
+        default=DEFAULT_ANNOTATOR_MODEL,
+        help=f"Model used to annotate the comparisons (default: {DEFAULT_ANNOTATOR_MODEL})",
+    )
+    parser.add_argument(
+        "--position-debias",
+        action="store_true",
+        help="Annotate each comparison in both response orders and only keep "
+        "votes that agree (~2x annotation cost). See ff-annotate --help.",
+    )
 
     args = parser.parse_args()
 
@@ -343,13 +440,19 @@ def run():
         logger.error("No prompts provided")
         return 1
 
-    compare_models(
-        prompts=prompts,
-        model_names=args.models,
-        reference_models=args.reference_models,
-        output_path=args.output_path,
-        batch_max_wait=args.batch_max_wait,
-    )
+    try:
+        compare_models(
+            prompts=prompts,
+            model_names=args.models,
+            reference_models=args.reference_models,
+            output_path=args.output_path,
+            batch_max_wait=args.batch_max_wait,
+            annotator_model=args.annotator_model,
+            position_debias=args.position_debias,
+        )
+    except AnnotationSettingsError as e:
+        logger.error(str(e))
+        return 1
     logger.success(
         f"Model personality comparison data generated successfully! To see results, run\n   feedback-forensics -d {args.output_path}/annotations/combined_ap.json"
     )

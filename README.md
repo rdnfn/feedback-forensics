@@ -18,7 +18,7 @@
 </p>
 
 > [!NOTE]
-> **Update:** [Paper](https://arxiv.org/abs/2509.26305) accepted at NeurIPS 2026 E&D. We will be presenting this work at NeurIPS Paris, come by ([Fri, Dec 11, 2026](https://neurips.cc/virtual/2026/loc/paris/139671))!
+> **Update:** [Paper](https://arxiv.org/abs/2509.26305) accepted at NeurIPS 2026 E&D. We will be presenting this work at NeurIPS Paris on [Fri, 11 Dec 2026](https://neurips.cc/virtual/2026/loc/paris/139671), come by!
 
 
 **Feedback Forensics is an open-source toolkit to measure AI personality changes**. Beyond raw capabilities, *model personality traits*, such as tone and sycophancy, also matter to users. Feedback Forensics can help you track *(1) personality changes encouraged by your human (or AI) feedback datasets* ([tutorial](https://docs.feedbackforensics.com/en/latest/guide/feedback.html)), and *(2) personality traits exhibited by your AI models* ([tutorial](https://docs.feedbackforensics.com/en/latest/guide/models.html)). Feedback Forensics includes a *Python API*, an *annotation CLI*, and a *[Gradio](https://www.gradio.app/) visualisation app*. We also provide a corresponding [online platform](https://app.feedbackforensics.com) tracking personality traits in popular models and datasets.
@@ -72,7 +72,7 @@ Feedback Forensics can also be used to interpret annotator data within Python. B
 ```python
 import feedback_forensics as ff
 
-# load dataset from AnnotatedPairs json file produced by ICAI package
+# load dataset from AnnotatedPairs json file (e.g. produced by ff-annotate)
 dataset = ff.DatasetHandler()
 dataset.add_data_from_path("data/output/example/annotated_pairs.json")
 

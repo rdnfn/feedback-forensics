@@ -5,7 +5,7 @@ import pytest
 
 import feedback_forensics.tools.ff_modelgen as modelgen
 import feedback_forensics.tools.ff_model_comparison as model_comparison
-from inverse_cai.data.annotated_pairs_format import hash_string
+from feedback_forensics.data.ap_format import hash_string
 
 MODEL = "openrouter/openai/gpt-6-sol"
 PROMPTS = ["prompt one", "prompt two", "prompt three"]

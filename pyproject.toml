@@ -14,20 +14,21 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-  "inverse-cai",
   "langchain",
   "python-dotenv",
   "langchain-openai",
   "langchain-anthropic",
-  "langchain-community",
+  "openai", # LLM API errors (annotation retries)
+  "httpx", # HTTP client for LLM API calls
+  "backoff", # retries of LLM API calls
+  "filelock", # annotation vote cache
+  "tqdm",
+  "requests", # OpenRouter list prices (annotation cost logging)
   "scikit-learn",
   "anthropic",
   "loguru",
-  "hydra-core",
   "pandas",
   "datasets", # To fetch huggingface datasets
-  "wandb",
-  "alpaca-eval",
   "nbconvert",
   "jupyter",
   "ipywidgets", # IProgress in jupyter notebooks
@@ -41,11 +42,17 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Principle discovery (generating new principles from data) is done with the
+# Inverse Constitutional AI (ICAI) package (`icai-exp`). Not needed for annotation.
+discovery = [
+    "inverse-cai",
+]
 dev = [
     "pytest>=6.0",
     "black==26.3.1",
     "bump-my-version",
     "huggingface_hub",
+    "inverse-cai", # for the ICAI equivalence test of the native annotation
 ]
 docs = [
     "jupyter-book<2",

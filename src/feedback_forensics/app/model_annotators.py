@@ -3,7 +3,7 @@
 import time
 
 import pandas as pd
-from inverse_cai.data.annotated_pairs_format import hash_string
+from feedback_forensics.data.ap_format import hash_string
 from loguru import logger
 
 from feedback_forensics.app.constants import (

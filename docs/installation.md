@@ -26,7 +26,7 @@ To use Feedback Forensics for annotating your own datasets, you need to configur
 
 ### Setting up secrets.toml
 
-1. Create a `secrets.toml` file in your working directory (or wherever you plan to run the `ff-annotate` command)
+1. Create a `secrets.toml` file (a UTF-8 encoded text file) in your working directory (or wherever you plan to run the `ff-annotate` command)
 
 2. Add your API keys to the file in the following format:
 

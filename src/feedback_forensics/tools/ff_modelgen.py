@@ -5,8 +5,8 @@ import json
 from datetime import datetime, timezone
 import io
 from tqdm import tqdm
-import inverse_cai.models
-import inverse_cai.data.annotated_pairs_format
+import feedback_forensics.models
+from feedback_forensics.data.ap_format import hash_string
 import asyncio
 import aiofiles
 from typing import List
@@ -126,12 +126,12 @@ def run_model_on_prompts(prompts: list[str], model_name: str, output_path: str):
     # Get already processed prompt IDs
     processed_ids = get_processed_ids()
 
-    model = inverse_cai.models.get_model(model_name, max_tokens=16384)
+    model = feedback_forensics.models.get_model(model_name, max_tokens=16384)
 
     # Open file in append mode to continue where we left off
     with open(output_file, "a") as f:
         for prompt in tqdm(prompts, total=len(prompts)):
-            prompt_id = inverse_cai.data.annotated_pairs_format.hash_string(prompt)
+            prompt_id = hash_string(prompt)
 
             # Skip if already processed
             if prompt_id in processed_ids:
@@ -214,14 +214,7 @@ async def run_model_on_prompts_async(
                     pass
 
         # Print how many prompts we're skipping
-        skipped = len(
-            processed_ids.intersection(
-                [
-                    inverse_cai.data.annotated_pairs_format.hash_string(p)
-                    for p in prompts
-                ]
-            )
-        )
+        skipped = len(processed_ids.intersection([hash_string(p) for p in prompts]))
         if skipped > 0:
             print(f"Skipping {skipped} already processed prompts")
 
@@ -229,7 +222,7 @@ async def run_model_on_prompts_async(
 
     # Create file lock to prevent race conditions
     file_lock = asyncio.Lock()
-    model = inverse_cai.models.get_model(
+    model = feedback_forensics.models.get_model(
         model_name, temp=TEMPERATURE, max_tokens=max_tokens
     )
 
@@ -238,7 +231,7 @@ async def run_model_on_prompts_async(
 
     async def process_prompt(prompt, index):
         nonlocal completed
-        prompt_id = inverse_cai.data.annotated_pairs_format.hash_string(prompt)
+        prompt_id = hash_string(prompt)
 
         # Skip if already processed
         if prompt_id in processed_ids:
@@ -457,7 +450,7 @@ def _openrouter_request(method: str, path: str, **kwargs) -> dict:
     """
     headers = {
         "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
-        **inverse_cai.models.OPENROUTER_HEADERS,
+        **feedback_forensics.models.OPENROUTER_HEADERS,
     }
     retry_all = method == "GET"
     for attempt in range(5):
@@ -556,12 +549,12 @@ def submit_batch(
     processed_ids = _get_processed_ids(output_file)
     requests_list = []
     for prompt in prompts:
-        prompt_id = inverse_cai.data.annotated_pairs_format.hash_string(prompt)
+        prompt_id = hash_string(prompt)
         if prompt_id not in processed_ids:
             requests_list.append(
                 {
                     "custom_id": prompt_id,
-                    # Same parameters as inverse_cai.models.get_model() in live mode
+                    # Same parameters as feedback_forensics.models.get_model() in live mode
                     "body": {
                         "messages": [{"role": "user", "content": prompt}],
                         "max_tokens": max_tokens,
@@ -702,7 +695,7 @@ def collect_batch(
 
     # Save results (also for expired/cancelled batches, which may have partial results)
     prompts_by_id = {
-        inverse_cai.data.annotated_pairs_format.hash_string(p): p for p in prompts
+        hash_string(p): p for p in prompts
     }
     processed_ids = _get_processed_ids(output_file)
     records, unparsed, num_failed = [], [], 0

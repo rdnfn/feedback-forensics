@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Any, Tuple
 from loguru import logger
 import datetime
 
-from inverse_cai.data.annotated_pairs_format import hash_comparison
+from feedback_forensics.data.ap_format import hash_comparison
 
 
 def merge_ap(
@@ -279,6 +279,16 @@ def _merge_metadata(meta1: Dict, meta2: Dict) -> Dict:
     for key, value in meta1.items():
         if key not in merged_metadata:
             merged_metadata[key] = value
+
+    # Annotation settings (see `annotate_dataset`) only apply to the merged dataset
+    # if both datasets were annotated with the same settings
+    if meta1.get("annotation") != meta2.get("annotation"):
+        merged_metadata.pop("annotation", None)
+        logger.warning(
+            "Datasets with different annotation settings (metadata.annotation) "
+            f"merged: {meta1.get('annotation')} vs {meta2.get('annotation')}. The "
+            "merged dataset's metadata has no annotation settings."
+        )
 
     # Drop None values returned by the individual merge calls
     return {k: v for k, v in merged_metadata.items() if v is not None}
