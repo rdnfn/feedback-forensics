@@ -177,15 +177,20 @@ def annotate_dataset(
             "max_output_tokens": max_output_tokens,
             "reasoning_effort": reasoning_effort,
         }
-        ap_path = results_path / AP_OUTPUT_FILENAME
-        save_annotated_pairs_to_file(annotated_pairs, ap_path)
-
         all_votes = [v for votes in result.votes.values() for v in votes.values()]
         usage_summary = summarise_usage(
             usage_tracker,
             num_votes=len(all_votes),
             num_invalid_votes=sum(v == INVALID_VOTE for v in all_votes),
         )
+        # Cost and token usage of all API calls that created these annotations
+        # (incl. interrupted runs with the same output directory)
+        annotated_pairs["metadata"]["annotation_usage"] = {
+            k: v for k, v in usage_summary.items() if k != "this_run"
+        }
+        ap_path = results_path / AP_OUTPUT_FILENAME
+        save_annotated_pairs_to_file(annotated_pairs, ap_path)
+
         log_usage_summary(usage_summary)
         _save_json(usage_summary, results_path / USAGE_SUMMARY_FILENAME)
 

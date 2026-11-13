@@ -289,6 +289,56 @@ def summarise_usage(
     return summary
 
 
+def combine_usage_summaries(summaries: list[dict | None]) -> dict:
+    """Totals of the usage summaries (see `summarise_usage`) of several annotation
+    runs, e.g. of the annotation files merged into one dataset.
+
+    A summary may be None if unknown (e.g. annotated before usage was recorded):
+    the totals then only cover the other runs, `cost_complete` is false and the
+    cost at list price is null.
+    """
+    known = [s for s in summaries if s is not None]
+    all_known = bool(known) and len(known) == len(summaries)
+
+    def total(field):
+        return sum(s.get(field) or 0 for s in known)
+
+    reported_costs = [s["cost_usd"] for s in known if s.get("cost_usd") is not None]
+    list_price_costs = [s.get("list_price_cost_usd") for s in known]
+    list_prices = {}
+    for s in known:
+        list_prices.update(s.get("list_price_per_token") or {})
+    combined = {
+        "num_annotation_runs": len(summaries),
+        "num_annotation_runs_without_usage": len(summaries) - len(known),
+        **{
+            field: total(field)
+            for field in (
+                "num_calls",
+                "num_failed_calls",
+                "num_truncated_calls",
+                "num_unfinished_calls",
+                "input_tokens",
+                "output_tokens",
+                "reasoning_tokens",
+            )
+        },
+        "cost_usd": sum(reported_costs) if reported_costs else None,
+        "num_calls_with_cost": total("num_calls_with_cost"),
+        "cost_complete": all_known and all(s.get("cost_complete") for s in known),
+        "list_price_cost_usd": (
+            sum(list_price_costs)
+            if all_known and None not in list_price_costs
+            else None
+        ),
+    }
+    if list_prices:
+        combined["list_price_per_token"] = list_prices
+    combined["num_votes"] = total("num_votes")
+    combined["num_invalid_votes"] = total("num_invalid_votes")
+    return combined
+
+
 def log_usage_summary(summary: dict) -> None:
     """Log a summary from `summarise_usage` and warn about invalid votes."""
     this_run = summary["this_run"]

@@ -38,6 +38,7 @@ dependencies = [
   "ijson",
   "adjustText",
   "aiofiles", # for ff_modelgen tool
+  "requests", # for ff_modelgen batch generation
 ]
 
 [project.optional-dependencies]

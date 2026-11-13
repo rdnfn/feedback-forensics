@@ -4,6 +4,7 @@ Uses generations created by ff_modelgen."""
 
 import asyncio
 import pathlib
+import time
 import pandas as pd
 import shutil
 import feedback_forensics.tools.ff_modelgen as modelgen
@@ -13,7 +14,10 @@ import json
 from feedback_forensics.data.operations import load_ap, save_ap, merge_ap, csv_to_ap
 from feedback_forensics.annotation import annotate_dataset, get_default_principles
 from feedback_forensics.annotation.pipeline import USAGE_SUMMARY_FILENAME
+from feedback_forensics.annotation.usage import combine_usage_summaries
 from feedback_forensics.tools.ff_annotate import DEFAULT_ANNOTATOR_MODEL
+
+COMBINED_AP_FILENAME = "combined_ap.json"
 
 
 def get_annotation_settings(annotator_model: str, position_debias: bool) -> dict:
@@ -72,6 +76,12 @@ def check_annotation_settings(annotations_dir: pathlib.Path, settings: dict) -> 
         )
 
 
+def _is_failed(row) -> bool:
+    """Whether generation failed (see ff_modelgen.get_failure())."""
+    failure = row.get("failure")
+    return isinstance(failure, str) and bool(failure)
+
+
 def create_pairwise_datasets(
     model_names: list[str],
     reference_models: list[str],
@@ -106,23 +116,46 @@ def create_pairwise_datasets(
         model_gens = generations[model_name]
 
         for reference_model in reference_models:
-            ref_gens = generations[reference_model]
+            ref_rows = {
+                row["prompt"]: row for _, row in generations[reference_model].iterrows()
+            }
+            skipped = {"model failed": 0, "reference missing": 0, "reference empty": 0}
 
             # Create pairwise comparisons for each prompt
             for _, model_row in model_gens.iterrows():
                 prompt = model_row["prompt"]
-                ref_row = ref_gens[ref_gens["prompt"] == prompt].iloc[0]
-
-                if len(ref_row) > 0:
-                    data.append(
-                        {
-                            "prompt": prompt,
-                            "text_a": model_row["response"],
-                            "text_b": ref_row["response"],
-                            "model_a": model_name,
-                            "model_b": reference_model,
-                        }
+                ref_row = ref_rows.get(prompt)
+                if _is_failed(model_row):
+                    skipped["model failed"] += 1
+                    continue
+                if ref_row is None:
+                    skipped["reference missing"] += 1
+                    continue
+                if _is_failed(ref_row):
+                    # Kept (e.g. reference stuck in a loop is its real behavior),
+                    # unless empty, since it is shared by all comparisons
+                    if not str(ref_row["response"] or "").strip():
+                        skipped["reference empty"] += 1
+                        continue
+                    logger.warning(
+                        f"Keeping failed ({ref_row['failure']}) but non-empty "
+                        f"reference generation of {reference_model} for prompt "
+                        f"{ref_row['prompt_id']}."
                     )
+                data.append(
+                    {
+                        "prompt": prompt,
+                        "text_a": model_row["response"],
+                        "text_b": ref_row["response"],
+                        "model_a": model_name,
+                        "model_b": reference_model,
+                    }
+                )
+            if any(skipped.values()):
+                logger.warning(
+                    f"Skipped prompts for {model_name} vs {reference_model}: "
+                    f"{ {k: v for k, v in skipped.items() if v} }"
+                )
 
         # Save pairwise dataset
         if data:
@@ -138,6 +171,7 @@ def compare_models(
     model_names: list[str],
     reference_models: list[str],
     output_path: str = "output/",
+    batch_max_wait: float = 24 * 60,
     annotator_model: str = DEFAULT_ANNOTATOR_MODEL,
     position_debias: bool = False,
 ):
@@ -149,9 +183,13 @@ def compare_models(
 
     Args:
         prompts: List of prompts to compare.
-        model_names: List of model names to compare.
+        model_names: List of model names to compare. New OpenRouter models are
+            generated via batch API if available, unless suffix ':nonbatch' is
+            added (e.g. 'openrouter/openai/gpt-6-sol:nonbatch').
         reference_models: List of reference model names to compare against.
         output_path: Path to save the results.
+        batch_max_wait: Minutes to wait for batches. Models with batches still
+            pending afterwards are skipped (and picked up again in next run).
         annotator_model: Model used to annotate the pairwise datasets.
         position_debias: Annotate in both response orders, only keep agreeing votes.
 
@@ -159,6 +197,15 @@ def compare_models(
         AnnotationSettingsError: if existing annotations in the output path were
             created with other annotation settings (checked before any API calls).
     """
+
+    # Existing annotations are reused: check their settings before any API calls
+    annotation_settings = get_annotation_settings(annotator_model, position_debias)
+    final_annotations_dir = pathlib.Path(output_path) / "annotations"
+    check_annotation_settings(final_annotations_dir, annotation_settings)
+
+    batch_models = modelgen.get_batch_models(model_names, output_path)
+    model_names = [modelgen.strip_nonbatch_suffix(m) for m in model_names]
+    reference_models = [modelgen.strip_nonbatch_suffix(m) for m in reference_models]
 
     logger.info(f"Comparing models: {model_names} against {reference_models}")
     logger.info(f"Number of prompts: {len(prompts)}")
@@ -175,22 +222,48 @@ def compare_models(
     ), "Reference models must be unique"
     assert len(prompts) == len(set(prompts)), "Prompts must be unique"
 
-    # Existing annotations are reused: check their settings before any API calls
-    annotation_settings = get_annotation_settings(annotator_model, position_debias)
-    final_annotations_dir = pathlib.Path(output_path) / "annotations"
-    check_annotation_settings(final_annotations_dir, annotation_settings)
-
     ### STAGE 1: Generation ###
     logger.info(f"Stage 1: Creating generations for {model_names}")
 
+    # Submit batches first, so they are processed while live generations run
+    deadline = time.time() + batch_max_wait * 60
+    for model_name in batch_models:
+        modelgen.submit_batch(prompts, model_name, output_path)
+
     # Create generations for each model
+    pending_models = []
     for model_name in model_names:
+        if model_name in batch_models and not modelgen.collect_batch(
+            prompts, model_name, output_path, deadline=deadline
+        ):
+            pending_models.append(model_name)
+            continue
         logger.info(f"Creating generations for {model_name}")
-        asyncio.run(
-            modelgen.run_model_on_prompts_async(
-                prompts, model_name, output_path, max_concurrent=10
+        # Second pass retries prompts that failed in first pass
+        # (for batch models: requests that failed within batch)
+        for _ in range(2):
+            asyncio.run(
+                modelgen.run_model_on_prompts_async(
+                    prompts, model_name, output_path, max_concurrent=10
+                )
             )
+
+    # Collect batches of models no longer compared, so that paid results are saved
+    # (and their state files do not trigger follow-up runs forever)
+    for model_name in modelgen.get_pending_batch_models(output_path):
+        if model_name not in model_names:
+            logger.warning(f"Collecting batch of model {model_name} not in models.")
+            modelgen.collect_batch(prompts, model_name, output_path, deadline=deadline)
+
+    if pending_models:
+        logger.warning(
+            f"Batches still pending for {pending_models}. "
+            "Skipping these models until next run."
         )
+        assert not set(pending_models) & set(
+            reference_models
+        ), "Batch for reference model still pending, run again later."
+        model_names = [m for m in model_names if m not in pending_models]
 
     # Load generations for each model
     generations = {}
@@ -247,8 +320,19 @@ def compare_models(
     # Merge annotations
     logger.info("Merging annotations")
 
-    ap_files = list(final_annotations_dir.glob("*.json"))
-    ap_files = [load_ap(file) for file in ap_files]
+    # Not the combined file of an earlier run: it may contain outdated votes
+    # (e.g. of annotation files deleted to annotate again), which could take
+    # precedence when merging
+    ap_paths = sorted(
+        path
+        for path in final_annotations_dir.glob("*.json")
+        if path.name != COMBINED_AP_FILENAME
+    )
+    ap_files = [load_ap(path) for path in ap_paths]
+    usage_per_file = {
+        path.name: ap["metadata"].get("annotation_usage")
+        for path, ap in zip(ap_paths, ap_files)
+    }
     for ap in ap_files:
         # All files were created with these settings (checked above), also those
         # without recorded settings (ICAI-era)
@@ -269,10 +353,14 @@ def compare_models(
                 + "see https://huggingface.co/datasets/rdnfn/ff-model-personality "
                 + "for more details.",
             )
-    save_ap(combined_ap, final_annotations_dir / "combined_ap.json")
-    logger.info(
-        f"Saved combined annotation to {final_annotations_dir / 'combined_ap.json'}"
+    # API usage (tokens, cost) of annotating all merged files, and of each file
+    combined_ap["metadata"]["annotation_usage"] = combine_usage_summaries(
+        list(usage_per_file.values())
     )
+    combined_ap["metadata"]["annotation_usage_per_file"] = usage_per_file
+    combined_path = final_annotations_dir / COMBINED_AP_FILENAME
+    save_ap(combined_ap, combined_path)
+    logger.info(f"Saved combined annotation to {combined_path}")
 
     logger.info(f"Comparison complete. Results in {output_path}")
 
@@ -321,6 +409,17 @@ def run():
     )
 
     parser.add_argument(
+        "--batch-max-wait",
+        type=float,
+        default=24 * 60,
+        help=(
+            "Minutes to wait for batch generations (used by default for new "
+            "OpenRouter models, disable per model with ':nonbatch' suffix). "
+            "Models with pending batches are picked up again in next run "
+            "(default: 1440)"
+        ),
+    )
+    parser.add_argument(
         "--annotator-model",
         type=str,
         default=DEFAULT_ANNOTATOR_MODEL,
@@ -364,6 +463,7 @@ def run():
             model_names=args.models,
             reference_models=args.reference_models,
             output_path=args.output_path,
+            batch_max_wait=args.batch_max_wait,
             annotator_model=args.annotator_model,
             position_debias=args.position_debias,
         )
