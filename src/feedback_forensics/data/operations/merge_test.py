@@ -340,6 +340,26 @@ class TestMergeMetadata:
             == "Merged: First dataset description + Second dataset description"
         )
 
+    @patch("feedback_forensics.data.operations.merge.logger")
+    def test_merge_metadata_annotation_settings(self, mock_logger):
+        """Annotation settings (see `annotate_dataset`) are only kept if they are the
+        same for both datasets: else they don't apply to the merged dataset."""
+        settings = {"annotator_model": "openai/a", "position_debias": False}
+        meta1 = {"dataset_name": "A", "annotation": settings}
+
+        merged = _merge_metadata(meta1, {"dataset_name": "B", "annotation": settings})
+        assert merged["annotation"] == settings
+        mock_logger.warning.assert_not_called()
+
+        for meta2 in [
+            {"dataset_name": "B", "annotation": {**settings, "position_debias": True}},
+            {"dataset_name": "B"},  # e.g. annotated by ICAI or not annotated
+        ]:
+            mock_logger.reset_mock()
+            assert "annotation" not in _merge_metadata(meta1, meta2)
+            assert "annotation" not in _merge_metadata(meta2, meta1)
+            assert "annotation settings" in mock_logger.warning.call_args.args[0]
+
 
 class TestMergeAP:
     """Tests for merge_ap function (data-only merging)."""

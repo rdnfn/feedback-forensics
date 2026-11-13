@@ -72,7 +72,7 @@ Feedback Forensics can also be used to interpret annotator data within Python. B
 ```python
 import feedback_forensics as ff
 
-# load dataset from AnnotatedPairs json file produced by ICAI package
+# load dataset from AnnotatedPairs json file (e.g. produced by ff-annotate)
 dataset = ff.DatasetHandler()
 dataset.add_data_from_path("data/output/example/annotated_pairs.json")
 
