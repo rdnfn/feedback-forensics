@@ -24,6 +24,8 @@ OPENROUTER_HEADERS = {
 }
 OPENROUTER_API_BASE = "https://openrouter.ai/api/v1"
 
+DEFAULT_TEMPERATURE = 0.0
+
 # Timeouts (seconds) of API requests made with `create_async_http_client`
 REQUEST_TIMEOUT_S = 600.0
 CONNECT_TIMEOUT_S = 30.0
@@ -63,7 +65,7 @@ def check_model_settings(name: str, reasoning_effort: str | None = None) -> None
 
 def get_model(
     name: str,
-    temp: float = 0.0,
+    temp: float = DEFAULT_TEMPERATURE,
     max_tokens: int = 1000,
     reasoning_effort: str | None = None,
     http_async_client: Any = None,
@@ -88,7 +90,7 @@ def get_model(
     """
     check_model_settings(name, reasoning_effort)
 
-    # Imported lazily to keep `import feedback_forensics.models` cheap.
+    # Imported lazily to keep `import feedback_forensics.models.main` cheap.
     from langchain_openai import ChatOpenAI
 
     openai_kwargs = {}

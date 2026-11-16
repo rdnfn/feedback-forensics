@@ -795,6 +795,7 @@ def test_combine_usage_summaries():
         "num_annotation_runs_without_usage": 0,
         "num_calls": 5,
         "num_failed_calls": 2,
+        "num_failed_batch_calls": 0,
         "num_truncated_calls": 0,
         "num_unfinished_calls": 0,
         "input_tokens": 50,

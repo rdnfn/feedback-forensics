@@ -19,7 +19,9 @@ Output directory layout (kept compatible with the former ICAI-based `ff-annotate
                                                  (and of the last run: "this_run"),
                                                  number of invalid votes; written
                                                  when a run completes
-            cache/                               vote cache (enables resuming runs)
+            cache/                               vote cache (enables resuming runs),
+                                                 state of pending batches (batch
+                                                 annotation only)
 """
 
 import datetime
@@ -45,7 +47,7 @@ from feedback_forensics.data.ap_format import (
     load_preference_data,
     save_annotated_pairs_to_file,
 )
-from feedback_forensics.models import check_model_settings
+from feedback_forensics.models.main import check_model_settings
 
 AP_OUTPUT_FILENAME = "070_annotations_train_ap.json"
 PER_ORDER_VOTES_FILENAME = "041_votes_per_comparison_per_order.csv"
@@ -69,6 +71,8 @@ def annotate_dataset(
     reasoning_effort: str | None = None,
     log_api_calls: bool = False,
     dataset_name: str | None = None,
+    batch: bool = False,
+    batch_max_wait: float = 24 * 60,
 ) -> Path:
     """Annotate a dataset with principle-following AI annotators.
 
@@ -92,11 +96,20 @@ def annotate_dataset(
         log_api_calls: Also log full request messages and responses
             in api_calls.jsonl (token usage and cost are always logged).
         dataset_name: Name of the resulting dataset.
+        batch: Annotate via OpenRouter's batch API, at reduced price but with
+            results taking up to 24 h (`openrouter/` models with a batch variant
+            only, see `feedback_forensics.annotation.batch`).
+        batch_max_wait: Minutes to wait for batches.
 
     Returns:
         Path to the AnnotatedPairs JSON file with the annotations.
 
     Raises:
+        BatchPendingError: (batch only) batches are still pending after
+            `batch_max_wait`. Re-run with the same output directory and settings
+            to collect them.
+        BatchFailedError, BatchUnavailableError: (batch only) see
+            `feedback_forensics.annotation.batch`.
         AnnotatorAccountError: if the annotator's API rejected the API key or
             account (HTTP 401 or 402, e.g. out of credits). Annotation stops
             without writing results: votes obtained so far stay in the cache
@@ -111,6 +124,8 @@ def annotate_dataset(
         max_concurrent_tasks=max_concurrent_tasks,
         reasoning_effort=reasoning_effort,
         position_debias=position_debias,
+        batch=batch,
+        batch_max_wait=batch_max_wait,
     )
     check_model_settings(model, reasoning_effort)
     output_dir = Path(output_dir) if output_dir is not None else default_output_dir()

@@ -18,7 +18,7 @@ import httpx
 import openai
 import pytest
 
-from feedback_forensics import models
+from feedback_forensics.models import main as models
 from feedback_forensics.annotation import annotate_dataset, voting
 from feedback_forensics.annotation.mock_api import (
     MockLLMServer,

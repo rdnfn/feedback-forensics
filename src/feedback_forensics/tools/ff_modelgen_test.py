@@ -5,7 +5,8 @@ import json
 import pytest
 from langchain_core.messages import AIMessage
 
-import feedback_forensics.models
+import feedback_forensics.models.main
+from feedback_forensics.models import openrouter
 import feedback_forensics.tools.ff_modelgen as modelgen
 import feedback_forensics.tools.ff_model_comparison as model_comparison
 from feedback_forensics.data.ap_format import hash_string
@@ -72,7 +73,7 @@ class FakeOpenRouter:
 def fake_api(monkeypatch):
     def _make(**kwargs):
         api = FakeOpenRouter(**kwargs)
-        monkeypatch.setattr(modelgen, "_openrouter_request", api)
+        monkeypatch.setattr(openrouter, "openrouter_request", api)
         monkeypatch.setattr(modelgen.time, "sleep", lambda s: None)
         return api
 
@@ -265,7 +266,7 @@ def test_failed_submission_does_not_block_collection(
     async def fake_live(prompts, model_name, output_path, max_concurrent):
         live_calls.append(model_name)
 
-    monkeypatch.setattr(modelgen, "_openrouter_request", reject_submissions)
+    monkeypatch.setattr(openrouter, "openrouter_request", reject_submissions)
     monkeypatch.setattr(modelgen, "run_model_on_prompts_async", fake_live)
 
     ref = "openrouter/openai/gpt-4o-2024-11-20"  # no batch variant in fake API
@@ -291,7 +292,7 @@ def test_new_batch_not_found_yet_is_pending(tmp_path, fake_api, monkeypatch):
             raise modelgen.OpenRouterError(404, "not found")
         return api(method, path, **kwargs)
 
-    monkeypatch.setattr(modelgen, "_openrouter_request", not_found_on_first_poll)
+    monkeypatch.setattr(openrouter, "openrouter_request", not_found_on_first_poll)
 
     # new batch: keeps polling through the 404 until completed
     modelgen.submit_batch(PROMPTS, MODEL, tmp_path)
@@ -299,15 +300,17 @@ def test_new_batch_not_found_yet_is_pending(tmp_path, fake_api, monkeypatch):
     assert modelgen.collect_batch(PROMPTS, MODEL, tmp_path, deadline=deadline)
     assert len(_read_generations(tmp_path)) == 3
 
-    # old batch: 404 is a real error
+    # old batch: an error, but its state is kept (it may be running nonetheless,
+    # e.g. if submitted with another API key)
     modelgen.submit_batch(["prompt four"], MODEL, tmp_path)
     _, state_file = modelgen._get_batch_paths(tmp_path, MODEL)
     state = json.loads(state_file.read_text())
     state["submitted_at"] = "2020-01-01T00:00:00"
     state_file.write_text(json.dumps(state))
     api.polls = 0
-    with pytest.raises(modelgen.OpenRouterError):
+    with pytest.raises(openrouter.BatchNotFoundError, match="another API key"):
         modelgen.collect_batch(["prompt four"], MODEL, tmp_path, deadline=0)
+    assert state_file.exists()
 
 
 def test_pending_batch_collected_despite_nonbatch_suffix(tmp_path, fake_api):
@@ -328,7 +331,7 @@ def test_lost_submit_response_is_recovered(tmp_path, fake_api, monkeypatch):
             raise modelgen.OpenRouterError(502, "bad gateway")
         return result
 
-    monkeypatch.setattr(modelgen, "_openrouter_request", lose_post_response)
+    monkeypatch.setattr(openrouter, "openrouter_request", lose_post_response)
     with pytest.raises(modelgen.OpenRouterError):
         modelgen.submit_batch(PROMPTS, MODEL, tmp_path)
     _, state_file = modelgen._get_batch_paths(tmp_path, MODEL)
@@ -367,7 +370,7 @@ def test_rejected_submit_clears_state(tmp_path, fake_api, monkeypatch):
     def reject(method, path, **kwargs):
         raise modelgen.OpenRouterError(400, "bad request")
 
-    monkeypatch.setattr(modelgen, "_openrouter_request", reject)
+    monkeypatch.setattr(openrouter, "openrouter_request", reject)
     with pytest.raises(modelgen.OpenRouterError):
         modelgen.submit_batch(PROMPTS, MODEL, tmp_path)
     assert not modelgen._get_batch_paths(tmp_path, MODEL)[1].exists()
@@ -384,13 +387,13 @@ def test_post_not_retried_on_server_error(monkeypatch):
         return Response()
 
     monkeypatch.setenv("OPENROUTER_API_KEY", "x")
-    monkeypatch.setattr(modelgen.requests, "request", fake_request)
+    monkeypatch.setattr(openrouter.requests, "request", fake_request)
     monkeypatch.setattr(modelgen.time, "sleep", lambda s: None)
     with pytest.raises(modelgen.OpenRouterError):
-        modelgen._openrouter_request("POST", "/batches", json={})
+        openrouter.openrouter_request("POST", "/batches", json={})
     assert calls == ["POST"]
     with pytest.raises(modelgen.OpenRouterError):
-        modelgen._openrouter_request("GET", "/batches/x")
+        openrouter.openrouter_request("GET", "/batches/x")
     assert calls.count("GET") == 5
 
 
@@ -424,7 +427,7 @@ def test_expired_results_fall_back_to_live(tmp_path, fake_api, monkeypatch):
     def gone(method, path, **kwargs):
         raise modelgen.OpenRouterError(410, "gone")
 
-    monkeypatch.setattr(modelgen, "_openrouter_request", gone)
+    monkeypatch.setattr(openrouter, "openrouter_request", gone)
     assert modelgen.collect_batch(PROMPTS, MODEL, tmp_path, deadline=0)
     assert not modelgen._get_batch_paths(tmp_path, MODEL)[1].exists()
 
@@ -519,7 +522,7 @@ def test_get_provider_info(monkeypatch):
             raise modelgen.OpenRouterError(404, "not found")
         return {"data": {"provider_name": "Mistral", "model": "mistralai/m-2026"}}
 
-    monkeypatch.setattr(modelgen, "_openrouter_request", fake_request)
+    monkeypatch.setattr(openrouter, "openrouter_request", fake_request)
     assert modelgen._get_provider_info("gen-1") == {
         "provider": "Mistral",
         "provider_model": "mistralai/m-2026",
@@ -530,8 +533,8 @@ def test_get_provider_info(monkeypatch):
         "provider_model": None,
     }
     monkeypatch.setattr(
-        modelgen,
-        "_openrouter_request",
+        openrouter,
+        "openrouter_request",
         lambda *a, **k: (_ for _ in ()).throw(modelgen.OpenRouterError(500, "x")),
     )
     assert modelgen._get_provider_info("gen-2")["provider"] is None
@@ -702,7 +705,7 @@ def test_live_records_usage(tmp_path, monkeypatch):
             )
 
     monkeypatch.setattr(
-        feedback_forensics.models, "get_model", lambda *args, **kwargs: FakeModel()
+        feedback_forensics.models.main, "get_model", lambda *args, **kwargs: FakeModel()
     )
     asyncio.run(
         modelgen.run_model_on_prompts_async(PROMPTS, "openai/fake", str(tmp_path))
@@ -735,7 +738,7 @@ def _fake_response(monkeypatch, status_code: int, text: str):
 
     Response.status_code, Response.text = status_code, text
     monkeypatch.setenv("OPENROUTER_API_KEY", "x")
-    monkeypatch.setattr(modelgen.requests, "request", lambda *a, **k: Response())
+    monkeypatch.setattr(openrouter.requests, "request", lambda *a, **k: Response())
 
 
 @pytest.mark.parametrize(
@@ -760,7 +763,7 @@ def test_account_errors_are_legible(monkeypatch, status_code, text, expected):
     """Key and account problems state the problem and how to fix it."""
     _fake_response(monkeypatch, status_code, text)
     with pytest.raises(modelgen.OpenRouterAccountError) as exc_info:
-        modelgen._openrouter_request("POST", "/batches", json={})
+        openrouter.openrouter_request("POST", "/batches", json={})
     assert exc_info.value.status_code == status_code
     for part in expected + ["To fix:"]:
         assert part in str(exc_info.value)
@@ -795,7 +798,7 @@ def test_other_errors_are_legible(monkeypatch, status_code, text, expected):
     _fake_response(monkeypatch, status_code, text)
     monkeypatch.setattr(modelgen.time, "sleep", lambda s: None)
     with pytest.raises(modelgen.OpenRouterError) as exc_info:
-        modelgen._openrouter_request("POST", "/batches", json={})
+        openrouter.openrouter_request("POST", "/batches", json={})
     assert not isinstance(exc_info.value, modelgen.OpenRouterAccountError)
     assert exc_info.value.status_code == status_code
     assert str(exc_info.value).startswith(expected)
@@ -820,7 +823,9 @@ def test_live_errors_are_legible_and_do_not_abort(monkeypatch, tmp_path, capsys)
                 raise ValueError("something else")
             raise APIError("Error code: 403 - {...}")
 
-    monkeypatch.setattr(feedback_forensics.models, "get_model", lambda *a, **k: Model())
+    monkeypatch.setattr(
+        feedback_forensics.models.main, "get_model", lambda *a, **k: Model()
+    )
     monkeypatch.setattr(modelgen, "_get_provider_info", lambda *a: {"provider": None})
     messages = []
     handler_id = modelgen.logger.add(messages.append, format="{message}")
@@ -886,7 +891,9 @@ def test_live_account_error_stops_generation(
                 raise _account_error(status_code, message)
             return AIMessage(content="answer")
 
-    monkeypatch.setattr(feedback_forensics.models, "get_model", lambda *a, **k: Model())
+    monkeypatch.setattr(
+        feedback_forensics.models.main, "get_model", lambda *a, **k: Model()
+    )
     monkeypatch.setattr(modelgen, "_get_provider_info", lambda *a: {"provider": None})
     model = "openrouter/fake/model"
 
