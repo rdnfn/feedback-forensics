@@ -702,3 +702,148 @@ def test_live_records_usage(tmp_path, monkeypatch):
     assert len(records) == 3
     assert all(r["usage"] == EXPECTED_USAGE for r in records)
     assert all(r["failure"] is None for r in records)
+
+
+KEY_LIMIT_RESPONSE = json.dumps(
+    {
+        "error": {
+            "message": "Key limit exceeded (total limit). $409.73 of $250.00 used",
+            "code": 403,
+            "metadata": {
+                "limit_source": "openrouter_key_limit",
+                "limit_usd": 250,
+                "spend_usd": 409.730414405,
+            },
+        }
+    }
+)
+
+
+def _fake_response(monkeypatch, status_code: int, text: str):
+    class Response:
+        ok = False
+
+    Response.status_code, Response.text = status_code, text
+    monkeypatch.setenv("OPENROUTER_API_KEY", "x")
+    monkeypatch.setattr(modelgen.requests, "request", lambda *a, **k: Response())
+
+
+@pytest.mark.parametrize(
+    "status_code, text, expected",
+    [
+        (403, KEY_LIMIT_RESPONSE, ["$409.73 used of $250.00 limit", "settings/keys"]),
+        # Without metadata, the original message is shown
+        (
+            403,
+            '{"error": {"message": "Key limit exceeded (total limit)."}}',
+            ["Key limit exceeded (total limit).", "settings/keys"],
+        ),
+        (
+            402,
+            '{"error": {"message": "Insufficient credits"}}',
+            ["Insufficient credits", "settings/credits"],
+        ),
+        (401, '{"error": {"message": "No auth"}}', ["No auth", "OPENROUTER_API_KEY"]),
+    ],
+)
+def test_account_errors_are_legible(monkeypatch, status_code, text, expected):
+    """Key and account problems state the problem and how to fix it."""
+    _fake_response(monkeypatch, status_code, text)
+    with pytest.raises(modelgen.OpenRouterAccountError) as exc_info:
+        modelgen._openrouter_request("POST", "/batches", json={})
+    assert exc_info.value.status_code == status_code
+    for part in expected + ["To fix:"]:
+        assert part in str(exc_info.value)
+
+
+@pytest.mark.parametrize(
+    "status_code, text, expected",
+    [
+        # OpenRouter's message instead of raw JSON, fix only if known
+        (
+            403,
+            '{"error": {"message": "Forbidden"}}',
+            "OpenRouter API error 403: Forbidden",
+        ),
+        (400, "<html>\n  oops</html>", "OpenRouter API error 400: <html> oops</html>"),
+        (400, "x" * 400, "OpenRouter API error 400: " + "x" * 300 + "..."),
+        (400, "", "OpenRouter API error 400: (empty response)"),
+        (
+            404,
+            '{"error": {"message": "No such model"}}',
+            "OpenRouter API error 404: No such model\nTo fix: check that the model",
+        ),
+        (
+            429,
+            '{"error": {"message": "Slow down"}}',
+            "OpenRouter API error 429: Slow down\nTo fix: rate limit still hit",
+        ),
+        (502, "bad gateway", "OpenRouter API error 502: bad gateway\nTo fix: likely"),
+    ],
+)
+def test_other_errors_are_legible(monkeypatch, status_code, text, expected):
+    _fake_response(monkeypatch, status_code, text)
+    monkeypatch.setattr(modelgen.time, "sleep", lambda s: None)
+    with pytest.raises(modelgen.OpenRouterError) as exc_info:
+        modelgen._openrouter_request("POST", "/batches", json={})
+    assert not isinstance(exc_info.value, modelgen.OpenRouterAccountError)
+    assert exc_info.value.status_code == status_code
+    assert str(exc_info.value).startswith(expected)
+    if status_code in (400, 403):
+        assert str(exc_info.value) == expected
+
+
+def test_live_errors_are_legible_and_do_not_abort(monkeypatch, tmp_path, capsys):
+    """Failed live generations: each distinct error shown once, others still run."""
+
+    class APIError(Exception):
+        status_code = 403
+
+        class response:
+            text = KEY_LIMIT_RESPONSE
+
+    class Model:
+        def invoke(self, messages):
+            if messages[0]["content"] == "ok":
+                return AIMessage(content="answer")
+            if messages[0]["content"] == "other":
+                raise ValueError("something else")
+            raise APIError("Error code: 403 - {...}")
+
+    monkeypatch.setattr(feedback_forensics.models, "get_model", lambda *a, **k: Model())
+    monkeypatch.setattr(modelgen, "_get_provider_info", lambda *a: {"provider": None})
+    messages = []
+    handler_id = modelgen.logger.add(messages.append, format="{message}")
+    try:
+        asyncio.run(
+            modelgen.run_model_on_prompts_async(
+                ["a", "b", "ok", "other"], "openrouter/fake/model", str(tmp_path)
+            )
+        )
+    finally:
+        modelgen.logger.remove(handler_id)
+
+    output_file = tmp_path / "generations" / "openrouter_fake_model.jsonl"
+    records = [json.loads(line) for line in output_file.read_text().splitlines()]
+    assert [r["prompt"] for r in records] == ["ok"]
+    log = "".join(messages)
+    assert log.count("(shown once, continuing with other prompts)") == 2
+    assert "2 of 4 prompts failed for openrouter/fake/model" in log
+    assert "1 of 4 prompts failed for openrouter/fake/model" in log
+    assert "$409.73 used of $250.00 limit" in log
+    assert "To fix: raise or remove the limit" in log
+    assert "ValueError: something else" in log
+
+
+def test_cli_shows_account_error_without_traceback(monkeypatch, tmp_path):
+    """Key limit hit while submitting a batch: exit code 1, no state file left."""
+    _fake_response(monkeypatch, 403, KEY_LIMIT_RESPONSE)
+    model = "openrouter/fake/model"
+    monkeypatch.setattr(modelgen, "get_batch_models", lambda *a: [model])
+    monkeypatch.setattr(
+        "sys.argv",
+        ["ff-model-comparison", "-p", "a", "b", "-o", str(tmp_path)]
+        + ["-m", model, "-r", model],
+    )
+    assert model_comparison.run() == 1
+    assert not list((tmp_path / "batches").glob("*.json"))

@@ -491,7 +491,8 @@ def run():
             annotator_model=args.annotator_model,
             position_debias=args.position_debias,
         )
-    except AnnotationSettingsError as e:
+    except (AnnotationSettingsError, modelgen.OpenRouterError) as e:
+        # Messages state the problem (and fix, if known): shown without traceback
         logger.error(str(e))
         return 1
     logger.success(
