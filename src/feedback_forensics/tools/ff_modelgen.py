@@ -235,6 +235,7 @@ async def run_model_on_prompts_async(
     total_prompts = len(prompts)
     completed = 0
     skipped = 0
+    errors = {}  # error message -> number of prompts failed with it
 
     # Get already processed prompt IDs
     processed_ids = set()
@@ -324,7 +325,15 @@ async def run_model_on_prompts_async(
             }
 
         except Exception as e:
-            print(f"Error processing prompt {prompt_id}: {e}")
+            # Not aborting: other prompts (and other models) may still succeed.
+            # Each distinct error is only shown once (e.g. key limit hits all prompts)
+            message = _describe_live_error(e, model_name)
+            errors[message] = errors.get(message, 0) + 1
+            if errors[message] == 1:
+                logger.error(
+                    f"Generation failed for {model_name} on prompt {prompt_id[:8]} "
+                    f"(shown once, continuing with other prompts): {message}"
+                )
             return {
                 "index": index,
                 "prompt_id": prompt_id,
@@ -361,6 +370,11 @@ async def run_model_on_prompts_async(
     # Print stats
     elapsed = time.time() - start_time
     print(f"Completed processing {completed} prompts with model {model_name}")
+    for message, count in errors.items():
+        logger.error(
+            f"{count} of {total_prompts} prompts failed for {model_name} (not "
+            f"saved, retried on next run): {message}"
+        )
     print(
         f"Total time: {elapsed:.2f}s, Average: {elapsed/max(1, completed):.2f}s per prompt"
     )
@@ -471,16 +485,20 @@ def _parse_time(value: str) -> datetime:
 
 
 class OpenRouterError(RuntimeError):
-    def __init__(self, status_code: int, text: str):
-        super().__init__(f"OpenRouter batch API error {status_code}: {text}")
+    """Failed OpenRouter request, with a message legible without traceback."""
+
+    def __init__(self, status_code: int, text: str, fix: str | None = None):
+        message = f"OpenRouter API error {status_code}: {text}"
+        if fix:
+            message += f"\nTo fix: {fix}"
+        super().__init__(message)
         self.status_code = status_code
 
 
 class OpenRouterAccountError(OpenRouterError):
     """Request rejected due to the API key or account (not the request itself).
 
-    Retrying cannot succeed until the user fixes the key or account, so the
-    message states the problem and how to fix it (shown without traceback by CLIs).
+    Retrying cannot succeed until the user fixes the key or account.
     """
 
     def __init__(self, status_code: int, problem: str, fix: str):
@@ -489,7 +507,12 @@ class OpenRouterAccountError(OpenRouterError):
 
 
 def _get_openrouter_error(status_code: int, text: str) -> OpenRouterError:
-    """Create error for failed OpenRouter response, legible for account problems."""
+    """Create legible error (problem and, if known, fix) for failed OpenRouter response.
+
+    Args:
+        status_code: HTTP status code of the response.
+        text: Body of the response (OpenRouter's JSON error, or anything else).
+    """
     try:
         error = json.loads(text)["error"]
         message, metadata = error.get("message"), error.get("metadata") or {}
@@ -529,7 +552,33 @@ def _get_openrouter_error(status_code: int, text: str) -> OpenRouterError:
             "set OPENROUTER_API_KEY to a valid key "
             f"(see https://openrouter.ai/settings/keys). {rerun}",
         )
-    return OpenRouterError(status_code, text)
+    # Other errors: OpenRouter's message instead of raw JSON (or e.g. an HTML page)
+    text = " ".join(text.split())
+    details = message or (text[:300] + ("..." if len(text) > 300 else ""))
+    if status_code == 429:
+        fix = "rate limit still hit after retries, wait a few minutes. " + rerun
+    elif status_code >= 500:
+        fix = (
+            "likely a temporary problem at OpenRouter (see "
+            f"https://status.openrouter.ai), wait a few minutes. {rerun}"
+        )
+    elif status_code == 404:
+        fix = (
+            "check that the model name is correct and still available "
+            "(see https://openrouter.ai/models)."
+        )
+    else:
+        fix = None
+    return OpenRouterError(status_code, details or "(empty response)", fix)
+
+
+def _describe_live_error(error: Exception, model_name: str) -> str:
+    """Get legible message for error raised by a live (non-batch) generation."""
+    status_code = getattr(error, "status_code", None)
+    response = getattr(error, "response", None)
+    if model_name.startswith("openrouter/") and isinstance(status_code, int):
+        return str(_get_openrouter_error(status_code, getattr(response, "text", "")))
+    return f"{type(error).__name__}: {error}"
 
 
 def _openrouter_request(method: str, path: str, **kwargs) -> dict:

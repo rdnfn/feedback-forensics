@@ -714,13 +714,83 @@ def test_account_errors_are_legible(monkeypatch, status_code, text, expected):
         assert part in str(exc_info.value)
 
 
-@pytest.mark.parametrize("text", ['{"error": {"message": "Forbidden"}}', "<html>"])
-def test_other_errors_are_not_account_errors(monkeypatch, text):
-    _fake_response(monkeypatch, 403, text)
+@pytest.mark.parametrize(
+    "status_code, text, expected",
+    [
+        # OpenRouter's message instead of raw JSON, fix only if known
+        (
+            403,
+            '{"error": {"message": "Forbidden"}}',
+            "OpenRouter API error 403: Forbidden",
+        ),
+        (400, "<html>\n  oops</html>", "OpenRouter API error 400: <html> oops</html>"),
+        (400, "x" * 400, "OpenRouter API error 400: " + "x" * 300 + "..."),
+        (400, "", "OpenRouter API error 400: (empty response)"),
+        (
+            404,
+            '{"error": {"message": "No such model"}}',
+            "OpenRouter API error 404: No such model\nTo fix: check that the model",
+        ),
+        (
+            429,
+            '{"error": {"message": "Slow down"}}',
+            "OpenRouter API error 429: Slow down\nTo fix: rate limit still hit",
+        ),
+        (502, "bad gateway", "OpenRouter API error 502: bad gateway\nTo fix: likely"),
+    ],
+)
+def test_other_errors_are_legible(monkeypatch, status_code, text, expected):
+    _fake_response(monkeypatch, status_code, text)
+    monkeypatch.setattr(modelgen.time, "sleep", lambda s: None)
     with pytest.raises(modelgen.OpenRouterError) as exc_info:
         modelgen._openrouter_request("POST", "/batches", json={})
     assert not isinstance(exc_info.value, modelgen.OpenRouterAccountError)
-    assert text in str(exc_info.value)
+    assert exc_info.value.status_code == status_code
+    assert str(exc_info.value).startswith(expected)
+    if status_code in (400, 403):
+        assert str(exc_info.value) == expected
+
+
+def test_live_errors_are_legible_and_do_not_abort(monkeypatch, tmp_path, capsys):
+    """Failed live generations: each distinct error shown once, others still run."""
+
+    class APIError(Exception):
+        status_code = 403
+
+        class response:
+            text = KEY_LIMIT_RESPONSE
+
+    class Model:
+        def invoke(self, messages):
+            if messages[0]["content"] == "ok":
+                return AIMessage(content="answer")
+            if messages[0]["content"] == "other":
+                raise ValueError("something else")
+            raise APIError("Error code: 403 - {...}")
+
+    monkeypatch.setattr(feedback_forensics.models, "get_model", lambda *a, **k: Model())
+    monkeypatch.setattr(modelgen, "_get_provider_info", lambda *a: {"provider": None})
+    messages = []
+    handler_id = modelgen.logger.add(messages.append, format="{message}")
+    try:
+        asyncio.run(
+            modelgen.run_model_on_prompts_async(
+                ["a", "b", "ok", "other"], "openrouter/fake/model", str(tmp_path)
+            )
+        )
+    finally:
+        modelgen.logger.remove(handler_id)
+
+    output_file = tmp_path / "generations" / "openrouter_fake_model.jsonl"
+    records = [json.loads(line) for line in output_file.read_text().splitlines()]
+    assert [r["prompt"] for r in records] == ["ok"]
+    log = "".join(messages)
+    assert log.count("(shown once, continuing with other prompts)") == 2
+    assert "2 of 4 prompts failed for openrouter/fake/model" in log
+    assert "1 of 4 prompts failed for openrouter/fake/model" in log
+    assert "$409.73 used of $250.00 limit" in log
+    assert "To fix: raise or remove the limit" in log
+    assert "ValueError: something else" in log
 
 
 def test_cli_shows_account_error_without_traceback(monkeypatch, tmp_path):
