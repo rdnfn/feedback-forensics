@@ -110,6 +110,10 @@ def annotate_dataset(
             to collect them.
         BatchFailedError, BatchUnavailableError: (batch only) see
             `feedback_forensics.annotation.batch`.
+        AnnotatorAccountError: if the annotator's API rejected the API key or
+            account (HTTP 401 or 402, e.g. out of credits). Annotation stops
+            without writing results: votes obtained so far stay in the cache
+            of the output directory, re-run with it to continue.
     """
     # Validate settings before writing any files
     principles = _check_principles(principles)

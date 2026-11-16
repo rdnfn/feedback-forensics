@@ -39,6 +39,9 @@ parameters. Differences to ICAI:
   the same generation settings (see `feedback_forensics.annotation.cache`).
 - Batch API: optionally, requests are sent via OpenRouter's batch API (see
   `feedback_forensics.annotation.batch`).
+- Account errors: a call rejected due to the API key or account (HTTP 401 or 402,
+  e.g. out of credits) stops the run (`AnnotatorAccountError`), as all remaining
+  calls would fail too. ICAI recorded an invalid vote for each of them.
 """
 
 import ast
@@ -70,6 +73,22 @@ SHOWN_FIRST_VALUES = ("preferred", "rejected")
 # Finish reasons of complete responses: "stop" (OpenAI-compatible APIs), "end_turn"
 # and "stop_sequence" (Anthropic)
 COMPLETE_FINISH_REASONS = ("stop", "end_turn", "stop_sequence")
+
+# HTTP status codes of calls rejected due to the API key or account, not the
+# request: unauthorized (invalid key) and payment required (no credits left, or
+# spending limit of the key reached). All further calls would be rejected too.
+ACCOUNT_ERROR_HTTP_CODES = (401, 402)
+
+
+class AnnotatorAccountError(RuntimeError):
+    """The annotator's API rejected a call due to the API key or account (see
+    `ACCOUNT_ERROR_HTTP_CODES`): annotation was stopped, as the remaining calls
+    would fail too. Votes obtained before are in the vote cache (if enabled)."""
+
+    def __init__(self, message: str, status_code: int):
+        super().__init__(message)
+        self.status_code = status_code
+
 
 VALID_VOTE_VALUES = {
     "A": True,
@@ -446,25 +465,41 @@ async def _run_pass(
         answered_request_ids: Ids of requests already answered in this run (by
             the batch API) without any valid vote: their votes are invalid, they
             are not sent again.
+
+    Raises:
+        AnnotatorAccountError: if a call was rejected due to the API key or
+            account. No further calls are started. Calls already in flight are
+            completed first, so that their votes (if any) are cached.
     """
     cached_votes = vote_cache.get_cached_votes() if vote_cache is not None else {}
     semaphore = asyncio.Semaphore(config.max_concurrent_tasks)
+    account_error: AnnotatorAccountError | None = None
 
-    async def process(request: _VoteRequest) -> dict:
+    async def process(request: _VoteRequest) -> dict | None:
+        """Votes of the request, None if stopped by an account error."""
+        nonlocal account_error
         if all(h in cached_votes for h in request.hashes.values()):
             return {h: cached_votes[h] for h in request.hashes.values()}
         if request.request_id in answered_request_ids:
             return {h: INVALID_VOTE for h in request.hashes.values()}
         async with semaphore:
-            vote = await get_vote_for_single_comparison(
-                preferred=request.preferred,
-                rejected=request.rejected,
-                principles=request.principles,
-                flipped=request.flipped,
-                model=model,
-                model_name=config.model,
-                usage_tracker=usage_tracker,
-            )
+            if account_error is not None:
+                return None  # not started
+            try:
+                vote = await get_vote_for_single_comparison(
+                    preferred=request.preferred,
+                    rejected=request.rejected,
+                    principles=request.principles,
+                    flipped=request.flipped,
+                    model=model,
+                    model_name=config.model,
+                    usage_tracker=usage_tracker,
+                )
+            except AnnotatorAccountError as e:
+                if account_error is None:
+                    account_error = e
+                    logger.error(f"{e} Stopping annotation.")
+                return None
         hashed_vote = {
             hash_str: vote.get(principle, INVALID_VOTE)
             for principle, hash_str in request.hashes.items()
@@ -477,6 +512,17 @@ async def _run_pass(
         return hashed_vote
 
     results = await tqdm.gather(*[process(r) for r in requests])
+    if account_error is not None:
+        num_stopped = sum(r is None for r in results)
+        raise AnnotatorAccountError(
+            f"{account_error} Annotation stopped: {num_stopped} of {len(requests)} "
+            "API calls of this pass over the data were not made or rejected, the "
+            "remaining calls would be rejected too. Votes obtained so far are "
+            "kept in the vote cache (if enabled): fix the API key or account "
+            "(e.g. add credits), then re-run with the same output directory to "
+            "continue.",
+            status_code=account_error.status_code,
+        ) from account_error
     return {k: v for part in results for k, v in part.items()}
 
 
@@ -494,6 +540,10 @@ async def get_vote_for_single_comparison(
 
     Returns:
         Mapping principle text -> vote.
+
+    Raises:
+        AnnotatorAccountError: if the API rejected the call due to the API key
+            or account (other failed calls result in invalid votes).
     """
     messages = _get_messages(preferred, rejected, principles, flipped)
 
@@ -517,7 +567,6 @@ async def get_vote_for_single_comparison(
         warn_if_incomplete(metadata.get("finish_reason") or metadata.get("stop_reason"))
         content = response.content
     except Exception as e:  # pylint: disable=broad-except
-        logger.error(f"Failed to generate votes: {type(e).__name__}: {e}")
         usage_tracker.record(
             model_name,
             latency_s=time.monotonic() - start,
@@ -525,6 +574,16 @@ async def get_vote_for_single_comparison(
             messages=messages,
             call_id=call_id,
         )
+        http_code = _get_http_code(e)
+        if http_code in ACCOUNT_ERROR_HTTP_CODES:
+            # Not an invalid vote: every remaining call would fail as well
+            raise AnnotatorAccountError(
+                f"The API of annotator {model_name} rejected the API key or "
+                f"account (HTTP {http_code}, e.g. no credits left, spending "
+                f"limit of the key reached, or invalid key): {e}.",
+                status_code=http_code,
+            ) from e
+        logger.error(f"Failed to generate votes: {type(e).__name__}: {e}")
         return {principle: INVALID_VOTE for principle in principles}
 
     return parse_vote_response(content, principles, flipped, usage_tracker)
@@ -653,7 +712,8 @@ def _fatal_model_error(err) -> bool:
     Retries network errors/timeouts, rate limits, server errors and other
     transient HTTP errors (`RETRYABLE_HTTP_CODES`). Gives up on other client
     errors (e.g. invalid request or API key) and on non-API errors (e.g. bugs),
-    which would fail again.
+    which would fail again. Of these, `ACCOUNT_ERROR_HTTP_CODES` stop the whole
+    run (see `get_vote_for_single_comparison`).
     """
     if isinstance(err, CONNECTION_ERRORS):
         logger.warning(f"Connection error, retrying: {err}")

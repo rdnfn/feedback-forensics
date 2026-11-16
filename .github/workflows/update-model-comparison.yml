@@ -12,6 +12,11 @@ name: Update Model Personality Comparison Dataset
 # of failed runs are saved to the 'wip' branch of the HF dataset and
 # automatically reused by the next run.
 #
+# A run also fails if the API key or account stops working (e.g. OpenRouter
+# credits ran out) or if annotation API calls failed: generations and complete
+# annotation files are kept (in 'wip'), annotation files with failed calls are
+# not saved, so that the next run annotates them again.
+#
 # Annotation settings (annotator model, position debiasing) are fixed per
 # dataset version: existing annotations are reused, so the run fails before any
 # API call if they were created with other settings. To change the annotator,
@@ -63,6 +68,17 @@ env:
     openrouter/openai/gpt-6-sol
     openrouter/openai/gpt-6.1-sol
     openrouter/mistralai/mistral-large-4-0
+    openrouter/anthropic/claude-opus-4.8
+    openrouter/anthropic/claude-opus-5
+    openrouter/anthropic/claude-opus-5.5
+    openrouter/anthropic/claude-fable-5
+    openrouter/anthropic/claude-fable-5.2
+    openrouter/anthropic/claude-opus-4.1
+    openrouter/anthropic/claude-sonnet-5
+    openrouter/anthropic/claude-sonnet-5.5
+    openrouter/anthropic/claude-haiku-5.5
+    openrouter/openai/gpt-5.6-terra
+    openrouter/openai/gpt-6.1-terra
   REFERENCE_MODELS: openrouter/openai/gpt-4o-2024-11-20
 
 jobs:

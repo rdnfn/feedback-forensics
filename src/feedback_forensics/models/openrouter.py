@@ -23,9 +23,91 @@ INCOMPLETE_STATUSES = ("failed", "expired", "cancelled", "gone")
 
 
 class OpenRouterError(RuntimeError):
-    def __init__(self, status_code: int, text: str):
-        super().__init__(f"OpenRouter batch API error {status_code}: {text}")
+    """Failed OpenRouter request, with a message legible without traceback."""
+
+    def __init__(self, status_code: int, text: str, fix: str | None = None):
+        message = f"OpenRouter API error {status_code}: {text}"
+        if fix:
+            message += f"\nTo fix: {fix}"
+        super().__init__(message)
         self.status_code = status_code
+
+
+class OpenRouterAccountError(OpenRouterError):
+    """Request rejected due to the API key or account (not the request itself).
+
+    Retrying cannot succeed until the user fixes the key or account.
+    """
+
+    def __init__(self, status_code: int, problem: str, fix: str):
+        RuntimeError.__init__(self, f"{problem}\nTo fix: {fix}")
+        self.status_code = status_code
+
+
+def get_openrouter_error(status_code: int, text: str) -> OpenRouterError:
+    """Create legible error (problem and, if known, fix) for failed OpenRouter response.
+
+    Args:
+        status_code: HTTP status code of the response.
+        text: Body of the response (OpenRouter's JSON error, or anything else).
+    """
+    try:
+        error = json.loads(text)["error"]
+        message, metadata = error.get("message"), error.get("metadata") or {}
+    except (ValueError, KeyError, TypeError, AttributeError):
+        message, metadata = None, {}
+    message = message if isinstance(message, str) else ""
+    metadata = metadata if isinstance(metadata, dict) else {}
+    rerun = "Then re-run: completed work and submitted batches are resumed."
+
+    key_limit = (
+        metadata.get("limit_source") == "openrouter_key_limit"
+        or "key limit exceeded" in message.lower()
+    )
+    if status_code == 403 and key_limit:
+        limit, spend = metadata.get("limit_usd"), metadata.get("spend_usd")
+        if isinstance(limit, (int, float)) and isinstance(spend, (int, float)):
+            details = f"${spend:,.2f} used of ${limit:,.2f} limit"
+        else:
+            details = message
+        return OpenRouterAccountError(
+            status_code,
+            f"OpenRouter API key has reached its spending limit ({details}).",
+            "raise or remove the limit of the key at "
+            "https://openrouter.ai/settings/keys, or set OPENROUTER_API_KEY to a "
+            f"key with enough remaining limit. {rerun}",
+        )
+    if status_code == 402:
+        return OpenRouterAccountError(
+            status_code,
+            f"OpenRouter account has insufficient credits ({message or text}).",
+            f"add credits at https://openrouter.ai/settings/credits. {rerun}",
+        )
+    if status_code == 401:
+        return OpenRouterAccountError(
+            status_code,
+            f"OpenRouter rejected the API key ({message or text}).",
+            "set OPENROUTER_API_KEY to a valid key "
+            f"(see https://openrouter.ai/settings/keys). {rerun}",
+        )
+    # Other errors: OpenRouter's message instead of raw JSON (or e.g. an HTML page)
+    text = " ".join(text.split())
+    details = message or (text[:300] + ("..." if len(text) > 300 else ""))
+    if status_code == 429:
+        fix = "rate limit still hit after retries, wait a few minutes. " + rerun
+    elif status_code >= 500:
+        fix = (
+            "likely a temporary problem at OpenRouter (see "
+            f"https://status.openrouter.ai), wait a few minutes. {rerun}"
+        )
+    elif status_code == 404:
+        fix = (
+            "check that the model name is correct and still available "
+            "(see https://openrouter.ai/models)."
+        )
+    else:
+        fix = None
+    return OpenRouterError(status_code, details or "(empty response)", fix)
 
 
 class BatchNotFoundError(OpenRouterError):
@@ -82,7 +164,7 @@ def openrouter_request(method: str, path: str, **kwargs) -> dict:
         logger.warning(f"OpenRouter returned {response.status_code}, retrying...")
         time.sleep(60)
     if not response.ok:
-        raise OpenRouterError(response.status_code, response.text)
+        raise get_openrouter_error(response.status_code, response.text)
     return response.json()
 
 

@@ -5,7 +5,7 @@ import json
 
 from loguru import logger
 
-from feedback_forensics.annotation import annotate_dataset
+from feedback_forensics.annotation import AnnotatorAccountError, annotate_dataset
 from feedback_forensics.annotation.batch import BatchError, BatchPendingError
 from feedback_forensics.annotation.pipeline import default_output_dir
 from feedback_forensics.annotation.principles import get_default_principles
@@ -205,6 +205,10 @@ def run(argv: list[str] | None = None) -> int:
             batch=args.batch,
             batch_max_wait=args.batch_max_wait,
         )
+    except AnnotatorAccountError as e:
+        # Message states the problem and how to continue: shown without traceback
+        logger.error(str(e))
+        return 1
     except BatchPendingError as e:
         logger.warning(
             f"{e}\nTo collect the results, re-run this command later with "

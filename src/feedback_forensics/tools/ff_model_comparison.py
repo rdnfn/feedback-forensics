@@ -6,13 +6,18 @@ import asyncio
 import pathlib
 import time
 import pandas as pd
+import requests
 import shutil
 import feedback_forensics.tools.ff_modelgen as modelgen
 from loguru import logger
 import argparse
 import json
 from feedback_forensics.data.operations import load_ap, save_ap, merge_ap, csv_to_ap
-from feedback_forensics.annotation import annotate_dataset, get_default_principles
+from feedback_forensics.annotation import (
+    AnnotatorAccountError,
+    annotate_dataset,
+    get_default_principles,
+)
 from feedback_forensics.annotation.batch import (
     BatchError,
     BatchPendingError,
@@ -26,6 +31,16 @@ from feedback_forensics.tools.ff_annotate import (
 )
 
 COMBINED_AP_FILENAME = "combined_ap.json"
+
+
+class BatchSubmissionError(RuntimeError):
+    """Batch of at least one model could not be submitted (others were collected)."""
+
+
+class AnnotationFailedError(RuntimeError):
+    """Annotations of at least one pairwise dataset are incomplete (API calls
+    failed, or annotation was stopped by an API key or account error): they were
+    not saved, as later runs would reuse them."""
 
 
 def get_annotation_settings(annotator_model: str, position_debias: bool) -> dict:
@@ -217,6 +232,13 @@ def compare_models(
     Raises:
         AnnotationSettingsError: if existing annotations in the output path were
             created with other annotation settings (checked before any API calls).
+        BatchSubmissionError: if a batch could not be submitted.
+        modelgen.LiveGenerationAccountError: if live generation was rejected due
+            to the API key or account (e.g. out of credits). As for failed batch
+            submissions, generations are kept and nothing is annotated.
+        AnnotationFailedError: if annotation API calls failed for at least one
+            pairwise dataset. Its annotations are not saved to `annotations/`
+            (where later runs would reuse them), those of other datasets are.
     """
 
     # Existing annotations are reused: check their settings before any API calls
@@ -253,28 +275,48 @@ def compare_models(
     ### STAGE 1: Generation ###
     logger.info(f"Stage 1: Creating generations for {model_names}")
 
-    # Submit batches first, so they are processed while live generations run
+    # Submit batches first, so they are processed while live generations run.
+    # A failed submission (e.g. API key spend limit reached) must not prevent
+    # collecting the other (already paid) batches, so run only fails after these
+    # are collected.
     deadline = time.time() + batch_max_wait * 60
+    failed_submissions = {}
     for model_name in batch_models:
-        modelgen.submit_batch(prompts, model_name, output_path)
+        try:
+            modelgen.submit_batch(prompts, model_name, output_path)
+        except (modelgen.OpenRouterError, requests.RequestException) as e:
+            logger.error(f"Could not submit batch for {model_name}: {e}")
+            failed_submissions[model_name] = e
 
     # Create generations for each model
     pending_models = []
+    live_account_error = None
     for model_name in model_names:
+        if model_name in failed_submissions:
+            # (may have state file without batch id, recovered by next run)
+            continue
         if model_name in batch_models and not modelgen.collect_batch(
             prompts, model_name, output_path, deadline=deadline
         ):
             pending_models.append(model_name)
             continue
+        if live_account_error is not None:
+            # Live generation would be rejected again (batches above are still
+            # collected: already paid)
+            continue
         logger.info(f"Creating generations for {model_name}")
         # Second pass retries prompts that failed in first pass
         # (for batch models: requests that failed within batch)
-        for _ in range(2):
-            asyncio.run(
-                modelgen.run_model_on_prompts_async(
-                    prompts, model_name, output_path, max_concurrent=10
+        try:
+            for _ in range(2):
+                asyncio.run(
+                    modelgen.run_model_on_prompts_async(
+                        prompts, model_name, output_path, max_concurrent=10
+                    )
                 )
-            )
+        except modelgen.LiveGenerationAccountError as e:
+            logger.error(f"{e}\nSkipping live generation of the remaining models.")
+            live_account_error = e
 
     # Collect batches of models no longer compared, so that paid results are saved
     # (and their state files do not trigger follow-up runs forever)
@@ -282,6 +324,17 @@ def compare_models(
         if model_name not in model_names:
             logger.warning(f"Collecting batch of model {model_name} not in models.")
             modelgen.collect_batch(prompts, model_name, output_path, deadline=deadline)
+
+    # Fail before annotation, which would likely fail for the same reason
+    if failed_submissions:
+        raise BatchSubmissionError(
+            f"Batch submission failed for {list(failed_submissions)} "
+            f"({'; '.join(str(e) for e in failed_submissions.values())}). "
+            "Other generations were saved, run again once the cause is fixed."
+        )
+    if live_account_error is not None:
+        # (its message tells what was saved and, if known, how to fix the cause)
+        raise live_account_error
 
     if pending_models:
         logger.warning(
@@ -315,8 +368,17 @@ def compare_models(
     def get_final_annotation_path(csv_file: pathlib.Path) -> pathlib.Path:
         return final_annotations_dir / (csv_file.stem + "_ap.json")
 
-    def annotate(csv_file: pathlib.Path, batch_max_wait: float):
-        """Annotate dataset and save the annotation to the final output path."""
+    # Annotation files not saved (-> reason): files in `annotations/` are reused by
+    # later runs and never annotated again, so only complete annotations are saved
+    unsaved = {}
+    account_error = None
+
+    def annotate(csv_file: pathlib.Path, batch_max_wait: float) -> str | None:
+        """Annotate dataset and save the annotation to the final output path.
+
+        Returns:
+            None, or the reason why the annotation was not saved.
+        """
         tmp_output_dir = annotation_tmp_dir / csv_file.stem
         final_annotation_path = get_final_annotation_path(csv_file)
         kwargs = dict(
@@ -340,66 +402,111 @@ def compare_models(
                 f", annotating {csv_file} via live API."
             )
             ap_path = annotate_dataset(**kwargs)
-        # Move the annotation to the final output path
-        shutil.copyfile(src=ap_path, dst=final_annotation_path)
+
         with open(ap_path.parent / USAGE_SUMMARY_FILENAME) as f:
             this_run = json.load(f)["this_run"]
-        failed = this_run["num_failed_calls"]
+        # Requests that failed within a batch were repeated via the live API:
+        # only those that failed there as well are without response
+        failed = this_run["num_failed_calls"] - this_run.get(
+            "num_failed_batch_calls", 0
+        )
         truncated = this_run["num_truncated_calls"]
         unparsable = this_run["num_unparsable_responses"]
-        if failed or truncated or unparsable:
-            # Unlike with annotate_dataset, re-running does not repeat them
-            logger.warning(
-                f"While annotating {csv_file}, {failed} API calls failed (no "
-                f"response after retries), {truncated} were truncated and "
-                f"{unparsable} had an unparsable response (votes invalid). Later "
-                f"runs reuse its annotations: to repeat these calls, delete "
-                f"{final_annotation_path} and re-run (other calls are not "
-                f"repeated as long as {tmp_output_dir} is kept)."
+        if failed:
+            # Failed calls (no response after retries, e.g. provider errors) are
+            # not the annotator's behaviour: repeated by the next run
+            logger.error(
+                f"While annotating {csv_file}, {failed} of {this_run['num_calls']} "
+                f"API calls failed (no response after retries, votes invalid). Not "
+                f"saving its annotations to {final_annotation_path}."
             )
+            return f"{failed} of {this_run['num_calls']} API calls failed"
+
+        # Move the annotation to the final output path
+        shutil.copyfile(src=ap_path, dst=final_annotation_path)
+        if truncated or unparsable:
+            # Annotator's behaviour: saved. Unlike with annotate_dataset,
+            # re-running does not repeat these calls
+            logger.warning(
+                f"While annotating {csv_file}, {truncated} API calls were "
+                f"truncated and {unparsable} had an unparsable response (votes "
+                f"invalid). Later runs reuse its annotations: to repeat these "
+                f"calls, delete {final_annotation_path} and re-run (other calls "
+                f"are not repeated as long as {tmp_output_dir} is kept)."
+            )
+        return None
 
     not_annotated = {"pending": [], "failed": []}
 
     def try_annotate(csv_file: pathlib.Path, batch_max_wait: float) -> str | None:
-        """Annotate dataset, returns reason if not annotated (see not_annotated).
+        """Annotate dataset, returns reason if not annotated: "pending" or
+        "failed" (see not_annotated), or "unsaved" (see unsaved).
 
         Batch errors of one dataset (e.g. failed batch, or batches pending while
         annotating without batch API) must not stop the annotation of the others.
         """
+        nonlocal account_error
+        final_annotation_path = get_final_annotation_path(csv_file)
+        if account_error is not None:
+            # Would be rejected like the calls before
+            unsaved[final_annotation_path] = "not annotated (stopped before)"
+            return "unsaved"
         try:
-            annotate(csv_file, batch_max_wait)
+            reason = annotate(csv_file, batch_max_wait)
         except BatchPendingError as e:
             logger.warning(f"{e} Skipping {csv_file} until next run.")
             return "pending"
         except BatchError as e:
             logger.error(f"Could not annotate {csv_file}, skipping it: {e}")
             return "failed"
+        except AnnotatorAccountError as e:
+            logger.error(
+                f"Annotation of {csv_file} stopped, not annotating the remaining "
+                f"pairwise datasets: {e}"
+            )
+            account_error = e
+            reason = f"stopped by API key or account error (HTTP {e.status_code})"
+        if reason:
+            unsaved[final_annotation_path] = reason
+            return "unsaved"
         return None
 
-    failed_submissions = set()
+    # Datasets not annotated when submitting (-> reason): not tried again
+    not_submitted = {}
     if batch_annotation:
         # Submit the batches of all datasets first, so they are processed in
         # parallel (annotates datasets whose batches have already completed)
         for csv_file in csv_files:
             if not get_final_annotation_path(csv_file).exists():
                 logger.info(f"Submitting annotation batch for {csv_file}")
-                if try_annotate(csv_file, batch_max_wait=0) == "failed":
-                    failed_submissions.add(csv_file)
+                reason = try_annotate(csv_file, batch_max_wait=0)
+                if reason in ("failed", "unsaved"):
+                    not_submitted[csv_file] = reason
     annotation_deadline = time.time() + batch_max_wait * 60
 
     for csv_file in csv_files:
         logger.info(f"Annotating {csv_file}")
         if get_final_annotation_path(csv_file).exists():
             logger.info(f"Annotation already exists for {csv_file}. Skipping...")
-        elif csv_file in failed_submissions:
-            not_annotated["failed"].append(csv_file.name)
-        else:
-            reason = try_annotate(
-                csv_file,
-                batch_max_wait=max(0.0, (annotation_deadline - time.time()) / 60),
-            )
-            if reason:
-                not_annotated[reason].append(csv_file.name)
+            continue
+        reason = not_submitted.get(csv_file) or try_annotate(
+            csv_file,
+            batch_max_wait=max(0.0, (annotation_deadline - time.time()) / 60),
+        )
+        if reason in not_annotated:
+            not_annotated[reason].append(csv_file.name)
+
+    if unsaved:
+        # Before merging: the combined dataset would lack these models
+        raise AnnotationFailedError(
+            f"Annotations of {len(unsaved)} pairwise dataset(s) are incomplete and "
+            "were not saved:\n"
+            + "\n".join(f"  - {path}: {reason}" for path, reason in unsaved.items())
+            + "\nComplete annotations and all generations were saved. Run again "
+            "once the cause is fixed (e.g. credits added): only these are "
+            f"annotated then (calls that succeeded are not repeated as long as "
+            f"{annotation_tmp_dir} is kept)."
+        )
 
     # Merge annotations
     logger.info("Merging annotations")
@@ -574,7 +681,14 @@ def run():
             position_debias=args.position_debias,
             batch_annotation=args.batch_annotation,
         )
-    except AnnotationSettingsError as e:
+    except (
+        AnnotationSettingsError,
+        AnnotationFailedError,
+        BatchSubmissionError,
+        modelgen.OpenRouterError,
+        modelgen.LiveGenerationAccountError,
+    ) as e:
+        # Messages state the problem (and fix, if known): shown without traceback
         logger.error(str(e))
         return 1
     if not_annotated["failed"]:

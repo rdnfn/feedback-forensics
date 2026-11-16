@@ -254,15 +254,15 @@ def test_rerun_with_more_output_tokens_repeats_truncated_calls(
 def test_failed_calls_are_repeated_when_resuming(
     tmp_path, mock_llm_server, monkeypatch, retry_waits, log_messages
 ):
-    """Regression: votes of failed API calls (e.g. out of credits) were cached as
-    invalid, so re-running never repeated these calls."""
+    """Regression: votes of failed API calls (e.g. request rejected by the provider)
+    were cached as invalid, so re-running never repeated these calls."""
     failing_server = mock_llm_server()
     modify_responses(
         monkeypatch,
         failing_server,
         lambda body, status, payload: (
-            402,
-            {"error": {"message": "Insufficient credits", "code": 402}},
+            400,
+            {"error": {"message": "Provider returned error", "code": 400}},
         ),
     )
     df = make_pairs_df(8, seed="f")
@@ -282,6 +282,85 @@ def test_failed_calls_are_repeated_when_resuming(
     annotate_dataset(*args, output_dir=tmp_path / "out")
     assert len(server.requests) == len(df)
     assert read_votes(tmp_path / "out") == expected_votes(df, PRINCIPLES)
+
+
+@pytest.mark.parametrize(
+    "status, message",
+    [(402, "Insufficient credits"), (401, "User not found")],
+    ids=["out_of_credits", "invalid_key"],
+)
+def test_account_error_stops_annotation_and_keeps_cached_votes(
+    tmp_path, mock_llm_server, monkeypatch, retry_waits, log_messages, status, message
+):
+    """Regression: once the credits ran out, every remaining API call failed (not
+    retried) and got invalid votes, which were saved as a complete result. The run
+    now stops at the first such error, and resuming only makes the missing calls."""
+    server = mock_llm_server()
+    num_ok = 3
+    num_responses = itertools.count(1)
+
+    def out_of_credits_after_some_calls(body, ok_status, payload):
+        if next(num_responses) <= num_ok:
+            return ok_status, payload
+        return status, {"error": {"message": message, "code": status}}
+
+    modify_responses(monkeypatch, server, out_of_credits_after_some_calls)
+    df = without_unparsable_pairs(make_pairs_df(12, seed="a"))
+    assert len(df) > num_ok + 2
+    df.to_csv(tmp_path / "data.csv", index=False)
+    args = (tmp_path / "data.csv", PRINCIPLES, MOCK_MODEL)
+
+    with pytest.raises(voting.AnnotatorAccountError, match=message) as exc_info:
+        # One call at a time: exactly one call is rejected
+        annotate_dataset(*args, output_dir=tmp_path / "out", max_concurrent_tasks=1)
+    assert exc_info.value.status_code == status
+    assert f"{len(df) - num_ok} of {len(df)} API calls" in str(exc_info.value)
+    assert "re-run with the same output directory" in str(exc_info.value)
+    assert len(server.responses) == num_ok + 1  # no further calls
+    assert retry_waits == []
+    # No results that could be mistaken for complete annotations
+    results = tmp_path / "out" / "results"
+    assert not (results / pipeline.AP_OUTPUT_FILENAME).exists()
+    assert not (results / pipeline.USAGE_SUMMARY_FILENAME).exists()
+    assert not any("Failed to generate votes" in m for _, m in log_messages)
+    assert sum("Stopping annotation" in m for _, m in log_messages) == 1
+
+    server = mock_llm_server()  # credits added
+    annotate_dataset(*args, output_dir=tmp_path / "out")
+    assert len(server.requests) == len(df) - num_ok  # votes before the error reused
+    assert read_votes(tmp_path / "out") == expected_votes(df, PRINCIPLES)
+    summary = read_summary(tmp_path / "out")
+    assert summary["num_calls"] == len(df) + 1  # incl. the rejected call
+    assert summary["num_failed_calls"] == 1
+    assert summary["this_run"]["num_failed_calls"] == 0
+
+
+def test_account_error_stops_calls_not_yet_started(
+    tmp_path, mock_llm_server, monkeypatch
+):
+    """With concurrent calls, those waiting for a slot are not started anymore."""
+    server = mock_llm_server()
+    modify_responses(
+        monkeypatch,
+        server,
+        lambda body, status, payload: (
+            402,
+            {"error": {"message": "Insufficient credits", "code": 402}},
+        ),
+    )
+    df = make_pairs_df(40, seed="b")
+    df.to_csv(tmp_path / "data.csv", index=False)
+
+    with pytest.raises(voting.AnnotatorAccountError, match="Insufficient credits"):
+        annotate_dataset(
+            tmp_path / "data.csv",
+            PRINCIPLES,
+            MOCK_MODEL,
+            output_dir=tmp_path / "out",
+            max_concurrent_tasks=4,
+        )
+    # Only calls in flight when the first one was rejected (not all 40+)
+    assert 1 <= len(server.responses) <= 8
 
 
 @pytest.mark.parametrize("position_debias", [False, True])
@@ -716,6 +795,7 @@ def test_combine_usage_summaries():
         "num_annotation_runs_without_usage": 0,
         "num_calls": 5,
         "num_failed_calls": 2,
+        "num_failed_batch_calls": 0,
         "num_truncated_calls": 0,
         "num_unfinished_calls": 0,
         "input_tokens": 50,

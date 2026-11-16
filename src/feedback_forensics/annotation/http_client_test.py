@@ -144,9 +144,25 @@ def test_errors_beyond_api_client_retries_are_retried(
 
 
 @pytest.mark.parametrize("model", MODELS)
-@pytest.mark.parametrize("status", [400, 401])
+@pytest.mark.parametrize("status", [401, 402])
+def test_account_errors_stop_annotation(llm_server, retry_waits, model, status):
+    """Calls rejected due to the API key or account (invalid key, out of credits)
+    stop the run for all providers: no retries, no invalid votes."""
+    server = llm_server(fail_attempts=1, failure=status)  # a retry would succeed
+    df = make_pairs_df(4, seed="c")
+
+    with pytest.raises(voting.AnnotatorAccountError, match=model) as exc_info:
+        annotate(df, model)
+
+    assert exc_info.value.status_code == status
+    assert retry_waits == []
+    assert server.num_attempts == server.num_failed_attempts <= len(df)
+
+
+@pytest.mark.parametrize("model", MODELS)
+@pytest.mark.parametrize("status", [400, 404])
 def test_client_errors_are_not_retried(llm_server, retry_waits, model, status):
-    """Other client errors (e.g. invalid request or API key) would fail again: no
+    """Other client errors (e.g. invalid request or model) would fail again: no
     retries, the votes become invalid."""
     server = llm_server(fail_attempts=1, failure=status)  # a retry would succeed
     df = make_pairs_df(4, seed="c")

@@ -93,6 +93,9 @@ class UsageTracker:
         self._lock = threading.Lock()
         self.num_calls = 0
         self.num_failed_calls = 0
+        # Of the failed calls: requests that failed within a batch (see
+        # `feedback_forensics.annotation.batch`)
+        self.num_failed_batch_calls = 0
         self.num_truncated_calls = 0
         # None if unknown (not logged in api_calls.jsonl, see `from_log`)
         self.num_unparsable_responses: int | None = 0
@@ -217,6 +220,8 @@ class UsageTracker:
         self.num_calls += 1
         if not entry.get("success"):
             self.num_failed_calls += 1
+            if entry.get("batch_id"):
+                self.num_failed_batch_calls += 1
         if entry.get("finish_reason") in ("length", "max_tokens"):
             self.num_truncated_calls += 1
         input_tokens = entry.get("input_tokens") or 0
@@ -265,6 +270,7 @@ class UsageTracker:
         summary = {
             "num_calls": self.num_calls,
             "num_failed_calls": self.num_failed_calls,
+            "num_failed_batch_calls": self.num_failed_batch_calls,
             "num_truncated_calls": self.num_truncated_calls,
             # Started, but without result (interrupted runs), not in num_calls
             "num_unfinished_calls": len(self.unfinished_calls),
@@ -370,6 +376,7 @@ def combine_usage_summaries(summaries: list[dict | None]) -> dict:
             for field in (
                 "num_calls",
                 "num_failed_calls",
+                "num_failed_batch_calls",
                 "num_truncated_calls",
                 "num_unfinished_calls",
                 "input_tokens",

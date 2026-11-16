@@ -776,6 +776,21 @@ def test_model_comparison_with_batch_annotation(tmp_path, fake_api, live_api, co
     ]
 
 
+def test_model_comparison_saves_annotations_if_batch_requests_were_repeated(
+    tmp_path, fake_api, live_api, compare
+):
+    """Requests that failed within a batch, but got a response via the live API,
+    are not failed calls (for which annotations are not saved)."""
+    api = fake_api(status="in_progress")
+    compare(batch_max_wait=0)
+    api.failed_ids = {r["custom_id"] for r in api.requests[:2]}
+    api.status = "completed"
+    assert compare() == {"pending": [], "failed": []}
+    assert len(live_api.requests) >= 2
+    assert "combined_ap.json" in annotation_files(tmp_path)
+    assert len(annotation_files(tmp_path)) == 3
+
+
 def test_model_comparison_continues_if_batch_of_a_dataset_fails(
     tmp_path, fake_api, live_api, compare, monkeypatch
 ):
