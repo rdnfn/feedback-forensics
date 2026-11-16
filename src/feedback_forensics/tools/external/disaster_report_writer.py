@@ -22,7 +22,7 @@ from typing import List, Dict, Tuple, Any, Optional
 from collections import defaultdict
 
 from tqdm.asyncio import tqdm
-import feedback_forensics.models
+import feedback_forensics.models.main
 
 # ========== PROMPTS (same as before, unchanged for clarity) ==========
 
@@ -260,7 +260,7 @@ class PromptCache:
 
 
 async def get_model_response(prompt: str, model_name: str):
-    model = feedback_forensics.models.get_model(model_name)
+    model = feedback_forensics.models.main.get_model(model_name)
 
     response = None
     response_content = None

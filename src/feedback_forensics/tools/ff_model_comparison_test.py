@@ -232,7 +232,7 @@ def make_icai_era_annotations(output_path, server, monkeypatch) -> None:
         save_ap(ap, path)
     shutil.rmtree(output_path / "tmp")  # as in the workflow
     monkeypatch.setattr(
-        "feedback_forensics.models.OPENROUTER_API_BASE", server.base_url
+        "feedback_forensics.models.main.OPENROUTER_API_BASE", server.base_url
     )
     monkeypatch.setenv("OPENROUTER_API_KEY", "mock-key")
     monkeypatch.setattr(

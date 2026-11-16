@@ -13,9 +13,17 @@ import argparse
 import json
 from feedback_forensics.data.operations import load_ap, save_ap, merge_ap, csv_to_ap
 from feedback_forensics.annotation import annotate_dataset, get_default_principles
+from feedback_forensics.annotation.batch import (
+    BatchError,
+    BatchPendingError,
+    BatchUnavailableError,
+)
 from feedback_forensics.annotation.pipeline import USAGE_SUMMARY_FILENAME
 from feedback_forensics.annotation.usage import combine_usage_summaries
-from feedback_forensics.tools.ff_annotate import DEFAULT_ANNOTATOR_MODEL
+from feedback_forensics.tools.ff_annotate import (
+    DEFAULT_ANNOTATOR_MODEL,
+    EXIT_CODE_BATCH_PENDING,
+)
 
 COMBINED_AP_FILENAME = "combined_ap.json"
 
@@ -174,6 +182,7 @@ def compare_models(
     batch_max_wait: float = 24 * 60,
     annotator_model: str = DEFAULT_ANNOTATOR_MODEL,
     position_debias: bool = False,
+    batch_annotation: bool = False,
 ):
     """Compare models' personalities.
 
@@ -190,8 +199,20 @@ def compare_models(
         output_path: Path to save the results.
         batch_max_wait: Minutes to wait for batches. Models with batches still
             pending afterwards are skipped (and picked up again in next run).
+            With batch_annotation, the same time is waited again for the
+            annotation batches.
         annotator_model: Model used to annotate the pairwise datasets.
         position_debias: Annotate in both response orders, only keep agreeing votes.
+        batch_annotation: Annotate via OpenRouter's batch API, at reduced price
+            (live API is used if annotator model has no batch variant). Models
+            with annotation batches still pending after batch_max_wait are
+            skipped (and picked up again in next run).
+
+    Returns:
+        Pairwise datasets (file names) not annotated in this run, by reason:
+        {"pending": [...], "failed": [...]}. 'pending': annotation batch still
+        pending, 'failed': batch annotation failed (see log). They are missing
+        in the combined dataset until annotated by a later run.
 
     Raises:
         AnnotationSettingsError: if existing annotations in the output path were
@@ -202,6 +223,13 @@ def compare_models(
     annotation_settings = get_annotation_settings(annotator_model, position_debias)
     final_annotations_dir = pathlib.Path(output_path) / "annotations"
     check_annotation_settings(final_annotations_dir, annotation_settings)
+    if batch_annotation and not annotator_model.startswith("openrouter/"):
+        # As for generation (OpenRouter models without batch variant: see annotate)
+        logger.warning(
+            f"No batch API available for annotator model {annotator_model}, "
+            "annotating via live API."
+        )
+        batch_annotation = False
 
     batch_models = modelgen.get_batch_models(model_names, output_path)
     model_names = [modelgen.strip_nonbatch_suffix(m) for m in model_names]
@@ -282,40 +310,96 @@ def compare_models(
     annotation_tmp_dir.mkdir(parents=True, exist_ok=True)
     final_annotations_dir.mkdir(parents=True, exist_ok=True)
 
-    for csv_file in pairwise_path.glob("*.csv"):
-        logger.info(f"Annotating {csv_file}")
-        tmp_output_dir = annotation_tmp_dir / csv_file.stem
-        final_annotation_path = final_annotations_dir / (csv_file.stem + "_ap.json")
+    csv_files = list(pairwise_path.glob("*.csv"))
 
-        if not final_annotation_path.exists():
+    def get_final_annotation_path(csv_file: pathlib.Path) -> pathlib.Path:
+        return final_annotations_dir / (csv_file.stem + "_ap.json")
+
+    def annotate(csv_file: pathlib.Path, batch_max_wait: float):
+        """Annotate dataset and save the annotation to the final output path."""
+        tmp_output_dir = annotation_tmp_dir / csv_file.stem
+        final_annotation_path = get_final_annotation_path(csv_file)
+        kwargs = dict(
+            datapath=csv_file,
+            principles=get_default_principles(),
+            model=annotation_settings["annotator_model"],
+            output_dir=tmp_output_dir,
+            position_debias=annotation_settings["position_debias"],
+            max_output_tokens=annotation_settings["max_output_tokens"],
+            reasoning_effort=annotation_settings["reasoning_effort"],
+        )
+        try:
             ap_path = annotate_dataset(
-                datapath=csv_file,
-                principles=get_default_principles(),
-                model=annotation_settings["annotator_model"],
-                output_dir=tmp_output_dir,
-                position_debias=annotation_settings["position_debias"],
-                max_output_tokens=annotation_settings["max_output_tokens"],
-                reasoning_effort=annotation_settings["reasoning_effort"],
+                **kwargs, batch=batch_annotation, batch_max_wait=batch_max_wait
             )
-            # Move the annotation to the final output path
-            shutil.copyfile(src=ap_path, dst=final_annotation_path)
-            with open(ap_path.parent / USAGE_SUMMARY_FILENAME) as f:
-                this_run = json.load(f)["this_run"]
-            failed = this_run["num_failed_calls"]
-            truncated = this_run["num_truncated_calls"]
-            unparsable = this_run["num_unparsable_responses"]
-            if failed or truncated or unparsable:
-                # Unlike with annotate_dataset, re-running does not repeat them
-                logger.warning(
-                    f"While annotating {csv_file}, {failed} API calls failed (no "
-                    f"response after retries), {truncated} were truncated and "
-                    f"{unparsable} had an unparsable response (votes invalid). Later "
-                    f"runs reuse its annotations: to repeat these calls, delete "
-                    f"{final_annotation_path} and re-run (other calls are not "
-                    f"repeated as long as {tmp_output_dir} is kept)."
-                )
-        else:
+        except BatchUnavailableError:
+            # Only raised once no batch of the dataset is pending anymore (e.g.
+            # submitted before the batch variant was removed)
+            logger.warning(
+                f"No batch variant available for annotator model {annotator_model}"
+                f", annotating {csv_file} via live API."
+            )
+            ap_path = annotate_dataset(**kwargs)
+        # Move the annotation to the final output path
+        shutil.copyfile(src=ap_path, dst=final_annotation_path)
+        with open(ap_path.parent / USAGE_SUMMARY_FILENAME) as f:
+            this_run = json.load(f)["this_run"]
+        failed = this_run["num_failed_calls"]
+        truncated = this_run["num_truncated_calls"]
+        unparsable = this_run["num_unparsable_responses"]
+        if failed or truncated or unparsable:
+            # Unlike with annotate_dataset, re-running does not repeat them
+            logger.warning(
+                f"While annotating {csv_file}, {failed} API calls failed (no "
+                f"response after retries), {truncated} were truncated and "
+                f"{unparsable} had an unparsable response (votes invalid). Later "
+                f"runs reuse its annotations: to repeat these calls, delete "
+                f"{final_annotation_path} and re-run (other calls are not "
+                f"repeated as long as {tmp_output_dir} is kept)."
+            )
+
+    not_annotated = {"pending": [], "failed": []}
+
+    def try_annotate(csv_file: pathlib.Path, batch_max_wait: float) -> str | None:
+        """Annotate dataset, returns reason if not annotated (see not_annotated).
+
+        Batch errors of one dataset (e.g. failed batch, or batches pending while
+        annotating without batch API) must not stop the annotation of the others.
+        """
+        try:
+            annotate(csv_file, batch_max_wait)
+        except BatchPendingError as e:
+            logger.warning(f"{e} Skipping {csv_file} until next run.")
+            return "pending"
+        except BatchError as e:
+            logger.error(f"Could not annotate {csv_file}, skipping it: {e}")
+            return "failed"
+        return None
+
+    failed_submissions = set()
+    if batch_annotation:
+        # Submit the batches of all datasets first, so they are processed in
+        # parallel (annotates datasets whose batches have already completed)
+        for csv_file in csv_files:
+            if not get_final_annotation_path(csv_file).exists():
+                logger.info(f"Submitting annotation batch for {csv_file}")
+                if try_annotate(csv_file, batch_max_wait=0) == "failed":
+                    failed_submissions.add(csv_file)
+    annotation_deadline = time.time() + batch_max_wait * 60
+
+    for csv_file in csv_files:
+        logger.info(f"Annotating {csv_file}")
+        if get_final_annotation_path(csv_file).exists():
             logger.info(f"Annotation already exists for {csv_file}. Skipping...")
+        elif csv_file in failed_submissions:
+            not_annotated["failed"].append(csv_file.name)
+        else:
+            reason = try_annotate(
+                csv_file,
+                batch_max_wait=max(0.0, (annotation_deadline - time.time()) / 60),
+            )
+            if reason:
+                not_annotated[reason].append(csv_file.name)
 
     # Merge annotations
     logger.info("Merging annotations")
@@ -328,6 +412,9 @@ def compare_models(
         for path in final_annotations_dir.glob("*.json")
         if path.name != COMBINED_AP_FILENAME
     )
+    if not ap_paths:
+        logger.warning(f"No annotations to merge yet (not annotated: {not_annotated}).")
+        return not_annotated
     ap_files = [load_ap(path) for path in ap_paths]
     usage_per_file = {
         path.name: ap["metadata"].get("annotation_usage")
@@ -362,7 +449,14 @@ def compare_models(
     save_ap(combined_ap, combined_path)
     logger.info(f"Saved combined annotation to {combined_path}")
 
-    logger.info(f"Comparison complete. Results in {output_path}")
+    if any(not_annotated.values()):
+        logger.warning(
+            f"Comparison incomplete: datasets not annotated yet ({not_annotated}) are "
+            f"missing in {combined_path}. Run again to annotate them."
+        )
+    else:
+        logger.info(f"Comparison complete. Results in {output_path}")
+    return not_annotated
 
 
 def run():
@@ -416,7 +510,19 @@ def run():
             "Minutes to wait for batch generations (used by default for new "
             "OpenRouter models, disable per model with ':nonbatch' suffix). "
             "Models with pending batches are picked up again in next run "
-            "(default: 1440)"
+            "(default: 1440). Also applies to --batch-annotation."
+        ),
+    )
+    parser.add_argument(
+        "--batch-annotation",
+        action="store_true",
+        help=(
+            "Annotate via OpenRouter's batch API, at reduced price but with results "
+            "taking up to 24 hours (live API is used if annotator model has no "
+            "batch variant). Models whose annotation batch is still pending after "
+            "--batch-max-wait are picked up again in next run: the command then "
+            f"exits with code {EXIT_CODE_BATCH_PENDING} (1 if batch annotation "
+            "failed for a model)."
         ),
     )
     parser.add_argument(
@@ -458,7 +564,7 @@ def run():
         return 1
 
     try:
-        compare_models(
+        not_annotated = compare_models(
             prompts=prompts,
             model_names=args.models,
             reference_models=args.reference_models,
@@ -466,10 +572,22 @@ def run():
             batch_max_wait=args.batch_max_wait,
             annotator_model=args.annotator_model,
             position_debias=args.position_debias,
+            batch_annotation=args.batch_annotation,
         )
     except AnnotationSettingsError as e:
         logger.error(str(e))
         return 1
+    if not_annotated["failed"]:
+        logger.error(
+            f"Batch annotation failed for {not_annotated['failed']} (see above)."
+        )
+        return 1
+    if not_annotated["pending"]:
+        logger.warning(
+            f"Annotation batches still pending for {not_annotated['pending']}. "
+            "Run this command again later to complete the comparison."
+        )
+        return EXIT_CODE_BATCH_PENDING
     logger.success(
         f"Model personality comparison data generated successfully! To see results, run\n   feedback-forensics -d {args.output_path}/annotations/combined_ap.json"
     )

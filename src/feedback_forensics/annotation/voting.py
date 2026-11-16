@@ -27,7 +27,7 @@ parameters. Differences to ICAI:
   the annotator is position-biased.
 - HTTP: all API calls of a run share one event loop and an HTTP client bound to
   it, with request timeouts and TCP keepalive (see
-  `feedback_forensics.models.create_async_http_client`).
+  `feedback_forensics.models.main.create_async_http_client`).
 - Retries: connection errors, timeouts and HTTP 409 (conflict, also retried by
   the OpenAI and Anthropic API clients) are retried like rate limits and server
   errors (ICAI only retried the latter), with the same retry budget as ICAI (see
@@ -37,10 +37,14 @@ parameters. Differences to ICAI:
 - Vote cache (resuming runs): requests without any valid vote are not cached,
   so that they are repeated when a run is resumed, and votes are only reused for
   the same generation settings (see `feedback_forensics.annotation.cache`).
+- Batch API: optionally, requests are sent via OpenRouter's batch API (see
+  `feedback_forensics.annotation.batch`).
 """
 
 import ast
 import asyncio
+import hashlib
+import json
 import random
 import re
 import time
@@ -58,6 +62,7 @@ from tqdm.asyncio import tqdm
 from feedback_forensics.annotation.cache import VoteCache, get_vote_hash
 from feedback_forensics.annotation.prompts import VOTING_PROMPT, parse_prompt
 from feedback_forensics.annotation.usage import UsageTracker
+from feedback_forensics.models.openrouter import check_batch_model
 
 INVALID_VOTE = "invalid"
 POSITION_INCONSISTENT_VOTE = "position_inconsistent"
@@ -91,6 +96,12 @@ class VotingConfig:
     # Annotate each comparison in both orders (A/B and B/A) and only keep votes
     # that agree across orders. Doubles the number of API calls.
     position_debias: bool = False
+    # Annotate via OpenRouter's batch API (at reduced price, but results may take
+    # up to 24 h; `openrouter/` models only, needs a vote cache). See
+    # `feedback_forensics.annotation.batch`.
+    batch: bool = False
+    # Minutes to wait for batches, `BatchPendingError` is raised if still pending
+    batch_max_wait: float = 24 * 60
 
     def __post_init__(self):
         # Fail early: e.g. 0 concurrent tasks would make every API call wait forever
@@ -98,6 +109,12 @@ class VotingConfig:
             value = getattr(self, name)
             if value < 1:
                 raise ValueError(f"{name} must be at least 1, got {value}")
+        if self.batch:
+            check_batch_model(self.model)
+        if self.batch_max_wait < 0:
+            raise ValueError(
+                f"batch_max_wait must not be negative, got {self.batch_max_wait}"
+            )
 
 
 @dataclass
@@ -121,6 +138,39 @@ class _VoteRequest:
     rejected: str
     flipped: bool  # True: rejected response shown as sample A
     hashes: dict[str, str]  # principle -> vote hash
+
+    @property
+    def principles(self) -> list[str]:
+        return list(self.hashes)
+
+    @property
+    def request_id(self) -> str:
+        """Hash identifying the request (comparison, principles, response order,
+        model and generation settings): its `custom_id` in a batch."""
+        content = json.dumps([self.flipped, list(self.hashes.values())])
+        return hashlib.md5(content.encode("utf-8")).hexdigest()
+
+    @property
+    def messages(self) -> list[dict]:
+        """Messages of the LLM call (OpenAI format)."""
+        return _get_messages(
+            self.preferred, self.rejected, self.principles, self.flipped
+        )
+
+
+def _get_messages(
+    preferred: str, rejected: str, principles: list[str], flipped: bool
+) -> list[dict]:
+    """Messages of the LLM call (OpenAI format) voting on a comparison."""
+    sample_a, sample_b = (rejected, preferred) if flipped else (preferred, rejected)
+    return parse_prompt(
+        prompt_str=VOTING_PROMPT,
+        prompt_kwargs=dict(
+            sample_a=sample_a,
+            sample_b=sample_b,
+            summaries=dict(enumerate(principles)),
+        ),
+    )
 
 
 def get_preferred_text(row) -> str:
@@ -162,6 +212,12 @@ def get_votes_for_principles(
             inside the event loop). Its own generation settings apply, not
             `config.max_output_tokens` and `config.reasoning_effort` (which,
             with `config.model`, still key its votes in the vote cache).
+            Not supported with `config.batch`.
+
+    Raises:
+        BatchError: with `config.batch` (e.g. `BatchPendingError` if batches are
+            still pending), or without if batches of an earlier run are pending,
+            see `feedback_forensics.annotation.batch`.
     """
     return asyncio.run(
         get_votes_for_principles_async(
@@ -186,6 +242,11 @@ async def get_votes_for_principles_async(
     """Async version of `get_votes_for_principles`."""
     if usage_tracker is None:
         usage_tracker = UsageTracker()
+    if config.batch and model is not None:
+        raise ValueError("Batch annotation is not supported with a custom `model`.")
+    if config.batch and cache_path is None:
+        # Batch results are saved to the vote cache (possibly by a later run)
+        raise ValueError("Batch annotation requires a vote cache (`cache_path`).")
 
     args = dict(
         feedback_df=feedback_df,
@@ -198,7 +259,7 @@ async def get_votes_for_principles_async(
     if model is not None or len(principles) == 0:
         return await _get_votes(**args, model=model)
 
-    from feedback_forensics.models import create_async_http_client, get_model
+    from feedback_forensics.models.main import create_async_http_client, get_model
 
     # Use an HTTP client bound to the current event loop instead of LangChain's
     # process-wide cached client: the cached client's connections break
@@ -264,9 +325,8 @@ async def _get_votes(
             shown_first=shown_first,
         )
 
-    hashed_votes = {}
-    for i, part in enumerate(principle_parts):
-        logger.info(f"Starting pass {i+1}/{len(principle_parts)}")
+    requests_per_pass = []
+    for part in principle_parts:
         requests = []
         for _, preferred, rejected in rows:
             if config.position_debias:
@@ -279,15 +339,38 @@ async def _get_votes(
                     for principle in part
                 }
                 requests.append(_VoteRequest(preferred, rejected, flipped, hashes))
+        requests_per_pass.append(requests)
 
+    # Ids of requests answered by the batch API without any valid vote
+    answered_request_ids = set()
+    if cache_path is not None:
+        batch_state_file = cache_path.with_name(cache_path.name + "_batches.json")
+    if config.batch:
+        from feedback_forensics.annotation.batch import run_batches
+
+        answered_request_ids = await run_batches(
+            requests=[r for requests in requests_per_pass for r in requests],
+            config=config,
+            vote_cache=vote_cache,
+            state_file=batch_state_file,
+            usage_tracker=usage_tracker,
+        )
+    elif cache_path is not None and batch_state_file.exists():
+        from feedback_forensics.annotation.batch import check_no_pending_batches
+
+        check_no_pending_batches(batch_state_file)
+
+    hashed_votes = {}
+    for i, requests in enumerate(requests_per_pass):
+        logger.info(f"Starting pass {i+1}/{len(principle_parts)}")
         hashed_votes.update(
             await _run_pass(
                 requests=requests,
-                principles=part,
                 model=model,
                 config=config,
                 vote_cache=vote_cache,
                 usage_tracker=usage_tracker,
+                answered_request_ids=answered_request_ids,
             )
         )
 
@@ -348,16 +431,21 @@ def combine_position_votes(vote_preferred_first, vote_rejected_first):
 
 async def _run_pass(
     requests: list[_VoteRequest],
-    principles: list[str],
     model,
     config: VotingConfig,
     vote_cache: VoteCache | None,
     usage_tracker: UsageTracker,
+    answered_request_ids: frozenset | set = frozenset(),
 ) -> dict:
     """Run all vote requests (single pass over the data), returns hash -> vote.
 
     Requests without any valid vote (failed API call, truncated or unparsable
     response) are not cached, so that they are repeated when the run is resumed.
+
+    Args:
+        answered_request_ids: Ids of requests already answered in this run (by
+            the batch API) without any valid vote: their votes are invalid, they
+            are not sent again.
     """
     cached_votes = vote_cache.get_cached_votes() if vote_cache is not None else {}
     semaphore = asyncio.Semaphore(config.max_concurrent_tasks)
@@ -365,11 +453,13 @@ async def _run_pass(
     async def process(request: _VoteRequest) -> dict:
         if all(h in cached_votes for h in request.hashes.values()):
             return {h: cached_votes[h] for h in request.hashes.values()}
+        if request.request_id in answered_request_ids:
+            return {h: INVALID_VOTE for h in request.hashes.values()}
         async with semaphore:
             vote = await get_vote_for_single_comparison(
                 preferred=request.preferred,
                 rejected=request.rejected,
-                principles=principles,
+                principles=request.principles,
                 flipped=request.flipped,
                 model=model,
                 model_name=config.model,
@@ -399,28 +489,14 @@ async def get_vote_for_single_comparison(
     model_name: str,
     usage_tracker: UsageTracker,
 ) -> dict:
-    """Get votes (relative to the preferred response) for a single comparison.
+    """Get votes (relative to the preferred response) for a single comparison,
+    with a (live) API call.
 
     Returns:
         Mapping principle text -> vote.
     """
-    if flipped:
-        sample_a, sample_b = rejected, preferred
-    else:
-        sample_a, sample_b = preferred, rejected
+    messages = _get_messages(preferred, rejected, principles, flipped)
 
-    numbered_principles = {i: v for i, v in enumerate(principles)}
-
-    messages = parse_prompt(
-        prompt_str=VOTING_PROMPT,
-        prompt_kwargs=dict(
-            sample_a=sample_a,
-            sample_b=sample_b,
-            summaries=numbered_principles,
-        ),
-    )
-
-    vote = None
     # Logged before the call: calls in flight when the run is interrupted (e.g.
     # with Ctrl-C) remain without result, but may still be billed
     call_id = usage_tracker.record_start(model_name)
@@ -438,37 +514,57 @@ async def get_vote_for_single_comparison(
         )
         # OpenAI-compatible APIs report a finish reason, Anthropic a stop reason
         metadata = response.response_metadata
-        finish_reason = metadata.get("finish_reason") or metadata.get("stop_reason")
-        if finish_reason not in COMPLETE_FINISH_REASONS:
-            logger.warning(
-                f"Vote did not finish with 'stop' reason, instead with "
-                f"'{finish_reason}' reason. "
-                "This will likely lead to invalid votes. For reasoning models, "
-                "consider increasing max output tokens or lowering reasoning effort."
-            )
-        vote = response.content
+        warn_if_incomplete(metadata.get("finish_reason") or metadata.get("stop_reason"))
+        content = response.content
+    except Exception as e:  # pylint: disable=broad-except
+        logger.error(f"Failed to generate votes: {type(e).__name__}: {e}")
+        usage_tracker.record(
+            model_name,
+            latency_s=time.monotonic() - start,
+            error=e,
+            messages=messages,
+            call_id=call_id,
+        )
+        return {principle: INVALID_VOTE for principle in principles}
+
+    return parse_vote_response(content, principles, flipped, usage_tracker)
+
+
+def warn_if_incomplete(finish_reason) -> None:
+    if finish_reason not in COMPLETE_FINISH_REASONS:
+        logger.warning(
+            f"Vote did not finish with 'stop' reason, instead with "
+            f"'{finish_reason}' reason. "
+            "This will likely lead to invalid votes. For reasoning models, "
+            "consider increasing max output tokens or lowering reasoning effort."
+        )
+
+
+def parse_vote_response(
+    content, principles: list[str], flipped: bool, usage_tracker: UsageTracker
+) -> dict:
+    """Parse the response to a vote request into votes relative to the preferred
+    response (principle text -> vote).
+
+    Args:
+        content: Response text.
+        principles: Principles of the request, in the order of the prompt.
+        flipped: Whether the rejected response was shown as sample A.
+        usage_tracker: Tracker to count unparsable responses.
+    """
+    try:
         vote = parse_individual_pref_vote(
-            vote,
-            num_principles=len(numbered_principles),
+            content,
+            num_principles=len(principles),
             valid_values=VALID_VOTE_VALUES,
         )
-        if all(v == INVALID_VOTE for v in vote.values()):
-            usage_tracker.record_unparsable_response()
     except Exception as e:  # pylint: disable=broad-except
-        if vote is None:
-            logger.error(f"Failed to generate votes: {type(e).__name__}: {e}")
-            usage_tracker.record(
-                model_name,
-                latency_s=time.monotonic() - start,
-                error=e,
-                messages=messages,
-                call_id=call_id,
-            )
-        else:
-            logger.error(f"Failed to parse votes: {vote} ({e})")
-            usage_tracker.record_unparsable_response()
-        vote = {i: INVALID_VOTE for i in range(len(numbered_principles))}
+        logger.error(f"Failed to parse votes: {content} ({e})")
+        vote = {i: INVALID_VOTE for i in range(len(principles))}
+    if all(v == INVALID_VOTE for v in vote.values()):
+        usage_tracker.record_unparsable_response()
 
+    numbered_principles = dict(enumerate(principles))
     vote = {
         numbered_principles[k]: v for k, v in vote.items() if k in numbered_principles
     }

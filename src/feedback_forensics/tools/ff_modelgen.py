@@ -2,10 +2,10 @@
 
 import pathlib
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 import io
 from tqdm import tqdm
-import feedback_forensics.models
+import feedback_forensics.models.main
 from feedback_forensics.data.ap_format import hash_string
 import asyncio
 import aiofiles
@@ -17,11 +17,10 @@ import concurrent.futures
 import pandas as pd
 import requests
 from loguru import logger
+from feedback_forensics.models import openrouter
+from feedback_forensics.models.openrouter import OpenRouterError
 
-OPENROUTER_API_URL = "https://openrouter.ai/api/v1"
-BATCH_SUFFIX = ":batch"  # OpenRouter suffix of batch model variants
 NONBATCH_SUFFIX = ":nonbatch"  # Our suffix to disable batch API for model
-BATCH_NOT_FOUND_GRACE = 600  # Seconds after submission to treat 404 as pending
 
 
 FAILED_FINISH_REASONS = {
@@ -113,7 +112,7 @@ def _get_provider_info(generation_id: str | None) -> dict:
         for attempt in range(5):
             time.sleep(2**attempt)  # 1s, 2s, 4s, ...
             try:
-                data = _openrouter_request(
+                data = openrouter.openrouter_request(
                     "GET", "/generation", params={"id": generation_id}
                 )["data"]
             except (OpenRouterError, requests.RequestException) as e:
@@ -160,7 +159,7 @@ def run_model_on_prompts(prompts: list[str], model_name: str, output_path: str):
     # Get already processed prompt IDs
     processed_ids = get_processed_ids()
 
-    model = feedback_forensics.models.get_model(model_name, max_tokens=16384)
+    model = feedback_forensics.models.main.get_model(model_name, max_tokens=16384)
 
     # Open file in append mode to continue where we left off
     with open(output_file, "a") as f:
@@ -256,7 +255,7 @@ async def run_model_on_prompts_async(
 
     # Create file lock to prevent race conditions
     file_lock = asyncio.Lock()
-    model = feedback_forensics.models.get_model(
+    model = feedback_forensics.models.main.get_model(
         model_name, temp=TEMPERATURE, max_tokens=max_tokens
     )
 
@@ -411,9 +410,9 @@ def get_batch_models(model_names: List[str], output_path: str) -> List[str]:
 
     if not candidates:
         return batch_models
-    available = {m["id"] for m in _openrouter_request("GET", "/models")["data"]}
+    with_batch_variant = openrouter.get_models_with_batch_variant(candidates)
     for model_name in candidates:
-        if model_name.split("/", 1)[1] + BATCH_SUFFIX in available:
+        if model_name in with_batch_variant:
             batch_models.append(model_name)
         else:
             logger.info(f"No batch variant available for {model_name}, using live API.")
@@ -450,99 +449,32 @@ def _ensure_trailing_newline(file: pathlib.Path):
                 f.write(b"\n")
 
 
-def _write_json_atomic(path: pathlib.Path, data: dict):
-    """Write JSON so that path never contains a partially written file."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = path.with_suffix(path.suffix + ".tmp")
-    with open(tmp_path, "w") as f:
-        json.dump(data, f, indent=2)
-        f.flush()
-        os.fsync(f.fileno())
-    os.replace(tmp_path, path)
-
-
-def _now() -> datetime:
-    return datetime.now(timezone.utc)
-
-
-def _parse_time(value: str) -> datetime:
-    """Parse ISO time (naive values are interpreted as local time)."""
-    return datetime.fromisoformat(value).astimezone(timezone.utc)
-
-
-class OpenRouterError(RuntimeError):
-    def __init__(self, status_code: int, text: str):
-        super().__init__(f"OpenRouter batch API error {status_code}: {text}")
-        self.status_code = status_code
-
-
-def _openrouter_request(method: str, path: str, **kwargs) -> dict:
-    """Send request to OpenRouter API, retrying on rate limits and server errors.
-
-    Non-GET requests are only retried on rate limits (429), since other errors
-    (5xx, timeouts) are ambiguous: the request may have been processed, and
-    retrying could e.g. submit (and pay for) a batch twice.
-    """
-    headers = {
-        "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
-        **feedback_forensics.models.OPENROUTER_HEADERS,
-    }
-    retry_all = method == "GET"
-    for attempt in range(5):
-        last_attempt = attempt == 4
-        try:
-            response = requests.request(
-                method,
-                OPENROUTER_API_URL + path,
-                headers=headers,
-                timeout=300,
-                **kwargs,
-            )
-        except requests.RequestException as e:
-            if not retry_all or last_attempt:
-                raise
-            logger.warning(f"OpenRouter request failed ({e}), retrying...")
-            time.sleep(60)
-            continue
-        retryable = response.status_code == 429 or (
-            retry_all and response.status_code >= 500
-        )
-        if not retryable or last_attempt:
-            break
-        logger.warning(f"OpenRouter returned {response.status_code}, retrying...")
-        time.sleep(60)
-    if not response.ok:
-        raise OpenRouterError(response.status_code, response.text)
-    return response.json()
-
-
-def _find_submitted_batch(state: dict) -> str | None:
-    """Find id of batch submitted for state whose submission response was lost.
+def _recover_batch(state: dict, state_file: pathlib.Path, prompts: List[str]) -> bool:
+    """Find the batch of a state whose submission was interrupted before its batch
+    id was saved (see openrouter.recover_batch()).
 
     Returns:
-        Batch id, or None if no such batch exists on OpenRouter.
+        False if it is not known yet whether the batch was created. Otherwise True:
+        the batch id is saved to the state, or the state is removed (not created).
     """
-    created_after = int(_parse_time(state["submitted_at"]).timestamp()) - 300
-    model = state["model"].split("/", 1)[1]
-    matches, after = [], None
-    while True:
-        params = {"limit": 100, "created_after": created_after}
-        if after:
-            params["after"] = after
-        page = _openrouter_request("GET", "/batches", params=params)
-        for batch in page.get("data") or []:
-            total = (batch.get("request_counts") or {}).get("total")
-            if batch.get("model") == model and total in (None, state["num_requests"]):
-                matches.append(batch["id"])
-        if not page.get("has_more") or not page.get("last_id"):
-            break
-        after = page["last_id"]
-    if len(matches) > 1:
-        logger.warning(
-            f"Found multiple batches {matches} for {state['model']}, using "
-            f"{matches[-1]}. Others contain duplicate requests and can be ignored."
+    model_name = state["model"]
+    resolved, batch_id = openrouter.recover_batch(
+        model_name, state, custom_ids=[hash_string(p) for p in prompts]
+    )
+    if batch_id:
+        state["batch_id"] = batch_id
+        openrouter.write_json_atomic(state_file, state)
+        logger.info(f"Recovered batch {batch_id} for {model_name}.")
+    elif resolved:
+        state_file.unlink()
+        logger.info(f"No batch found for {model_name}, to be submitted again.")
+    else:
+        openrouter.write_json_atomic(state_file, state)
+        logger.info(
+            f"Not known yet whether a batch was created for {model_name} (batches "
+            "that may be it have no results yet)."
         )
-    return matches[-1] if matches else None
+    return resolved
 
 
 def submit_batch(
@@ -573,13 +505,8 @@ def submit_batch(
             f"Previous batch submission for {model_name} was interrupted, "
             "checking whether batch was created."
         )
-        batch_id = _find_submitted_batch(state)
-        if batch_id:
-            state["batch_id"] = batch_id
-            _write_json_atomic(state_file, state)
-            logger.info(f"Recovered batch {batch_id} for {model_name}.")
+        if not _recover_batch(state, state_file, prompts) or state_file.exists():
             return
-        logger.info(f"No batch found for {model_name}, submitting again.")
 
     processed_ids = _get_processed_ids(output_file)
     requests_list = []
@@ -589,7 +516,7 @@ def submit_batch(
             requests_list.append(
                 {
                     "custom_id": prompt_id,
-                    # Same parameters as feedback_forensics.models.get_model() in live mode
+                    # Same parameters as feedback_forensics.models.main.get_model() in live mode
                     "body": {
                         "messages": [{"role": "user", "content": prompt}],
                         "max_tokens": max_tokens,
@@ -604,40 +531,14 @@ def submit_batch(
         state_file.unlink(missing_ok=True)
         return
 
-    assert model_name.startswith(
-        "openrouter/"
-    ), f"Batch mode only supported for OpenRouter models, got {model_name}"
-
-    # Save intent first: if response gets lost (crash, timeout, 5xx), next run
-    # finds the batch via OpenRouter's batch list instead of submitting again.
-    state = {
-        "batch_id": None,
-        "model": model_name,
-        "num_requests": len(requests_list),
-        "max_tokens": max_tokens,
-        "submitted_at": _now().isoformat(),
-    }
-    _write_json_atomic(state_file, state)
-
-    # Note: OpenRouter requires 'requests' to be the last key
-    try:
-        batch = _openrouter_request(
-            "POST",
-            "/batches",
-            json={
-                "endpoint": "/v1/chat/completions",
-                "model": model_name.split("/", 1)[1],
-                "requests": requests_list,
-            },
-        )
-    except OpenRouterError as e:
-        if e.status_code < 500:
-            # Definitely rejected (not created), safe to resubmit later
-            state_file.unlink()
-        raise
-
-    state["batch_id"] = batch["id"]
-    _write_json_atomic(state_file, state)
+    state = {"model": model_name, "max_tokens": max_tokens}
+    batch = openrouter.submit_batch(
+        model_name,
+        requests_list,
+        entry=state,
+        save=lambda: openrouter.write_json_atomic(state_file, state),
+        discard=state_file.unlink,
+    )
     logger.info(
         f"Submitted batch {batch['id']} with {len(requests_list)} prompts for {model_name}"
     )
@@ -647,10 +548,9 @@ def _parse_batch_result(
     result: dict, prompts_by_id: dict, model_name: str, batch: dict, state: dict
 ):
     """Convert successful batch result to generation record (None if failed)."""
-    response = result.get("response")
-    if result.get("error") or not response or response.get("status_code") != 200:
+    body = openrouter.get_result_body(result)
+    if body is None:
         return None
-    body = response["body"]
     message = body["choices"][0]["message"]
     return {
         "prompt_id": result["custom_id"],
@@ -658,7 +558,7 @@ def _parse_batch_result(
         "response": message["content"] or "",
         "full_response": body,
         "model": model_name,
-        "timestamp": _now().isoformat(),
+        "timestamp": openrouter.now().isoformat(),
         "batch_id": batch["id"],
         "failure": get_failure(message.get("content"), body),
         "usage": get_usage(body),
@@ -699,37 +599,23 @@ def collect_batch(
 
     with open(state_file) as f:
         state = json.load(f)
-    batch_id = state["batch_id"]
-    assert batch_id, f"Batch id unknown for {model_name}, run submit_batch() first."
-    submitted_at = _parse_time(state["submitted_at"])
-
     while True:
-        try:
-            batch = _openrouter_request("GET", f"/batches/{batch_id}")
-            status = batch["status"]
-        except OpenRouterError as e:
-            age = (_now() - submitted_at).total_seconds()
-            if e.status_code == 404 and age <= BATCH_NOT_FOUND_GRACE:
-                # Guard against newly submitted batches briefly not being found
-                batch, status = {}, "not_found_yet"
-            elif e.status_code == 410:
-                # Results deleted by OpenRouter (after 30 days)
-                logger.error(
-                    f"Results of batch {batch_id} for {model_name} expired on "
-                    "OpenRouter. Missing prompts will be generated via live API."
-                )
-                state_file.unlink()
-                return True
-            else:
-                raise
-        if status in ("failed", "expired", "cancelled"):
-            break
-        if status == "completed" and batch.get("results") is not None:
+        if not state["batch_id"] and not _recover_batch(state, state_file, prompts):
+            # Submission was interrupted, not known yet whether batch was created
+            batch, status = None, "unknown"
+        elif not state_file.exists():
+            return False  # Batch was not created: to be submitted again
+        else:
+            batch, status = openrouter.poll_batch(
+                state["batch_id"], state["submitted_at"]
+            )
+        if batch is not None:
             break
         if time.time() + poll_interval > deadline:
-            logger.info(f"Batch {batch_id} for {model_name} still {status}.")
+            logger.info(f"Batch for {model_name} still {status}.")
             return False
         time.sleep(poll_interval)
+    batch_id = batch["id"]
 
     # Save results (also for expired/cancelled batches, which may have partial results)
     prompts_by_id = {hash_string(p): p for p in prompts}
@@ -755,7 +641,9 @@ def collect_batch(
 
     if unparsed:
         unparsed_file = state_file.parent / "unparsed" / f"{batch_id}.json"
-        _write_json_atomic(unparsed_file, {"model": model_name, "results": unparsed})
+        openrouter.write_json_atomic(
+            unparsed_file, {"model": model_name, "results": unparsed}
+        )
         logger.warning(f"Saved {len(unparsed)} unparsed results to {unparsed_file}")
 
     output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -772,10 +660,11 @@ def collect_batch(
         f"({sum(bool(r['failure']) for r in records)} failed generations), "
         f"{num_failed} failed requests. Cost: {(batch.get('usage') or {}).get('cost')}"
     )
-    if status == "failed":
-        # E.g. batch variant listed by OpenRouter, but deprecated by provider
+    if status in ("failed", "gone"):
+        # E.g. batch variant listed by OpenRouter, but deprecated by provider, or
+        # results deleted by OpenRouter (after 30 days)
         logger.error(
-            f"Batch {batch_id} for {model_name} failed: {batch.get('error')}. "
+            f"Batch {batch_id} for {model_name} {status}: {batch.get('error')}. "
             "Falling back to live API for missing prompts."
         )
         return True

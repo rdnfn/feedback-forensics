@@ -13,7 +13,7 @@ still have billed them.
 
 Cost:
 - `cost_usd`: cost as reported by the provider. OpenRouter reports it (requested
-  via `usage: {include: true}`, see `feedback_forensics.models`), other providers
+  via `usage: {include: true}`, see `feedback_forensics.models.main`), other providers
   do not (null). Note that providers sometimes report a cost of 0 (e.g. free
   promotions), hence also:
 - `list_price_cost_usd` (summary only): tokens x OpenRouter's public list price
@@ -37,7 +37,21 @@ OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models"
 
 
 def _extract_usage(response: Any) -> dict:
-    """Extract token usage and cost from a LangChain chat model response."""
+    """Extract token usage and cost from a LangChain chat model response, or from
+    a chat completion of the OpenRouter batch API (dict)."""
+    if isinstance(response, dict):
+        raw_usage = response.get("usage") or {}
+        cost = raw_usage.get("cost")
+        return {
+            "input_tokens": raw_usage.get("prompt_tokens"),
+            "output_tokens": raw_usage.get("completion_tokens"),
+            "reasoning_tokens": (raw_usage.get("completion_tokens_details") or {}).get(
+                "reasoning_tokens"
+            ),
+            "cost_usd": float(cost) if cost is not None else None,
+            "finish_reason": (response.get("choices") or [{}])[0].get("finish_reason"),
+            "provider_model": response.get("model"),
+        }
     usage_metadata = getattr(response, "usage_metadata", None) or {}
     response_metadata = getattr(response, "response_metadata", None) or {}
     # OpenAI-compatible APIs (incl. OpenRouter) use "token_usage",
@@ -120,14 +134,28 @@ class UsageTracker:
                 tracker._add(entry)
         return tracker
 
-    def record_start(self, model: str) -> str:
+    def record_start(self, model: str, call_id: str | None = None, **extra) -> str:
         """Record the start of an API call, returns its id (pass it to `record`).
 
-        Calls without a result were in flight when the run was interrupted: they
-        are counted as unfinished, as the provider may have billed them.
+        Calls without a result were in flight when the run was interrupted (or
+        are part of a pending batch): they are counted as unfinished, as the
+        provider may have billed them.
+
+        Args:
+            call_id: Id of the call (default: random), e.g. to record its result
+                in a later run.
         """
-        call_id = uuid.uuid4().hex
-        self._log({"time": _now(), "model": model, "call_id": call_id, "started": True})
+        if call_id is None:
+            call_id = uuid.uuid4().hex
+        self._log(
+            {
+                "time": _now(),
+                "model": model,
+                "call_id": call_id,
+                "started": True,
+                **extra,
+            }
+        )
         return call_id
 
     def record(
@@ -141,7 +169,8 @@ class UsageTracker:
         **extra,
     ) -> dict:
         """Record the result of a single API call (successful if `response` given,
-        else failed). `call_id`: from `record_start`, if the start was recorded."""
+        else failed). `call_id`: from `record_start`, if the start was recorded.
+        `response`: LangChain message, or chat completion (dict) of a batch."""
         entry = {
             "time": _now(),
             "model": model,
@@ -157,7 +186,13 @@ class UsageTracker:
         entry.update(extra)
         if self.log_content:
             entry["request_messages"] = messages
-            if response is not None:
+            if isinstance(response, dict):
+                message = (response.get("choices") or [{}])[0].get("message") or {}
+                entry["response_text"] = message.get("content")
+                entry["response_metadata"] = {
+                    k: v for k, v in response.items() if k != "choices"
+                }
+            elif response is not None:
                 entry["response_text"] = getattr(response, "content", None)
                 entry["response_metadata"] = getattr(
                     response, "response_metadata", None
@@ -195,6 +230,25 @@ class UsageTracker:
         if entry.get("cost_usd") is not None:
             self.num_calls_with_cost += 1
             self.cost_usd += entry["cost_usd"]
+
+    def get_recorded_call_ids(self, batch_id: str) -> set[str]:
+        """Ids of the calls of a batch whose result is in the log file (also of
+        earlier runs). Empty without log file."""
+        call_ids = set()
+        if self.log_path is None or not self.log_path.exists():
+            return call_ids
+        with self._lock:
+            with open(self.log_path, "r", encoding="utf-8", errors="replace") as f:
+                for line in f:
+                    if batch_id not in line:
+                        continue
+                    try:
+                        entry = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if entry.get("batch_id") == batch_id and not entry.get("started"):
+                        call_ids.add(entry.get("call_id"))
+        return call_ids
 
     def record_unparsable_response(self) -> None:
         with self._lock:
