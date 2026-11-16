@@ -102,12 +102,17 @@ def test_get_batch_models(tmp_path, fake_api):
     modelgen.submit_batch(PROMPTS, MODEL, tmp_path)
     output_file, _ = modelgen._get_batch_paths(tmp_path, MODEL)
     output_file.parent.mkdir(parents=True)
-    output_file.write_text("")
+    output_file.write_text(json.dumps({"prompt_id": hash_string(PROMPTS[0])}) + "\n")
     assert modelgen.get_batch_models(models, tmp_path) == [MODEL]
 
     # existing model with missing prompts uses live API
     modelgen._get_batch_paths(tmp_path, MODEL)[1].unlink()
     assert modelgen.get_batch_models(models, tmp_path) == []
+
+    # a file without generations (as formerly left by a failed batch) is no
+    # existing model: batch API, not live API at full price
+    output_file.write_text("")
+    assert modelgen.get_batch_models(models, tmp_path) == [MODEL]
 
 
 def test_batch_roundtrip(tmp_path, fake_api):
@@ -191,7 +196,12 @@ def test_failed_batch_falls_back_to_live(tmp_path, fake_api):
     modelgen.submit_batch(PROMPTS, MODEL, tmp_path)
     # done (no batch pending), so caller generates missing prompts via live API
     assert modelgen.collect_batch(PROMPTS, MODEL, tmp_path, deadline=0)
-    assert not modelgen._get_batch_paths(tmp_path, MODEL)[1].exists()
+    output_file, state_file = modelgen._get_batch_paths(tmp_path, MODEL)
+    assert not state_file.exists()
+    # Regression: an empty generations file was created, so that the next run
+    # took the model for an existing one (live API instead of a new batch)
+    assert not output_file.exists()
+    assert modelgen.get_batch_models([MODEL], tmp_path) == [MODEL]
 
 
 def test_compare_models_skips_pending_batch(tmp_path, fake_api, monkeypatch):
@@ -833,6 +843,113 @@ def test_live_errors_are_legible_and_do_not_abort(monkeypatch, tmp_path, capsys)
     assert "$409.73 used of $250.00 limit" in log
     assert "To fix: raise or remove the limit" in log
     assert "ValueError: something else" in log
+
+
+def _account_error(status_code: int, message: str) -> Exception:
+    """Error as raised by the API client of a live generation."""
+
+    class APIError(Exception):
+        class response:
+            text = json.dumps({"error": {"message": message, "code": status_code}})
+
+    APIError.status_code = status_code
+    return APIError(f"Error code: {status_code} - {message}")
+
+
+@pytest.mark.parametrize(
+    "status_code, message, fix",
+    [
+        (402, "Insufficient credits", "add credits"),
+        (
+            402,
+            "This request requires more credits, or fewer max_tokens. You requested "
+            "up to 10000 tokens, but can only afford 8534.",
+            "add credits",
+        ),
+        (401, "User not found", "set OPENROUTER_API_KEY to a valid key"),
+    ],
+    ids=["no_credits", "key_limit", "invalid_key"],
+)
+def test_live_account_error_stops_generation(
+    monkeypatch, tmp_path, status_code, message, fix
+):
+    """Regression: out of credits, every remaining prompt was still tried (and
+    failed), and the run went on. Generations completed before are kept."""
+    prompts = [f"prompt {i}" for i in range(20)]
+    num_ok = 3
+    calls = []
+
+    class Model:
+        def invoke(self, messages):
+            calls.append(messages[0]["content"])
+            if len(calls) > num_ok:
+                raise _account_error(status_code, message)
+            return AIMessage(content="answer")
+
+    monkeypatch.setattr(feedback_forensics.models, "get_model", lambda *a, **k: Model())
+    monkeypatch.setattr(modelgen, "_get_provider_info", lambda *a: {"provider": None})
+    model = "openrouter/fake/model"
+
+    with pytest.raises(modelgen.LiveGenerationAccountError) as exc_info:
+        asyncio.run(
+            modelgen.run_model_on_prompts_async(
+                prompts, model, str(tmp_path), max_concurrent=1
+            )
+        )
+    assert len(calls) == num_ok + 1  # no further prompts started
+    for part in (message, f"To fix: {fix}", f"{num_ok} generations of this run"):
+        assert part in str(exc_info.value)
+    assert f"{len(prompts) - num_ok - 1} prompts were not started" in str(
+        exc_info.value
+    )
+    output_file, _ = modelgen._get_batch_paths(tmp_path, model)
+    records = [json.loads(line) for line in output_file.read_text().splitlines()]
+    assert [r["prompt"] for r in records] == prompts[:num_ok]
+
+
+def test_live_account_error_fails_run_before_annotation(
+    tmp_path, fake_api, monkeypatch
+):
+    """Like a rejected batch submission: generations are kept and batches still
+    collected, but no further live generation, and no annotation (it would run on
+    incomplete generations, and likely be rejected too)."""
+    fake_api(status="completed")
+    modelgen.submit_batch(PROMPTS, MODEL, tmp_path)  # pending from previous run
+    live_calls = []
+
+    async def out_of_credits(prompts, model_name, output_path, max_concurrent):
+        live_calls.append(model_name)
+        raise modelgen.LiveGenerationAccountError("Insufficient credits")
+
+    def no_annotation(*args, **kwargs):
+        raise AssertionError("Stage 2 must not be reached")
+
+    monkeypatch.setattr(modelgen, "run_model_on_prompts_async", out_of_credits)
+    monkeypatch.setattr(model_comparison, "create_pairwise_datasets", no_annotation)
+
+    ref = "openrouter/openai/gpt-4o-2024-11-20"  # no batch variant in fake API
+    live_model = "openrouter/openai/gpt-6.1-sol"
+    with pytest.raises(
+        modelgen.LiveGenerationAccountError, match="Insufficient credits"
+    ):
+        model_comparison.compare_models(
+            PROMPTS,
+            [ref, live_model + ":nonbatch", MODEL],
+            [ref],
+            output_path=tmp_path,
+        )
+
+    assert live_calls == [ref]  # no second pass, no other models
+    assert len(_read_generations(tmp_path)) == 3  # pending batch still collected
+    assert modelgen.get_pending_batch_models(tmp_path) == []
+
+    # CLI: exit code 1 (workflow saves partial results to 'wip'), no traceback
+    monkeypatch.setattr(
+        "sys.argv",
+        ["ff-model-comparison", "-p", *PROMPTS, "-o", str(tmp_path)]
+        + ["-m", ref, "-r", ref],
+    )
+    assert model_comparison.run() == 1
 
 
 def test_cli_shows_account_error_without_traceback(monkeypatch, tmp_path):
