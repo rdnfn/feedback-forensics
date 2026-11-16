@@ -229,6 +229,48 @@ def test_compare_models_skips_pending_batch(tmp_path, fake_api, monkeypatch):
     assert pairwise_models == [ref, live_model]
 
 
+@pytest.mark.parametrize("status_code", [403, 502])
+def test_failed_submission_does_not_block_collection(
+    tmp_path, fake_api, monkeypatch, status_code
+):
+    """E.g. API key spend limit reached: other pending batches still collected."""
+    api = fake_api(status="completed")
+    modelgen.submit_batch(PROMPTS, MODEL, tmp_path)  # pending from previous run
+    new_model = "openrouter/openai/gpt-6.1-sol"
+
+    def reject_submissions(method, path, **kwargs):
+        if path == "/models":
+            return {
+                "data": [
+                    {"id": "openai/gpt-6-sol:batch"},
+                    {"id": "openai/gpt-6.1-sol:batch"},
+                ]
+            }
+        if method == "POST":
+            raise modelgen.OpenRouterError(status_code, "Key limit exceeded")
+        return api(method, path, **kwargs)
+
+    live_calls = []
+
+    async def fake_live(prompts, model_name, output_path, max_concurrent):
+        live_calls.append(model_name)
+
+    monkeypatch.setattr(modelgen, "_openrouter_request", reject_submissions)
+    monkeypatch.setattr(modelgen, "run_model_on_prompts_async", fake_live)
+
+    ref = "openrouter/openai/gpt-4o-2024-11-20"  # no batch variant in fake API
+    with pytest.raises(model_comparison.BatchSubmissionError, match="gpt-6.1-sol"):
+        model_comparison.compare_models(
+            PROMPTS, [ref, MODEL, new_model], [ref], output_path=tmp_path
+        )
+
+    assert len(_read_generations(tmp_path)) == 3  # pending batch collected
+    assert new_model not in live_calls  # not generated at full price instead
+    # rejected (4xx): resubmitted next run; maybe created (5xx): recovered next run
+    expected_pending = [] if status_code < 500 else [new_model]
+    assert modelgen.get_pending_batch_models(tmp_path) == expected_pending
+
+
 def test_new_batch_not_found_yet_is_pending(tmp_path, fake_api, monkeypatch):
     """OpenRouter briefly returns 404 for newly submitted batches."""
     api = fake_api()

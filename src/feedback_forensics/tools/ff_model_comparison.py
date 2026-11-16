@@ -6,6 +6,7 @@ import asyncio
 import pathlib
 import time
 import pandas as pd
+import requests
 import shutil
 import feedback_forensics.tools.ff_modelgen as modelgen
 from loguru import logger
@@ -18,6 +19,10 @@ from feedback_forensics.annotation.usage import combine_usage_summaries
 from feedback_forensics.tools.ff_annotate import DEFAULT_ANNOTATOR_MODEL
 
 COMBINED_AP_FILENAME = "combined_ap.json"
+
+
+class BatchSubmissionError(RuntimeError):
+    """Batch of at least one model could not be submitted (others were collected)."""
 
 
 def get_annotation_settings(annotator_model: str, position_debias: bool) -> dict:
@@ -225,14 +230,25 @@ def compare_models(
     ### STAGE 1: Generation ###
     logger.info(f"Stage 1: Creating generations for {model_names}")
 
-    # Submit batches first, so they are processed while live generations run
+    # Submit batches first, so they are processed while live generations run.
+    # A failed submission (e.g. API key spend limit reached) must not prevent
+    # collecting the other (already paid) batches, so run only fails after these
+    # are collected.
     deadline = time.time() + batch_max_wait * 60
+    failed_submissions = {}
     for model_name in batch_models:
-        modelgen.submit_batch(prompts, model_name, output_path)
+        try:
+            modelgen.submit_batch(prompts, model_name, output_path)
+        except (modelgen.OpenRouterError, requests.RequestException) as e:
+            logger.error(f"Could not submit batch for {model_name}: {e}")
+            failed_submissions[model_name] = e
 
     # Create generations for each model
     pending_models = []
     for model_name in model_names:
+        if model_name in failed_submissions:
+            # (may have state file without batch id, recovered by next run)
+            continue
         if model_name in batch_models and not modelgen.collect_batch(
             prompts, model_name, output_path, deadline=deadline
         ):
@@ -254,6 +270,14 @@ def compare_models(
         if model_name not in model_names:
             logger.warning(f"Collecting batch of model {model_name} not in models.")
             modelgen.collect_batch(prompts, model_name, output_path, deadline=deadline)
+
+    # Fail before annotation, which would likely fail for the same reason
+    if failed_submissions:
+        raise BatchSubmissionError(
+            f"Batch submission failed for {list(failed_submissions)} "
+            f"({'; '.join(str(e) for e in failed_submissions.values())}). "
+            "Other generations were saved, run again once the cause is fixed."
+        )
 
     if pending_models:
         logger.warning(
