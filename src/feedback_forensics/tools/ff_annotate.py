@@ -5,7 +5,7 @@ import json
 
 from loguru import logger
 
-from feedback_forensics.annotation import annotate_dataset
+from feedback_forensics.annotation import AnnotatorAccountError, annotate_dataset
 from feedback_forensics.annotation.principles import get_default_principles
 from feedback_forensics.models import check_model_settings
 
@@ -156,17 +156,22 @@ def run(argv: list[str] | None = None) -> int:
         logger.error("No principles to annotate with. Set --principles(-version).")
         return 1
 
-    annotate_dataset(
-        datapath=args.datapath,
-        principles=principles,
-        model=args.model,
-        output_dir=args.output_dir,
-        position_debias=args.position_debias,
-        max_concurrent_tasks=args.max_concurrent,
-        max_output_tokens=args.max_output_tokens,
-        reasoning_effort=args.reasoning_effort,
-        log_api_calls=args.log_api_calls,
-    )
+    try:
+        annotate_dataset(
+            datapath=args.datapath,
+            principles=principles,
+            model=args.model,
+            output_dir=args.output_dir,
+            position_debias=args.position_debias,
+            max_concurrent_tasks=args.max_concurrent,
+            max_output_tokens=args.max_output_tokens,
+            reasoning_effort=args.reasoning_effort,
+            log_api_calls=args.log_api_calls,
+        )
+    except AnnotatorAccountError as e:
+        # Message states the problem and how to continue: shown without traceback
+        logger.error(str(e))
+        return 1
     return 0
 
 

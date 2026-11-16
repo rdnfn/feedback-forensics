@@ -96,6 +96,16 @@ def get_usage(full_response: dict) -> dict:
 
 TEMPERATURE = 0.0  # Used for all generations (live and batch)
 
+# HTTP status codes of requests rejected due to the API key or account, not the
+# request: unauthorized (invalid key) and payment required (no credits left, or
+# spending limit of the key reached). All further requests would be rejected too.
+ACCOUNT_ERROR_STATUS_CODES = (401, 402)
+
+
+class LiveGenerationAccountError(RuntimeError):
+    """Live generation stopped: the API rejected the API key or account (see
+    `ACCOUNT_ERROR_STATUS_CODES`). Generations completed before are saved."""
+
 
 def _generation_params(api: str, max_tokens: int | None) -> dict:
     """Parameters a generation was created with (saved with each record)."""
@@ -210,6 +220,13 @@ async def run_model_on_prompts_async(
         output_path: Directory to save results
         max_concurrent: Maximum number of concurrent tasks
 
+    Raises:
+        LiveGenerationAccountError: if the API rejected the API key or account
+            (HTTP 401 or 402, e.g. out of credits). No further prompts are
+            started, as they would fail too. Generations already completed (and
+            those in flight) are saved first. Prompts failing with other errors
+            are skipped (not saved, retried on next run).
+
     Example:
 
     ```python
@@ -236,6 +253,8 @@ async def run_model_on_prompts_async(
     completed = 0
     skipped = 0
     errors = {}  # error message -> number of prompts failed with it
+    account_error = None  # message of first API key or account error
+    num_not_started = 0  # prompts not started due to account error
 
     # Get already processed prompt IDs
     processed_ids = set()
@@ -265,12 +284,17 @@ async def run_model_on_prompts_async(
     thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=max_concurrent)
 
     async def process_prompt(prompt, index):
-        nonlocal completed
+        nonlocal completed, account_error, num_not_started
         prompt_id = hash_string(prompt)
 
         # Skip if already processed
         if prompt_id in processed_ids:
             return None
+
+        if account_error is not None:
+            # Would be rejected like the prompts before
+            num_not_started += 1
+            return {"index": index, "prompt_id": prompt_id, "success": False}
 
         try:
             # Create message
@@ -325,11 +349,19 @@ async def run_model_on_prompts_async(
             }
 
         except Exception as e:
-            # Not aborting: other prompts (and other models) may still succeed.
+            # Not aborting: other prompts (and other models) may still succeed,
+            # except after API key or account errors (see below).
             # Each distinct error is only shown once (e.g. key limit hits all prompts)
             message = _describe_live_error(e, model_name)
             errors[message] = errors.get(message, 0) + 1
-            if errors[message] == 1:
+            if getattr(e, "status_code", None) in ACCOUNT_ERROR_STATUS_CODES:
+                if account_error is None:
+                    account_error = message
+                    logger.error(
+                        f"Generation failed for {model_name} on prompt "
+                        f"{prompt_id[:8]}, not starting further prompts: {message}"
+                    )
+            elif errors[message] == 1:
                 logger.error(
                     f"Generation failed for {model_name} on prompt {prompt_id[:8]} "
                     f"(shown once, continuing with other prompts): {message}"
@@ -378,6 +410,12 @@ async def run_model_on_prompts_async(
     print(
         f"Total time: {elapsed:.2f}s, Average: {elapsed/max(1, completed):.2f}s per prompt"
     )
+    if account_error is not None:
+        raise LiveGenerationAccountError(
+            f"Live generation for {model_name} stopped by an API key or account "
+            f"error. {completed} generations of this run were saved, "
+            f"{num_not_started} prompts were not started.\n{account_error}"
+        )
 
 
 def strip_nonbatch_suffix(model_name: str) -> str:
@@ -420,7 +458,8 @@ def get_batch_models(model_names: List[str], output_path: str) -> List[str]:
         ):
             continue
         output_file, _ = _get_batch_paths(output_path, model_name)
-        if not output_file.exists():
+        # (an empty file, e.g. left by a failed batch, is no generation either)
+        if not _get_processed_ids(output_file):
             candidates.append(model_name)
 
     if not candidates:
@@ -863,12 +902,15 @@ def collect_batch(
         _write_json_atomic(unparsed_file, {"model": model_name, "results": unparsed})
         logger.warning(f"Saved {len(unparsed)} unparsed results to {unparsed_file}")
 
-    output_file.parent.mkdir(parents=True, exist_ok=True)
-    _ensure_trailing_newline(output_file)
-    with open(output_file, "a") as f:
-        f.write("".join(json.dumps(r) + "\n" for r in records))
-        f.flush()
-        os.fsync(f.fileno())
+    # Not creating an empty file (e.g. failed batch): the model must still count
+    # as new, see get_batch_models()
+    if records:
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        _ensure_trailing_newline(output_file)
+        with open(output_file, "a") as f:
+            f.write("".join(json.dumps(r) + "\n" for r in records))
+            f.flush()
+            os.fsync(f.fileno())
 
     # Only remove state once results are safely saved
     state_file.unlink()
