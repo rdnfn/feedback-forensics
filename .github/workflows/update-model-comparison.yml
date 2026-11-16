@@ -63,6 +63,11 @@ env:
     openrouter/openai/gpt-6-sol
     openrouter/openai/gpt-6.1-sol
     openrouter/mistralai/mistral-large-4-0
+    openrouter/anthropic/claude-opus-4.8
+    openrouter/anthropic/claude-opus-5
+    openrouter/anthropic/claude-opus-5.5
+    openrouter/anthropic/claude-fable-5
+    openrouter/anthropic/claude-fable-5.2
   REFERENCE_MODELS: openrouter/openai/gpt-4o-2024-11-20
 
 jobs:
