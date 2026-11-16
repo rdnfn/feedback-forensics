@@ -467,7 +467,8 @@ def run():
             annotator_model=args.annotator_model,
             position_debias=args.position_debias,
         )
-    except AnnotationSettingsError as e:
+    except (AnnotationSettingsError, modelgen.OpenRouterAccountError) as e:
+        # Problems the user has to fix: show message only, no traceback
         logger.error(str(e))
         return 1
     logger.success(

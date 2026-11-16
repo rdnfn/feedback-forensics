@@ -660,3 +660,78 @@ def test_live_records_usage(tmp_path, monkeypatch):
     assert len(records) == 3
     assert all(r["usage"] == EXPECTED_USAGE for r in records)
     assert all(r["failure"] is None for r in records)
+
+
+KEY_LIMIT_RESPONSE = json.dumps(
+    {
+        "error": {
+            "message": "Key limit exceeded (total limit). $409.73 of $250.00 used",
+            "code": 403,
+            "metadata": {
+                "limit_source": "openrouter_key_limit",
+                "limit_usd": 250,
+                "spend_usd": 409.730414405,
+            },
+        }
+    }
+)
+
+
+def _fake_response(monkeypatch, status_code: int, text: str):
+    class Response:
+        ok = False
+
+    Response.status_code, Response.text = status_code, text
+    monkeypatch.setenv("OPENROUTER_API_KEY", "x")
+    monkeypatch.setattr(modelgen.requests, "request", lambda *a, **k: Response())
+
+
+@pytest.mark.parametrize(
+    "status_code, text, expected",
+    [
+        (403, KEY_LIMIT_RESPONSE, ["$409.73 used of $250.00 limit", "settings/keys"]),
+        # Without metadata, the original message is shown
+        (
+            403,
+            '{"error": {"message": "Key limit exceeded (total limit)."}}',
+            ["Key limit exceeded (total limit).", "settings/keys"],
+        ),
+        (
+            402,
+            '{"error": {"message": "Insufficient credits"}}',
+            ["Insufficient credits", "settings/credits"],
+        ),
+        (401, '{"error": {"message": "No auth"}}', ["No auth", "OPENROUTER_API_KEY"]),
+    ],
+)
+def test_account_errors_are_legible(monkeypatch, status_code, text, expected):
+    """Key and account problems state the problem and how to fix it."""
+    _fake_response(monkeypatch, status_code, text)
+    with pytest.raises(modelgen.OpenRouterAccountError) as exc_info:
+        modelgen._openrouter_request("POST", "/batches", json={})
+    assert exc_info.value.status_code == status_code
+    for part in expected + ["To fix:"]:
+        assert part in str(exc_info.value)
+
+
+@pytest.mark.parametrize("text", ['{"error": {"message": "Forbidden"}}', "<html>"])
+def test_other_errors_are_not_account_errors(monkeypatch, text):
+    _fake_response(monkeypatch, 403, text)
+    with pytest.raises(modelgen.OpenRouterError) as exc_info:
+        modelgen._openrouter_request("POST", "/batches", json={})
+    assert not isinstance(exc_info.value, modelgen.OpenRouterAccountError)
+    assert text in str(exc_info.value)
+
+
+def test_cli_shows_account_error_without_traceback(monkeypatch, tmp_path):
+    """Key limit hit while submitting a batch: exit code 1, no state file left."""
+    _fake_response(monkeypatch, 403, KEY_LIMIT_RESPONSE)
+    model = "openrouter/fake/model"
+    monkeypatch.setattr(modelgen, "get_batch_models", lambda *a: [model])
+    monkeypatch.setattr(
+        "sys.argv",
+        ["ff-model-comparison", "-p", "a", "b", "-o", str(tmp_path)]
+        + ["-m", model, "-r", model],
+    )
+    assert model_comparison.run() == 1
+    assert not list((tmp_path / "batches").glob("*.json"))
