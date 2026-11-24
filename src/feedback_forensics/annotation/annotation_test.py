@@ -88,6 +88,9 @@ def test_default_principles_and_hashes_match_icai():
 
 def test_default_principles_versions():
     assert len(get_default_principles()) == 40
+    v1, v2 = get_default_principles("v1"), get_default_principles("v2")
+    assert len(v2) == 18
+    assert v2 == [p for p in v1 if p in v2]  # subset of v1, same order
     assert get_default_principles("") == []
     with pytest.raises(ValueError):
         get_default_principles("v999")
