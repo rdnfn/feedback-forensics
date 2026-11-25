@@ -20,7 +20,7 @@ from feedback_forensics.annotation.mock_api import (
 from feedback_forensics.annotation.mock_api import _h, pair_key, principle_behaviour
 from feedback_forensics.annotation.prompts import VOTING_PROMPT
 from feedback_forensics.annotation.testutils import (
-    annotate_legacy,
+    annotate_without_separate_prompt,
     MOCK_MODEL,
     expected_order_vote,
     expected_vote,
@@ -130,7 +130,7 @@ def test_repeated_runs_in_one_process(tmp_path, mock_llm_server):
 
     for run in range(3):
         output_dir = tmp_path / f"run{run}"
-        annotate_legacy(
+        annotate_without_separate_prompt(
             tmp_path / "data.csv", principles, MOCK_MODEL, output_dir=output_dir
         )
         usage = json.load(open(output_dir / "results" / "080_api_usage_summary.json"))
@@ -149,7 +149,7 @@ def test_runs_are_reproducible(tmp_path, mock_llm_server):
     requests_per_run = []
     for run in range(2):
         server.reset()
-        annotate_legacy(
+        annotate_without_separate_prompt(
             tmp_path / "data.csv",
             get_default_principles(),
             MOCK_MODEL,
@@ -173,7 +173,7 @@ def test_ab_order_as_documented(tmp_path, mock_llm_server):
     df = make_pairs_df(30, seed="b")
     df.to_csv(tmp_path / "data.csv", index=False)
     principles = get_default_principles() + EXTRA_PRINCIPLES  # two passes
-    annotate_legacy(
+    annotate_without_separate_prompt(
         tmp_path / "data.csv", principles, MOCK_MODEL, output_dir=tmp_path / "out"
     )
 
@@ -204,7 +204,7 @@ def test_position_debias(tmp_path, mock_llm_server):
     df.to_csv(tmp_path / "data.csv", index=False)
     principles = get_default_principles()
 
-    ap_path = annotate_legacy(
+    ap_path = annotate_without_separate_prompt(
         tmp_path / "data.csv",
         principles,
         MOCK_MODEL,
@@ -269,7 +269,7 @@ def test_usage_and_cost_logging(tmp_path, mock_llm_server):
     server = mock_llm_server()
     df = make_pairs_df(30, seed="u")
     df.to_csv(tmp_path / "data.csv", index=False)
-    annotate_legacy(
+    annotate_without_separate_prompt(
         tmp_path / "data.csv",
         get_default_principles(),
         MOCK_MODEL,
@@ -340,10 +340,14 @@ def test_resume_from_cache(tmp_path, mock_llm_server):
     df.to_csv(tmp_path / "data.csv", index=False)
     args = (tmp_path / "data.csv", get_default_principles(), MOCK_MODEL)
 
-    first = json.load(open(annotate_legacy(*args, output_dir=tmp_path / "out")))
+    first = json.load(
+        open(annotate_without_separate_prompt(*args, output_dir=tmp_path / "out"))
+    )
     first_requests = server.requests
     server.reset()
-    second = json.load(open(annotate_legacy(*args, output_dir=tmp_path / "out")))
+    second = json.load(
+        open(annotate_without_separate_prompt(*args, output_dir=tmp_path / "out"))
+    )
     assert first["comparisons"] == second["comparisons"]
 
     # Votes are loaded from the cache. Only requests without any valid vote
@@ -422,7 +426,7 @@ def test_separate_prompt_messages():
 
 def test_prompt_stated_once_by_default(tmp_path, mock_llm_server):
     """By default the prompt is sent once per request (not merged into both texts)
-    and this is recorded in the metadata. With `legacy_prompt`, requests are the
+    and this is recorded in the metadata. With `without_separate_prompt`, requests are the
     former ones, and no vote is reused from the cache of the other prompt."""
     server = mock_llm_server()
     df = make_pairs_df(12, with_prompt=True, seed="sp")
@@ -449,7 +453,9 @@ def test_prompt_stated_once_by_default(tmp_path, mock_llm_server):
 
     # Former prompt, same output directory: prompt merged into both samples
     server.reset()
-    annotate_legacy(tmp_path / "data.csv", principles, MOCK_MODEL, output_dir)
+    annotate_without_separate_prompt(
+        tmp_path / "data.csv", principles, MOCK_MODEL, output_dir
+    )
     assert len(server.requests) == len(df)
     for request in server.requests:
         content = request["messages"][-1]["content"]
@@ -459,7 +465,7 @@ def test_prompt_stated_once_by_default(tmp_path, mock_llm_server):
 
 
 def test_prompt_data_errors(tmp_path, mock_llm_server):
-    """Unless `legacy_prompt`: data without prompt column, with an empty prompt or
+    """Unless `without_separate_prompt`: data without prompt column, with an empty prompt or
     with the prompts already contained in the texts is rejected, before any API
     call is made or file is written. Prompts are never extracted from the texts."""
     from feedback_forensics.annotation import PromptDataError
@@ -474,7 +480,9 @@ def test_prompt_data_errors(tmp_path, mock_llm_server):
         )
 
     no_prompts = make_pairs_df(8, seed="np")
-    with pytest.raises(PromptDataError, match="no `prompt` column.*legacy_prompt"):
+    with pytest.raises(
+        PromptDataError, match="no `prompt` column.*without_separate_prompt"
+    ):
         annotate(no_prompts)
 
     empty_prompt = make_pairs_df(8, with_prompt=True, seed="ep")
@@ -500,7 +508,9 @@ def test_prompt_data_errors(tmp_path, mock_llm_server):
 
     # The former prompt takes the texts as they are
     server.reset()
-    annotate_legacy(tmp_path / "data.csv", EXTRA_PRINCIPLES, MOCK_MODEL, tmp_path / "l")
+    annotate_without_separate_prompt(
+        tmp_path / "data.csv", EXTRA_PRINCIPLES, MOCK_MODEL, tmp_path / "l"
+    )
     assert len(server.requests) == len(quoted)
     assert all(
         "User prompt (both samples" not in r["messages"][-1]["content"]
@@ -509,7 +519,7 @@ def test_prompt_data_errors(tmp_path, mock_llm_server):
 
 
 def test_cli_prompt_data_error(tmp_path, mock_llm_server):
-    """ff-annotate: data without prompts needs --legacy-prompt."""
+    """ff-annotate: data without prompts needs --without-separate-prompt."""
     server = mock_llm_server()
     df = make_pairs_df(6, seed="cp")
     df.to_csv(tmp_path / "data.csv", index=False)
@@ -517,6 +527,6 @@ def test_cli_prompt_data_error(tmp_path, mock_llm_server):
     args += ["-p", json.dumps(EXTRA_PRINCIPLES), "-o", str(tmp_path / "out")]
     assert ff_annotate.run(args) == 1
     assert server.requests == []
-    assert ff_annotate.run(args + ["--legacy-prompt"]) == 0
+    assert ff_annotate.run(args + ["--without-separate-prompt"]) == 0
     assert len(server.requests) == len(df)
     assert_votes_match_mock(df, tmp_path / "out", EXTRA_PRINCIPLES, False)

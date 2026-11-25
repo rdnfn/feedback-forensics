@@ -149,7 +149,7 @@ def get_vote_hash(
             as sample A ("preferred" or "rejected"). None for standard annotation.
         prompt: User prompt stated separately in the request. None (hash as before
             prompts were stated separately) for requests with the former prompt
-            (`legacy_prompt`).
+            (`without_separate_prompt`).
     """
     content = dict(
         preferred=preferred,

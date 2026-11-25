@@ -185,9 +185,9 @@ def expected_vote(
     return expected_order_vote(principle, preferred, rejected, True)
 
 
-def annotate_legacy(*args, **kwargs):
-    """`annotate_dataset` with the former annotation prompt (`legacy_prompt`): for
+def annotate_without_separate_prompt(*args, **kwargs):
+    """`annotate_dataset` with the former annotation prompt (`without_separate_prompt`): for
     tests on data without prompts, and of behaviour unrelated to the prompt."""
     from feedback_forensics.annotation import annotate_dataset
 
-    return annotate_dataset(*args, legacy_prompt=True, **kwargs)
+    return annotate_dataset(*args, without_separate_prompt=True, **kwargs)

@@ -391,7 +391,7 @@ def compare_models(
             reasoning_effort=annotation_settings["reasoning_effort"],
             # Fixed, as the other annotation settings: annotations of models added
             # over time must stay comparable (existing ones used the former prompt)
-            legacy_prompt=True,
+            without_separate_prompt=True,
         )
         try:
             ap_path = annotate_dataset(

@@ -150,7 +150,7 @@ def get_parser() -> argparse.ArgumentParser:
         help="Maximum number of concurrent API calls (default: 400)",
     )
     parser.add_argument(
-        "--legacy-prompt",
+        "--without-separate-prompt",
         action="store_true",
         help=(
             "Annotate with the former annotation prompt, which shows only the two "
@@ -220,7 +220,7 @@ def run(argv: list[str] | None = None) -> int:
             log_api_calls=args.log_api_calls,
             batch=args.batch,
             batch_max_wait=args.batch_max_wait,
-            legacy_prompt=args.legacy_prompt,
+            without_separate_prompt=args.without_separate_prompt,
         )
     except (AnnotatorAccountError, PromptDataError) as e:
         # Message states the problem and how to continue: shown without traceback

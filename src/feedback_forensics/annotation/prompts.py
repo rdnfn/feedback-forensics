@@ -37,7 +37,7 @@ ONLY REPLY IN JSON FORMAT
 
 # Default prompt of `annotate_dataset`: the user prompt (column `prompt` of the
 # data) is stated once before the two samples, which then only contain the
-# responses. `VOTING_PROMPT` (`legacy_prompt`) shows only the two samples: a
+# responses. `VOTING_PROMPT` (`without_separate_prompt`) shows only the two samples: a
 # `prompt` column is merged into each of them (as a chat conversation), so the
 # prompt is sent twice.
 VOTING_PROMPT_SEPARATE_USER_PROMPT = VOTING_PROMPT.replace(

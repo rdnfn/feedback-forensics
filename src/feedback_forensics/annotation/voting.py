@@ -134,7 +134,7 @@ class VotingConfig:
     # contained in the texts (`annotate_dataset` then merges a `prompt` column
     # into both texts, so it is sent twice). Votes of the two prompts are not
     # comparable.
-    legacy_prompt: bool = False
+    without_separate_prompt: bool = False
 
     def __post_init__(self):
         # Fail early: e.g. 0 concurrent tasks would make every API call wait forever
@@ -171,7 +171,7 @@ class _VoteRequest:
     rejected: str
     flipped: bool  # True: rejected response shown as sample A
     hashes: dict[str, str]  # principle -> vote hash
-    prompt: str | None = None  # user prompt stated separately (None: legacy prompt)
+    prompt: str | None = None  # user prompt stated separately (None: prompt without it)
 
     @property
     def principles(self) -> list[str]:
@@ -203,7 +203,7 @@ def _get_messages(
 
     Args:
         prompt: User prompt both responses answer, stated once before them. None:
-            former prompt (`legacy_prompt`), showing only the two samples.
+            former prompt (`without_separate_prompt`), showing only the two samples.
     """
     sample_a, sample_b = (rejected, preferred) if flipped else (preferred, rejected)
     prompt_kwargs = dict(
@@ -237,7 +237,7 @@ def _is_empty_prompt(prompt) -> bool:
 
 def check_prompts(feedback_df: pd.DataFrame) -> None:
     """Check that the data can be annotated with the user prompt stated once in
-    the request (the default, see `VotingConfig.legacy_prompt`).
+    the request (the default, see `VotingConfig.without_separate_prompt`).
 
     The prompt is only ever taken from the `prompt` column: it is never
     extracted from texts that contain it.
@@ -247,16 +247,16 @@ def check_prompts(feedback_df: pd.DataFrame) -> None:
             empty, or if the prompts are already part of the texts (the prompt
             would be sent twice).
     """
-    legacy_hint = (
+    override_hint = (
         "To annotate with the former prompt instead, which shows only the two "
-        "texts, set legacy_prompt (ff-annotate: --legacy-prompt). Votes of the "
+        "texts, set without_separate_prompt (ff-annotate: --without-separate-prompt). Votes of the "
         "two prompts are not comparable."
     )
     if "prompt" not in feedback_df.columns:
         raise PromptDataError(
             "The data has no `prompt` column. By default, the user prompt is stated "
             "once in the annotation prompt, so it must be part of the data. "
-            + legacy_hint
+            + override_hint
         )
     empty = [idx for idx, p in feedback_df["prompt"].items() if _is_empty_prompt(p)]
     if empty:
@@ -274,7 +274,7 @@ def check_prompts(feedback_df: pd.DataFrame) -> None:
         raise PromptDataError(
             "The prompts are already contained in both texts (in all of the first "
             f"{len(head)} rows): stated separately as well, each prompt would be "
-            "sent twice. Remove the prompts from the texts. " + legacy_hint
+            "sent twice. Remove the prompts from the texts. " + override_hint
         )
 
 
@@ -414,14 +414,14 @@ async def _get_votes(
         f"Running up to {config.max_concurrent_tasks} API calls concurrently."
     )
 
-    if not config.legacy_prompt:
+    if not config.without_separate_prompt:
         check_prompts(feedback_df)
     rows = [
         (
             idx,
             get_preferred_text(row),
             get_rejected_text(row),
-            None if config.legacy_prompt else str(row["prompt"]),
+            None if config.without_separate_prompt else str(row["prompt"]),
         )
         for idx, row in feedback_df.iterrows()
     ]

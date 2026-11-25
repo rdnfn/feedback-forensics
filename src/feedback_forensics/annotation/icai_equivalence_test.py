@@ -27,7 +27,7 @@ import pytest
 from feedback_forensics.annotation import annotate_dataset, get_default_principles
 from feedback_forensics.annotation.mock_api import VOTING_PROMPT_REGEX
 from feedback_forensics.annotation.testutils import (
-    annotate_legacy,
+    annotate_without_separate_prompt,
     MOCK_MODEL,
     make_pairs_df,
 )
@@ -167,7 +167,7 @@ def test_native_annotation_identical_to_icai(tmp_path, mock_llm_server, case):
 
     # Native FF
     ff_dir = tmp_path / "ff"
-    ff_ap_path = annotate_legacy(
+    ff_ap_path = annotate_without_separate_prompt(
         datapath=datapath, principles=principles, model=MOCK_MODEL, output_dir=ff_dir
     )
     ff_requests = server.requests

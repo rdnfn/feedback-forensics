@@ -74,7 +74,7 @@ def annotate_dataset(
     dataset_name: str | None = None,
     batch: bool = False,
     batch_max_wait: float = 24 * 60,
-    legacy_prompt: bool = False,
+    without_separate_prompt: bool = False,
 ) -> Path:
     """Annotate a dataset with principle-following AI annotators.
 
@@ -102,7 +102,7 @@ def annotate_dataset(
             results taking up to 24 h (`openrouter/` models with a batch variant
             only, see `feedback_forensics.annotation.batch`).
         batch_max_wait: Minutes to wait for batches.
-        legacy_prompt: Annotate with the former annotation prompt, which shows
+        without_separate_prompt: Annotate with the former annotation prompt, which shows
             only the two texts (a `prompt` column is merged into both of them
             as a chat conversation, so the prompt is sent twice per API call).
             By default (False), the user prompt is stated once before the two
@@ -115,7 +115,7 @@ def annotate_dataset(
         Path to the AnnotatedPairs JSON file with the annotations.
 
     Raises:
-        PromptDataError: (unless `legacy_prompt`) if the data has no `prompt`
+        PromptDataError: (unless `without_separate_prompt`) if the data has no `prompt`
             column, a row without prompt, or prompts already contained in the
             texts. Raised before any API call or file is written.
         BatchPendingError: (batch only) batches are still pending after
@@ -139,11 +139,11 @@ def annotate_dataset(
         position_debias=position_debias,
         batch=batch,
         batch_max_wait=batch_max_wait,
-        legacy_prompt=legacy_prompt,
+        without_separate_prompt=without_separate_prompt,
     )
     check_model_settings(model, reasoning_effort)
-    data = load_preference_data(datapath, merge_prompts=legacy_prompt)
-    if not legacy_prompt:
+    data = load_preference_data(datapath, merge_prompts=without_separate_prompt)
+    if not without_separate_prompt:
         check_prompts(data)
     output_dir = Path(output_dir) if output_dir is not None else default_output_dir()
     results_path = output_dir / "results"
@@ -214,7 +214,7 @@ def annotate_dataset(
             "max_output_tokens": max_output_tokens,
             "reasoning_effort": reasoning_effort,
         }
-        if not legacy_prompt:
+        if not without_separate_prompt:
             # Only recorded if stated separately: files without it were annotated
             # with the former prompt (prompts merged into the texts)
             annotated_pairs["metadata"]["annotation"]["separate_prompt"] = True
