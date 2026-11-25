@@ -11,7 +11,18 @@
 		},
 		"ghcr.io/devcontainers/features/github-cli:1": {}
 	},
-	"postCreateCommand": "pip install -e .[dev]",
+	// Secrets (GH_TOKEN) live in a gitignored env file; create it if missing so the build doesn't fail
+	"initializeCommand": "touch .devcontainer/devcontainer.env",
+	"runArgs": [
+		"--env-file",
+		"${localWorkspaceFolder}/.devcontainer/devcontainer.env"
+	],
+	"remoteEnv": {
+		// Don't expose the host's forwarded SSH agent; git uses GH_TOKEN over HTTPS instead
+		"SSH_AUTH_SOCK": ""
+	},
+	// Route git through gh's token (the origin remote stays an SSH URL for use on the host)
+	"postCreateCommand": "pip install -e .[dev] && git config --global credential.https://github.com.helper '!gh auth git-credential' && git config --global url.https://github.com/.insteadOf git@github.com:",
 	"customizations": {
 		"vscode": {
 			"extensions": [
