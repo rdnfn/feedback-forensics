@@ -214,14 +214,15 @@ def create_async_http_client(name: str, max_connections: int = 1000) -> Any:
         timeout=httpx.Timeout(REQUEST_TIMEOUT_S, connect=CONNECT_TIMEOUT_S),
         limits=limits,
     )
-    if proxy and sdk.__name__ == "anthropic":
-        # As LangChain's default Anthropic client: the SDK's client mounts the
-        # proxy settings from the environment over the proxy
-        kwargs["proxy"] = proxy
+    if proxy and sdk.__name__ == "anthropic" and "all" in urllib.request.getproxies():
+        # As LangChain's default Anthropic client: `ALL_PROXY` takes precedence
+        # over `ANTHROPIC_PROXY` too (the mount below would override it)
+        pass
     elif proxy:
-        # As LangChain's default OpenAI client with `OPENAI_PROXY`: the proxy
-        # settings from the environment (except `ALL_PROXY`) take precedence
-        # over this mount for all URLs
+        # As LangChain's default clients with `OPENAI_PROXY` / `ANTHROPIC_PROXY`:
+        # the proxy settings from the environment take precedence over this
+        # mount for all URLs. Not passed as `proxy`: with that, anthropic>=2.14
+        # ignores the proxy settings from the environment.
         kwargs["mounts"] = {
             "all://": httpx.AsyncHTTPTransport(
                 proxy=httpx.Proxy(proxy),
