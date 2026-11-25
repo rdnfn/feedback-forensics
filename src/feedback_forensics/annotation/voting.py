@@ -228,11 +228,22 @@ NUM_ROWS_PROMPT_IN_TEXT_CHECK = 100
 
 
 def _is_empty_prompt(prompt) -> bool:
-    return (
-        prompt is None
-        or (isinstance(prompt, float) and pd.isna(prompt))
-        or not str(prompt).strip()
-    )
+    if prompt is None or (pd.api.types.is_scalar(prompt) and pd.isna(prompt)):
+        return True
+    return not str(prompt).strip()
+
+
+def _prompt_merged_into_texts(row) -> bool:
+    """Whether both texts start with the same content that contains the prompt,
+    as texts with the prompt merged in do (e.g. a conversation starting with the
+    user message). Responses that merely mention the prompt do not count."""
+    text_a, text_b = str(row["text_a"]), str(row["text_b"])
+    common = 0
+    for char_a, char_b in zip(text_a, text_b):
+        if char_a != char_b:
+            break
+        common += 1
+    return str(row["prompt"]) in text_a[:common]
 
 
 def check_prompts(feedback_df: pd.DataFrame) -> None:
@@ -259,22 +270,24 @@ def check_prompts(feedback_df: pd.DataFrame) -> None:
             + override_hint
         )
     empty = [idx for idx, p in feedback_df["prompt"].items() if _is_empty_prompt(p)]
+    if empty and len(empty) == len(feedback_df):
+        raise PromptDataError(
+            "The data has no prompts (`prompt` is empty for every row). By default, "
+            "the user prompt is stated once in the annotation prompt, so it must "
+            "be part of the data. " + override_hint
+        )
     if empty:
         raise PromptDataError(
             f"{len(empty)} of {len(feedback_df)} rows have an empty `prompt` "
             f"(first rows: {empty[:5]}). Every row needs a prompt."
         )
     head = feedback_df.iloc[:NUM_ROWS_PROMPT_IN_TEXT_CHECK]
-    prompt_in_texts = head.apply(
-        lambda row: str(row["prompt"]) in str(row["text_a"])
-        and str(row["prompt"]) in str(row["text_b"]),
-        axis=1,
-    )
-    if len(head) > 0 and prompt_in_texts.all():
+    if len(head) > 0 and head.apply(_prompt_merged_into_texts, axis=1).all():
         raise PromptDataError(
-            "The prompts are already contained in both texts (in all of the first "
-            f"{len(head)} rows): stated separately as well, each prompt would be "
-            "sent twice. Remove the prompts from the texts. " + override_hint
+            "The prompts are already contained in the texts (both texts start with "
+            f"the same content containing the prompt, in all of the first {len(head)} "
+            "rows): stated separately as well, each prompt would be sent twice. "
+            "Remove the prompts from the texts. " + override_hint
         )
 
 
@@ -308,7 +321,10 @@ def get_votes_for_principles(
     `get_votes_for_principles_async` inside an already running loop).
 
     Args:
-        feedback_df: Data with `text_a`, `text_b` and `preferred_text` columns.
+        feedback_df: Data with `text_a`, `text_b` and `preferred_text` columns,
+            and (unless `config.without_separate_prompt`) a `prompt` column
+            with the user prompt of every row, which must not be part of the
+            texts (see `check_prompts`).
         principles: Mapping principle id -> principle text.
         config: Voting configuration.
         cache_path: Base path for the vote cache (None to disable caching).
@@ -457,6 +473,24 @@ async def _get_votes(
                     _VoteRequest(preferred, rejected, flipped, hashes, prompt)
                 )
         requests_per_pass.append(requests)
+
+    if vote_cache is not None:
+        cached_hashes = vote_cache.get_cached_votes()
+        if cached_hashes and not any(
+            h in cached_hashes
+            for requests in requests_per_pass
+            for r in requests
+            for h in r.hashes.values()
+        ):
+            logger.warning(
+                f"The vote cache ({cache_path}) holds {len(cached_hashes)} votes, but "
+                "none for this run: all votes are requested (and billed) again. "
+                "Votes are only reused for the same data, principles, model and "
+                "settings, and for the same annotation prompt: to continue a run "
+                "made before prompts were stated separately (or with "
+                "without_separate_prompt), set without_separate_prompt "
+                "(ff-annotate: --without-separate-prompt)."
+            )
 
     # Ids of requests answered by the batch API without any valid vote
     answered_request_ids = set()

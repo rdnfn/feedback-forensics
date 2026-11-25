@@ -142,8 +142,11 @@ def annotate_dataset(
         without_separate_prompt=without_separate_prompt,
     )
     check_model_settings(model, reasoning_effort)
-    data = load_preference_data(datapath, merge_prompts=without_separate_prompt)
+    data = None
     if not without_separate_prompt:
+        data = load_preference_data(
+            datapath, merge_prompts=False, use_metadata_prompts=True
+        )
         check_prompts(data)
     output_dir = Path(output_dir) if output_dir is not None else default_output_dir()
     results_path = output_dir / "results"
@@ -154,6 +157,9 @@ def annotate_dataset(
         principles = list(dict.fromkeys(principles))
         principle_index_to_text = {i: p for i, p in enumerate(principles)}
         logger.info(f"Principles to be tested: {principles}")
+
+        if data is None:  # loaded here, so that its messages are in main.log
+            data = load_preference_data(datapath, merge_prompts=True)
 
         added_pseudo_preferred_text = "preferred_text" not in data.columns
         if added_pseudo_preferred_text:
@@ -205,6 +211,9 @@ def annotate_dataset(
             dataset_name=dataset_name
             or f"Feedback Forensics Dataset - {output_dir.name}",
             auto_detect_annotators=True,
+            # Prompts stated separately are written to the `prompt` field. Else as
+            # before (and ICAI): a `prompt` column is only kept in the metadata.
+            prompt_column="input" if without_separate_prompt else "prompt",
         )
         # Also read by ff-model-comparison, to only reuse annotations created
         # with the same settings (see `check_annotation_settings` there)

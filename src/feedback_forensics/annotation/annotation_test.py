@@ -494,7 +494,7 @@ def test_prompt_data_errors(tmp_path, mock_llm_server):
     merged = make_pairs_df(8, with_prompt=True, seed="mp")
     for col in ("text_a", "text_b"):
         merged[col] = "User: " + merged["prompt"] + "\nAssistant: " + merged[col]
-    with pytest.raises(PromptDataError, match="already contained in both texts"):
+    with pytest.raises(PromptDataError, match="already contained in the texts"):
         annotate(merged)
 
     assert server.requests == [] and not output_dir.exists()
@@ -530,3 +530,86 @@ def test_cli_prompt_data_error(tmp_path, mock_llm_server):
     assert ff_annotate.run(args + ["--without-separate-prompt"]) == 0
     assert len(server.requests) == len(df)
     assert_votes_match_mock(df, tmp_path / "out", EXTRA_PRINCIPLES, False)
+
+
+def test_prompt_is_written_to_and_read_from_annotated_pairs(
+    tmp_path, mock_llm_server, log_messages
+):
+    """The prompt is written to the `prompt` field of the output file, so that the
+    file can be annotated again. Files with the prompt only in the metadata (as
+    written before) are read too."""
+    server = mock_llm_server()
+    df = make_pairs_df(8, with_prompt=True, seed="ap")
+    df.to_csv(tmp_path / "data.csv", index=False)
+    ap_path = annotate_dataset(
+        tmp_path / "data.csv", EXTRA_PRINCIPLES, MOCK_MODEL, tmp_path / "out"
+    )
+    ap = json.load(open(ap_path))
+    assert [c["prompt"] for c in ap["comparisons"]] == list(df["prompt"])
+    assert [c["metadata"]["prompt"] for c in ap["comparisons"]] == list(df["prompt"])
+    first_requests = sorted(r["messages"][-1]["content"] for r in server.requests)
+
+    # Annotating the output file sends the same requests as annotating the CSV
+    for old_format in (False, True):
+        if old_format:
+            for comparison in ap["comparisons"]:
+                comparison["prompt"] = None
+            json.dump(ap, open(ap_path, "w"))
+        server.reset()
+        annotate_dataset(ap_path, EXTRA_PRINCIPLES, MOCK_MODEL, tmp_path / "again")
+        requests = sorted(r["messages"][-1]["content"] for r in server.requests)
+        assert requests == first_requests
+        (tmp_path / "again" / "results" / "cache").rename(tmp_path / f"c{old_format}")
+
+    # Resuming with the other annotation prompt reuses no vote: the user is warned
+    annotate_without_separate_prompt(
+        tmp_path / "data.csv", EXTRA_PRINCIPLES, MOCK_MODEL, tmp_path / "out"
+    )
+    warnings = [m for level, m in log_messages if level == "WARNING"]
+    assert any("but none for this run" in m for m in warnings)
+
+
+def test_check_prompts_edge_cases(tmp_path):
+    from feedback_forensics.annotation import PromptDataError
+    from feedback_forensics.annotation.voting import check_prompts
+    from feedback_forensics.data.ap_format import load_preference_data
+
+    # Responses that mention a short prompt are not texts with the prompt merged in
+    check_prompts(
+        pd.DataFrame(
+            [dict(prompt="Paris", text_a="Paris is nice", text_b="I love Paris")]
+        )
+    )
+    with pytest.raises(PromptDataError, match="already contained in the texts"):
+        check_prompts(
+            pd.DataFrame(
+                [
+                    dict(
+                        prompt="Hi",
+                        text_a="User: Hi\nBot: A",
+                        text_b="User: Hi\nBot: B",
+                    )
+                ]
+            )
+        )
+    # Data without any prompt points to the option, single missing prompts do not
+    with pytest.raises(PromptDataError, match="no prompts.*without_separate_prompt"):
+        check_prompts(pd.DataFrame([dict(prompt=None, text_a="a", text_b="b")] * 2))
+    with pytest.raises(PromptDataError, match="1 of 2 rows") as error:
+        check_prompts(
+            pd.DataFrame(
+                [
+                    dict(prompt=pd.NA, text_a="a", text_b="b"),
+                    dict(prompt="p", text_a="c", text_b="d"),
+                ]
+            )
+        )
+    assert "without_separate_prompt" not in str(error.value)
+
+    # Prompts that pandas reads as missing values by default are prompts
+    df = make_pairs_df(4, with_prompt=True, seed="na")
+    df["prompt"] = ["NA", "null", "None", "nan"] + list(df["prompt"][4:])
+    df.to_csv(tmp_path / "data.csv", index=False)
+    loaded = load_preference_data(tmp_path / "data.csv", merge_prompts=False)
+    assert list(loaded["prompt"][:4]) == ["NA", "null", "None", "nan"]
+    check_prompts(loaded)

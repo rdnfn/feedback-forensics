@@ -267,11 +267,15 @@ class _BatchRun:
             "model": self.config.model,
             "max_output_tokens": self.config.max_output_tokens,
             "reasoning_effort": self.config.reasoning_effort,
+            # Request ids depend on the annotation prompt
+            "without_separate_prompt": self.config.without_separate_prompt,
         }
         if not self.state_file.exists():
             return {**settings, "batches": []}
         with open(self.state_file, encoding="utf-8") as f:
             state = json.load(f)
+        # Batches submitted before prompts were stated separately
+        state.setdefault("without_separate_prompt", True)
         differences = [
             f"{key}={state.get(key)!r} (requested: {value!r})"
             for key, value in settings.items()
