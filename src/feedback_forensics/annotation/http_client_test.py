@@ -25,6 +25,7 @@ from feedback_forensics.annotation.mock_api import (
     anthropic_to_openai_messages,
 )
 from feedback_forensics.annotation.testutils import (
+    annotate_without_separate_prompt,
     MOCK_MODEL,
     expected_vote,
     make_pairs_df,
@@ -96,7 +97,7 @@ def annotate(df, model: str, max_duration_s: float = 60) -> tuple[dict, UsageTra
             get_votes_for_principles_async(
                 feedback_df=df,
                 principles=dict(enumerate(PRINCIPLES)),
-                config=VotingConfig(model=model),
+                config=VotingConfig(without_separate_prompt=True, model=model),
                 usage_tracker=usage_tracker,
             ),
             max_duration_s,  # fail instead of hanging
@@ -354,7 +355,7 @@ def test_reasoning_effort_not_supported_for_anthropic_models(tmp_path, llm_serve
 
     with pytest.raises(ValueError, match="reasoning_effort"):
         if api == "annotate_dataset":
-            annotate_dataset(
+            annotate_without_separate_prompt(
                 tmp_path / "data.csv",
                 PRINCIPLES,
                 ANTHROPIC_MODEL,
@@ -365,7 +366,11 @@ def test_reasoning_effort_not_supported_for_anthropic_models(tmp_path, llm_serve
             get_votes_for_principles(
                 feedback_df=df,
                 principles=dict(enumerate(PRINCIPLES)),
-                config=VotingConfig(model=ANTHROPIC_MODEL, reasoning_effort="high"),
+                config=VotingConfig(
+                    without_separate_prompt=True,
+                    model=ANTHROPIC_MODEL,
+                    reasoning_effort="high",
+                ),
                 cache_path=tmp_path / "out" / "cache" / "votes",
             )
     assert server.num_attempts == 0
@@ -386,7 +391,7 @@ def test_unsupported_model_names_rejected_before_writing_files(
     make_pairs_df(4, seed="a").to_csv(tmp_path / "data.csv", index=False)
 
     with pytest.raises(ValueError, match=error):
-        annotate_dataset(
+        annotate_without_separate_prompt(
             tmp_path / "data.csv", PRINCIPLES, model, output_dir=tmp_path / "out"
         )
     assert server.num_attempts == 0

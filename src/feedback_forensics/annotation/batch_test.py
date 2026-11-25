@@ -17,7 +17,11 @@ from feedback_forensics.annotation.batch import (
     BatchUnavailableError,
 )
 from feedback_forensics.annotation.mock_api import mock_response
-from feedback_forensics.annotation.testutils import expected_vote, make_pairs_df
+from feedback_forensics.annotation.testutils import (
+    annotate_without_separate_prompt,
+    expected_vote,
+    make_pairs_df,
+)
 from feedback_forensics.annotation.voting import (
     INVALID_VOTE,
     get_preferred_text,
@@ -159,7 +163,7 @@ def data(tmp_path):
 
 def annotate(tmp_path, **kwargs):
     kwargs = {"batch": True, "model": MODEL, **kwargs}
-    return annotate_dataset(
+    return annotate_without_separate_prompt(
         tmp_path / "data.csv", PRINCIPLES, output_dir=tmp_path / "out", **kwargs
     )
 
@@ -250,7 +254,7 @@ def test_batch_roundtrip(tmp_path, data, fake_api, live_api):
 def test_same_requests_as_live_api(tmp_path, data, fake_api, live_api):
     api = fake_api()
     annotate(tmp_path)
-    annotate_dataset(
+    annotate_without_separate_prompt(
         tmp_path / "data.csv", PRINCIPLES, model=MODEL, output_dir=tmp_path / "live"
     )
 
@@ -699,7 +703,13 @@ def test_non_openrouter_model_rejected_before_writing_files(tmp_path, data):
 
 def cli_args(tmp_path) -> list[str]:
     args = ["-d", str(tmp_path / "data.csv"), "-v", "", "-p", json.dumps(PRINCIPLES)]
-    return args + ["-o", str(tmp_path / "out"), "-m", MODEL]
+    return args + [
+        "-o",
+        str(tmp_path / "out"),
+        "-m",
+        MODEL,
+        "--without-separate-prompt",
+    ]
 
 
 def test_cli(tmp_path, data, fake_api, live_api, capsys):
@@ -848,3 +858,38 @@ def test_model_comparison_without_batch_variant_uses_live_api(
         ]
     assert api.batches == {}
     assert len(live_api.requests) >= 2
+
+
+def test_pending_batches_of_other_annotation_prompt(tmp_path, fake_api, live_api):
+    """Request ids depend on the annotation prompt: batches submitted with the
+    other prompt (or before prompts were stated separately, i.e. without the
+    setting in the state file) are not silently submitted again."""
+    from feedback_forensics.annotation import annotate_dataset
+
+    api = fake_api(status="in_progress")
+    make_pairs_df(8, with_prompt=True, seed="bp").to_csv(
+        tmp_path / "data.csv", index=False
+    )
+    with pytest.raises(BatchPendingError):
+        annotate(tmp_path, batch_max_wait=0)  # former prompt
+    assert json.loads(state_file(tmp_path).read_text())["without_separate_prompt"]
+
+    def annotate_default(**kwargs):
+        return annotate_dataset(
+            tmp_path / "data.csv", PRINCIPLES, MODEL, tmp_path / "out", **kwargs
+        )
+
+    with pytest.raises(BatchStateError, match="without_separate_prompt=True"):
+        annotate_default(batch=True)
+
+    # State files written before the setting existed are of the former prompt
+    state = json.loads(state_file(tmp_path).read_text())
+    del state["without_separate_prompt"]
+    state_file(tmp_path).write_text(json.dumps(state))
+    with pytest.raises(BatchStateError, match="without_separate_prompt=True"):
+        annotate_default(batch=True)
+    assert len(api.batches) == 1 and live_api.requests == []
+
+    api.status = "completed"
+    annotate(tmp_path)  # collected with the prompt they were submitted with
+    assert len(api.batches) == 1

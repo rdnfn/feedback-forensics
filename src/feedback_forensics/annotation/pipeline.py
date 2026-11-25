@@ -41,6 +41,7 @@ from feedback_forensics.annotation.voting import (
     INVALID_VOTE,
     VotingConfig,
     get_votes_for_principles,
+    check_prompts,
 )
 from feedback_forensics.data.ap_format import (
     create_annotated_pairs,
@@ -73,6 +74,7 @@ def annotate_dataset(
     dataset_name: str | None = None,
     batch: bool = False,
     batch_max_wait: float = 24 * 60,
+    without_separate_prompt: bool = False,
 ) -> Path:
     """Annotate a dataset with principle-following AI annotators.
 
@@ -100,11 +102,22 @@ def annotate_dataset(
             results taking up to 24 h (`openrouter/` models with a batch variant
             only, see `feedback_forensics.annotation.batch`).
         batch_max_wait: Minutes to wait for batches.
+        without_separate_prompt: Annotate with the former annotation prompt, which shows
+            only the two texts (a `prompt` column is merged into both of them
+            as a chat conversation, so the prompt is sent twice per API call).
+            By default (False), the user prompt is stated once before the two
+            responses: the data then must have a `prompt` column, with a prompt
+            for every row that is not already part of the texts. Votes of the
+            two prompts are not comparable (published data and data annotated
+            with ICAI used the former prompt).
 
     Returns:
         Path to the AnnotatedPairs JSON file with the annotations.
 
     Raises:
+        PromptDataError: (unless `without_separate_prompt`) if the data has no `prompt`
+            column, a row without prompt, or prompts already contained in the
+            texts. Raised before any API call or file is written.
         BatchPendingError: (batch only) batches are still pending after
             `batch_max_wait`. Re-run with the same output directory and settings
             to collect them.
@@ -126,8 +139,15 @@ def annotate_dataset(
         position_debias=position_debias,
         batch=batch,
         batch_max_wait=batch_max_wait,
+        without_separate_prompt=without_separate_prompt,
     )
     check_model_settings(model, reasoning_effort)
+    data = None
+    if not without_separate_prompt:
+        data = load_preference_data(
+            datapath, merge_prompts=False, use_metadata_prompts=True
+        )
+        check_prompts(data)
     output_dir = Path(output_dir) if output_dir is not None else default_output_dir()
     results_path = output_dir / "results"
     results_path.mkdir(parents=True, exist_ok=True)
@@ -138,7 +158,9 @@ def annotate_dataset(
         principle_index_to_text = {i: p for i, p in enumerate(principles)}
         logger.info(f"Principles to be tested: {principles}")
 
-        data = load_preference_data(datapath, merge_prompts=True)
+        if data is None:  # loaded here, so that its messages are in main.log
+            data = load_preference_data(datapath, merge_prompts=True)
+
         added_pseudo_preferred_text = "preferred_text" not in data.columns
         if added_pseudo_preferred_text:
             logger.warning(
@@ -189,6 +211,9 @@ def annotate_dataset(
             dataset_name=dataset_name
             or f"Feedback Forensics Dataset - {output_dir.name}",
             auto_detect_annotators=True,
+            # Prompts stated separately are written to the `prompt` field. Else as
+            # before (and ICAI): a `prompt` column is only kept in the metadata.
+            prompt_column="input" if without_separate_prompt else "prompt",
         )
         # Also read by ff-model-comparison, to only reuse annotations created
         # with the same settings (see `check_annotation_settings` there)
@@ -198,6 +223,10 @@ def annotate_dataset(
             "max_output_tokens": max_output_tokens,
             "reasoning_effort": reasoning_effort,
         }
+        if not without_separate_prompt:
+            # Only recorded if stated separately: files without it were annotated
+            # with the former prompt (prompts merged into the texts)
+            annotated_pairs["metadata"]["annotation"]["separate_prompt"] = True
         all_votes = [v for votes in result.votes.values() for v in votes.values()]
         usage_summary = summarise_usage(
             usage_tracker,

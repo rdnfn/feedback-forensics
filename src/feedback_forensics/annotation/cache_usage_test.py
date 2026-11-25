@@ -24,6 +24,7 @@ from feedback_forensics.annotation.mock_api import (
     pair_key,
 )
 from feedback_forensics.annotation.testutils import (
+    annotate_without_separate_prompt,
     MOCK_MODEL,
     expected_vote,
     make_pairs_df,
@@ -163,7 +164,7 @@ def test_comparisons_with_colliding_32bit_hashes_get_own_votes(
 
     for _ in range(2):  # 2nd run: votes from the cache
         server.reset()
-        annotate_dataset(
+        annotate_without_separate_prompt(
             tmp_path / "data.csv",
             [principle],
             MOCK_MODEL,
@@ -185,7 +186,7 @@ def test_votes_are_only_reused_for_the_same_settings(tmp_path, mock_llm_server):
 
     def run(**settings) -> list[dict]:
         server.reset()
-        ap_path = annotate_dataset(
+        ap_path = annotate_without_separate_prompt(
             tmp_path / "data.csv",
             PRINCIPLES,
             MOCK_MODEL,
@@ -228,13 +229,17 @@ def test_rerun_with_more_output_tokens_repeats_truncated_calls(
     df.to_csv(tmp_path / "data.csv", index=False)
     args = (tmp_path / "data.csv", PRINCIPLES, MOCK_MODEL)
 
-    annotate_dataset(*args, output_dir=tmp_path / "out", max_output_tokens=500)
+    annotate_without_separate_prompt(
+        *args, output_dir=tmp_path / "out", max_output_tokens=500
+    )
     votes = [v for vs in read_votes(tmp_path / "out").values() for v in vs.values()]
     assert set(votes) == {INVALID_VOTE}
     warnings = [m for level, m in log_messages if level == "WARNING"]
 
     server.reset()
-    annotate_dataset(*args, output_dir=tmp_path / "out", max_output_tokens=2000)
+    annotate_without_separate_prompt(
+        *args, output_dir=tmp_path / "out", max_output_tokens=2000
+    )
     assert len(server.requests) == len(df)
     assert read_votes(tmp_path / "out") == expected_votes(df, PRINCIPLES)
     summary = read_summary(tmp_path / "out")
@@ -269,7 +274,7 @@ def test_failed_calls_are_repeated_when_resuming(
     df.to_csv(tmp_path / "data.csv", index=False)
     args = (tmp_path / "data.csv", PRINCIPLES, MOCK_MODEL)
 
-    annotate_dataset(*args, output_dir=tmp_path / "out")
+    annotate_without_separate_prompt(*args, output_dir=tmp_path / "out")
     votes = [v for vs in read_votes(tmp_path / "out").values() for v in vs.values()]
     assert set(votes) == {INVALID_VOTE}
     assert read_summary(tmp_path / "out")["num_failed_calls"] == len(df)
@@ -279,7 +284,7 @@ def test_failed_calls_are_repeated_when_resuming(
     )
 
     server = mock_llm_server()  # provider works again
-    annotate_dataset(*args, output_dir=tmp_path / "out")
+    annotate_without_separate_prompt(*args, output_dir=tmp_path / "out")
     assert len(server.requests) == len(df)
     assert read_votes(tmp_path / "out") == expected_votes(df, PRINCIPLES)
 
@@ -312,7 +317,9 @@ def test_account_error_stops_annotation_and_keeps_cached_votes(
 
     with pytest.raises(voting.AnnotatorAccountError, match=message) as exc_info:
         # One call at a time: exactly one call is rejected
-        annotate_dataset(*args, output_dir=tmp_path / "out", max_concurrent_tasks=1)
+        annotate_without_separate_prompt(
+            *args, output_dir=tmp_path / "out", max_concurrent_tasks=1
+        )
     assert exc_info.value.status_code == status
     assert f"{len(df) - num_ok} of {len(df)} API calls" in str(exc_info.value)
     assert "re-run with the same output directory" in str(exc_info.value)
@@ -326,7 +333,7 @@ def test_account_error_stops_annotation_and_keeps_cached_votes(
     assert sum("Stopping annotation" in m for _, m in log_messages) == 1
 
     server = mock_llm_server()  # credits added
-    annotate_dataset(*args, output_dir=tmp_path / "out")
+    annotate_without_separate_prompt(*args, output_dir=tmp_path / "out")
     assert len(server.requests) == len(df) - num_ok  # votes before the error reused
     assert read_votes(tmp_path / "out") == expected_votes(df, PRINCIPLES)
     summary = read_summary(tmp_path / "out")
@@ -352,7 +359,7 @@ def test_account_error_stops_calls_not_yet_started(
     df.to_csv(tmp_path / "data.csv", index=False)
 
     with pytest.raises(voting.AnnotatorAccountError, match="Insufficient credits"):
-        annotate_dataset(
+        annotate_without_separate_prompt(
             tmp_path / "data.csv",
             PRINCIPLES,
             MOCK_MODEL,
@@ -373,7 +380,7 @@ def test_rerun_without_position_debias_removes_per_order_votes(
     make_pairs_df(4, seed="o").to_csv(tmp_path / "data.csv", index=False)
     per_order_path = tmp_path / "out/results/041_votes_per_comparison_per_order.csv"
     for debias in (True, position_debias):
-        annotate_dataset(
+        annotate_without_separate_prompt(
             tmp_path / "data.csv",
             PRINCIPLES[:3],
             MOCK_MODEL,
@@ -406,11 +413,11 @@ def test_invalid_settings_rejected_before_writing_files(
     """Regression: max_concurrent_tasks=0 made all API calls wait forever, other
     invalid values failed only after output files had been written."""
     with pytest.raises(ValueError, match=setting):
-        VotingConfig(model=MOCK_MODEL, **{setting: value})
+        VotingConfig(without_separate_prompt=True, model=MOCK_MODEL, **{setting: value})
 
     make_pairs_df(2).to_csv(tmp_path / "data.csv", index=False)
     with pytest.raises(ValueError, match=setting):
-        annotate_dataset(
+        annotate_without_separate_prompt(
             tmp_path / "data.csv",
             PRINCIPLES,
             MOCK_MODEL,
@@ -437,7 +444,7 @@ def test_invalid_principles_rejected_before_writing_files(
     principle, a dict with its keys."""
     make_pairs_df(2).to_csv(tmp_path / "data.csv", index=False)
     with pytest.raises(TypeError, match="principles"):
-        annotate_dataset(
+        annotate_without_separate_prompt(
             tmp_path / "data.csv", principles, MOCK_MODEL, output_dir=tmp_path / "out"
         )
     assert not (tmp_path / "out").exists()
@@ -489,12 +496,14 @@ def test_usage_summary_covers_interrupted_and_resumed_run(
 
     monkeypatch.setattr(voting, "get_vote_for_single_comparison", get_vote_or_interrupt)
     with pytest.raises(Interrupted):
-        annotate_dataset(*args, output_dir=tmp_path / "out", max_concurrent_tasks=1)
+        annotate_without_separate_prompt(
+            *args, output_dir=tmp_path / "out", max_concurrent_tasks=1
+        )
     monkeypatch.setattr(voting, "get_vote_for_single_comparison", get_vote)
     assert len(server.responses) == 5
     assert not (tmp_path / "out/results/080_api_usage_summary.json").exists()
 
-    annotate_dataset(*args, output_dir=tmp_path / "out")
+    annotate_without_separate_prompt(*args, output_dir=tmp_path / "out")
     summary = read_summary(tmp_path / "out")
     assert_usage_as_reported(summary, server.responses)  # both runs
     assert_usage_as_reported(summary["this_run"], server.responses[5:])
@@ -546,12 +555,14 @@ def test_usage_summary_counts_calls_interrupted_in_flight(
         voting, "run_with_http_retries", interrupt_before_response_arrives
     )
     with pytest.raises(InterruptedInFlight):
-        annotate_dataset(*args, output_dir=tmp_path / "out", max_concurrent_tasks=1)
+        annotate_without_separate_prompt(
+            *args, output_dir=tmp_path / "out", max_concurrent_tasks=1
+        )
     monkeypatch.setattr(voting, "run_with_http_retries", run_call)
     assert len(server.responses) == len(df)
     unlogged_cost = server.responses[-1][1]["usage"]["cost"]
 
-    annotate_dataset(*args, output_dir=tmp_path / "out")
+    annotate_without_separate_prompt(*args, output_dir=tmp_path / "out")
     summary = read_summary(tmp_path / "out")
     assert summary["num_unfinished_calls"] == 1
     assert summary["num_calls"] == len(server.responses) - 1
@@ -581,11 +592,11 @@ def test_usage_summary_of_rerun_without_api_calls(
     df.to_csv(tmp_path / "data.csv", index=False)
     args = (tmp_path / "data.csv", PRINCIPLES, MOCK_MODEL)
 
-    annotate_dataset(*args, output_dir=tmp_path / "out")
+    annotate_without_separate_prompt(*args, output_dir=tmp_path / "out")
     first = read_summary(tmp_path / "out")
     server.reset()
     log_messages.clear()
-    annotate_dataset(*args, output_dir=tmp_path / "out")
+    annotate_without_separate_prompt(*args, output_dir=tmp_path / "out")
     second = read_summary(tmp_path / "out")
 
     assert server.responses == []
@@ -632,7 +643,7 @@ def test_usage_with_failed_calls_and_partially_reported_cost(
     modify_responses(monkeypatch, server, fail_or_omit_cost)
     df = make_pairs_df(16, seed="p")
     df.to_csv(tmp_path / "data.csv", index=False)
-    annotate_dataset(
+    annotate_without_separate_prompt(
         tmp_path / "data.csv", PRINCIPLES, MOCK_MODEL, output_dir=tmp_path / "out"
     )
 
@@ -667,7 +678,7 @@ def test_usage_with_cost_not_reported(
 
     modify_responses(monkeypatch, server, omit_cost)
     make_pairs_df(4, seed="n").to_csv(tmp_path / "data.csv", index=False)
-    annotate_dataset(
+    annotate_without_separate_prompt(
         tmp_path / "data.csv", PRINCIPLES, MOCK_MODEL, output_dir=tmp_path / "out"
     )
 
@@ -681,7 +692,9 @@ def test_usage_with_cost_not_reported(
 def test_usage_summary_of_run_without_votes(tmp_path, mock_llm_server, log_messages):
     server = mock_llm_server()
     make_pairs_df(2, seed="w").to_csv(tmp_path / "data.csv", index=False)
-    annotate_dataset(tmp_path / "data.csv", [], MOCK_MODEL, output_dir=tmp_path / "out")
+    annotate_without_separate_prompt(
+        tmp_path / "data.csv", [], MOCK_MODEL, output_dir=tmp_path / "out"
+    )
 
     assert server.requests == []
     # Not: "(all votes were loaded from the vote cache)"
@@ -699,7 +712,7 @@ def test_unparsable_responses_counted(tmp_path, mock_llm_server, monkeypatch):
 
     modify_responses(monkeypatch, server, votes_by_name)
     make_pairs_df(4, seed="k").to_csv(tmp_path / "data.csv", index=False)
-    annotate_dataset(
+    annotate_without_separate_prompt(
         tmp_path / "data.csv", PRINCIPLES, MOCK_MODEL, output_dir=tmp_path / "out"
     )
 

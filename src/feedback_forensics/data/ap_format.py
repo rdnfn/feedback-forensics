@@ -212,6 +212,7 @@ def create_annotated_pairs(
     auto_detect_annotators: bool = True,
     ignored_columns: tuple = ("principles", "prompt_principles"),
     description: str = DEFAULT_DATASET_DESCRIPTION,
+    prompt_column: str = "input",
 ) -> Dict:
     """Create an AnnotatedPairs dataset from a dataframe and (optional) principle votes.
 
@@ -222,6 +223,10 @@ def create_annotated_pairs(
         principle_index_to_text: Mapping of principle ids (used in votes) to principle text
         comparison_votes: Mapping of df index -> {principle id -> vote}
         additional_columns: Additional columns to include as annotators
+        prompt_column: Column written to the `prompt` field of each comparison.
+            Default "input" (as ICAI): a `prompt` column is then only kept in
+            the metadata. `annotate_dataset` passes "prompt" when it states the
+            prompt separately. Not part of the comparison ids.
         auto_detect_annotators: Whether to automatically detect annotator columns
         ignored_columns: Columns to not add as metadata
         description: Dataset description stored in the metadata
@@ -342,7 +347,9 @@ def create_annotated_pairs(
 
         comparison = {
             "id": comparison_id,
-            "prompt": row.get("input"),
+            # A `prompt` column is also kept in the metadata: where files have it
+            # that were created with the default `prompt_column`
+            "prompt": row.get(prompt_column),
             "response_a": response_a,
             "response_b": response_b,
             "annotations": annotations,
@@ -404,9 +411,19 @@ def _switch_pref_labels_in_df(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def load_preference_data(
-    path: str | Path, switch_labels: bool = False, merge_prompts: bool = True
+    path: str | Path,
+    switch_labels: bool = False,
+    merge_prompts: bool = True,
+    use_metadata_prompts: bool = False,
 ) -> pd.DataFrame:
     """Load standard preference data from a CSV or AnnotatedPairs JSON file.
+
+    Args:
+        use_metadata_prompts: For AnnotatedPairs files: take the prompt of a
+            comparison from its metadata if its `prompt` field is empty, as in
+            files created by `annotate_dataset` with `without_separate_prompt`
+            (or before prompts were stated separately). The prompt is never
+            extracted from the response texts.
 
     If a separate `prompt` column is present (and `merge_prompts`), the prompt is
     merged into the `text_a`/`text_b` columns as a chat conversation, and the
@@ -415,9 +432,11 @@ def load_preference_data(
     path = Path(path)
 
     if path.suffix == ".csv":
-        df = pd.read_csv(path)
+        # Prompts are read as they are: pandas would turn prompts such as "NA",
+        # "null" or "None" into missing values
+        df = pd.read_csv(path, converters={"prompt": str})
     elif path.suffix == ".json":
-        df = _load_df_from_ap_json(path)
+        df = _load_df_from_ap_json(path, use_metadata_prompts)
     else:
         raise ValueError(f"Unsupported file extension: {path.suffix}")
 
@@ -436,7 +455,9 @@ def load_preference_data(
     return df
 
 
-def _load_df_from_ap_json(path: str | Path) -> pd.DataFrame:
+def _load_df_from_ap_json(
+    path: str | Path, use_metadata_prompts: bool = False
+) -> pd.DataFrame:
     """Load an AnnotatedPairs JSON file as a simple preference dataframe."""
     ap_data = load_annotated_pairs_from_file(path)
 
@@ -455,7 +476,11 @@ def _load_df_from_ap_json(path: str | Path) -> pd.DataFrame:
         rows.append(
             {
                 "id": comparison["id"],
-                "prompt": comparison["prompt"],
+                "prompt": (
+                    _get_ap_prompt(comparison)
+                    if use_metadata_prompts
+                    else comparison["prompt"]
+                ),
                 "text_a": comparison["response_a"]["text"],
                 "text_b": comparison["response_b"]["text"],
                 "model_a": comparison["response_a"].get("model", None),
@@ -465,6 +490,15 @@ def _load_df_from_ap_json(path: str | Path) -> pd.DataFrame:
         )
 
     return pd.DataFrame(rows)
+
+
+def _get_ap_prompt(comparison: dict):
+    """Prompt of an AnnotatedPairs comparison: its `prompt` field, or (if empty)
+    the `prompt` in its metadata. None if neither is set."""
+    prompt = comparison.get("prompt")
+    if prompt is None:
+        prompt = (comparison.get("metadata") or {}).get("prompt")
+    return prompt
 
 
 def _add_prompt_to_texts(df: pd.DataFrame) -> pd.DataFrame:
