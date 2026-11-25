@@ -41,6 +41,7 @@ from feedback_forensics.annotation.voting import (
     INVALID_VOTE,
     VotingConfig,
     get_votes_for_principles,
+    check_prompts,
 )
 from feedback_forensics.data.ap_format import (
     create_annotated_pairs,
@@ -73,6 +74,7 @@ def annotate_dataset(
     dataset_name: str | None = None,
     batch: bool = False,
     batch_max_wait: float = 24 * 60,
+    legacy_prompt: bool = False,
 ) -> Path:
     """Annotate a dataset with principle-following AI annotators.
 
@@ -100,11 +102,22 @@ def annotate_dataset(
             results taking up to 24 h (`openrouter/` models with a batch variant
             only, see `feedback_forensics.annotation.batch`).
         batch_max_wait: Minutes to wait for batches.
+        legacy_prompt: Annotate with the former annotation prompt, which shows
+            only the two texts (a `prompt` column is merged into both of them
+            as a chat conversation, so the prompt is sent twice per API call).
+            By default (False), the user prompt is stated once before the two
+            responses: the data then must have a `prompt` column, with a prompt
+            for every row that is not already part of the texts. Votes of the
+            two prompts are not comparable (published data and data annotated
+            with ICAI used the former prompt).
 
     Returns:
         Path to the AnnotatedPairs JSON file with the annotations.
 
     Raises:
+        PromptDataError: (unless `legacy_prompt`) if the data has no `prompt`
+            column, a row without prompt, or prompts already contained in the
+            texts. Raised before any API call or file is written.
         BatchPendingError: (batch only) batches are still pending after
             `batch_max_wait`. Re-run with the same output directory and settings
             to collect them.
@@ -126,8 +139,12 @@ def annotate_dataset(
         position_debias=position_debias,
         batch=batch,
         batch_max_wait=batch_max_wait,
+        legacy_prompt=legacy_prompt,
     )
     check_model_settings(model, reasoning_effort)
+    data = load_preference_data(datapath, merge_prompts=legacy_prompt)
+    if not legacy_prompt:
+        check_prompts(data)
     output_dir = Path(output_dir) if output_dir is not None else default_output_dir()
     results_path = output_dir / "results"
     results_path.mkdir(parents=True, exist_ok=True)
@@ -138,7 +155,6 @@ def annotate_dataset(
         principle_index_to_text = {i: p for i, p in enumerate(principles)}
         logger.info(f"Principles to be tested: {principles}")
 
-        data = load_preference_data(datapath, merge_prompts=True)
         added_pseudo_preferred_text = "preferred_text" not in data.columns
         if added_pseudo_preferred_text:
             logger.warning(
@@ -198,6 +214,10 @@ def annotate_dataset(
             "max_output_tokens": max_output_tokens,
             "reasoning_effort": reasoning_effort,
         }
+        if not legacy_prompt:
+            # Only recorded if stated separately: files without it were annotated
+            # with the former prompt (prompts merged into the texts)
+            annotated_pairs["metadata"]["annotation"]["separate_prompt"] = True
         all_votes = [v for votes in result.votes.values() for v in votes.values()]
         usage_summary = summarise_usage(
             usage_tracker,

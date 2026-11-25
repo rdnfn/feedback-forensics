@@ -389,6 +389,9 @@ def compare_models(
             position_debias=annotation_settings["position_debias"],
             max_output_tokens=annotation_settings["max_output_tokens"],
             reasoning_effort=annotation_settings["reasoning_effort"],
+            # Fixed, as the other annotation settings: annotations of models added
+            # over time must stay comparable (existing ones used the former prompt)
+            legacy_prompt=True,
         )
         try:
             ap_path = annotate_dataset(

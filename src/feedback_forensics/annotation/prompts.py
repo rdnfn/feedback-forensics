@@ -35,6 +35,17 @@ DO NOT add markdown formatting around JSON.
 ONLY REPLY IN JSON FORMAT
 <|im_end|>"""
 
+# Default prompt of `annotate_dataset`: the user prompt (column `prompt` of the
+# data) is stated once before the two samples, which then only contain the
+# responses. `VOTING_PROMPT` (`legacy_prompt`) shows only the two samples: a
+# `prompt` column is merged into each of them (as a chat conversation), so the
+# prompt is sent twice.
+VOTING_PROMPT_SEPARATE_USER_PROMPT = VOTING_PROMPT.replace(
+    "Sample A:\n{sample_a}",
+    "User prompt (both samples are responses to it):\n{prompt}\n\nSample A:\n{sample_a}",
+)
+assert VOTING_PROMPT_SEPARATE_USER_PROMPT != VOTING_PROMPT
+
 
 def parse_prompt(prompt_str: str, prompt_kwargs: dict) -> list[dict]:
     """Parse a ChatML prompt string into a list of messages, filling in kwargs."""

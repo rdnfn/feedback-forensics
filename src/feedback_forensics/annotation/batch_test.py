@@ -17,7 +17,11 @@ from feedback_forensics.annotation.batch import (
     BatchUnavailableError,
 )
 from feedback_forensics.annotation.mock_api import mock_response
-from feedback_forensics.annotation.testutils import expected_vote, make_pairs_df
+from feedback_forensics.annotation.testutils import (
+    annotate_legacy,
+    expected_vote,
+    make_pairs_df,
+)
 from feedback_forensics.annotation.voting import (
     INVALID_VOTE,
     get_preferred_text,
@@ -159,7 +163,7 @@ def data(tmp_path):
 
 def annotate(tmp_path, **kwargs):
     kwargs = {"batch": True, "model": MODEL, **kwargs}
-    return annotate_dataset(
+    return annotate_legacy(
         tmp_path / "data.csv", PRINCIPLES, output_dir=tmp_path / "out", **kwargs
     )
 
@@ -250,7 +254,7 @@ def test_batch_roundtrip(tmp_path, data, fake_api, live_api):
 def test_same_requests_as_live_api(tmp_path, data, fake_api, live_api):
     api = fake_api()
     annotate(tmp_path)
-    annotate_dataset(
+    annotate_legacy(
         tmp_path / "data.csv", PRINCIPLES, model=MODEL, output_dir=tmp_path / "live"
     )
 
@@ -699,7 +703,7 @@ def test_non_openrouter_model_rejected_before_writing_files(tmp_path, data):
 
 def cli_args(tmp_path) -> list[str]:
     args = ["-d", str(tmp_path / "data.csv"), "-v", "", "-p", json.dumps(PRINCIPLES)]
-    return args + ["-o", str(tmp_path / "out"), "-m", MODEL]
+    return args + ["-o", str(tmp_path / "out"), "-m", MODEL, "--legacy-prompt"]
 
 
 def test_cli(tmp_path, data, fake_api, live_api, capsys):

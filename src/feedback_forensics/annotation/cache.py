@@ -134,6 +134,7 @@ def get_vote_hash(
     max_output_tokens: int,
     reasoning_effort: str | None,
     shown_first: str | None = None,
+    prompt: str | None = None,
 ) -> str:
     """Hash identifying a single vote (its key in the vote cache).
 
@@ -146,15 +147,19 @@ def get_vote_hash(
     Args:
         shown_first: For position-debiased annotation, which response was shown
             as sample A ("preferred" or "rejected"). None for standard annotation.
+        prompt: User prompt stated separately in the request. None (hash as before
+            prompts were stated separately) for requests with the former prompt
+            (`legacy_prompt`).
     """
-    return _get_hash(
-        dict(
-            preferred=preferred,
-            rejected=rejected,
-            principle=principle,
-            model_name=model_name,
-            max_output_tokens=max_output_tokens,
-            reasoning_effort=reasoning_effort,
-            shown_first=shown_first,
-        )
+    content = dict(
+        preferred=preferred,
+        rejected=rejected,
+        principle=principle,
+        model_name=model_name,
+        max_output_tokens=max_output_tokens,
+        reasoning_effort=reasoning_effort,
+        shown_first=shown_first,
     )
+    if prompt is not None:
+        content["prompt"] = prompt
+    return _get_hash(content)

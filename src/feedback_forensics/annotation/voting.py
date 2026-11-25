@@ -63,7 +63,11 @@ from loguru import logger
 from tqdm.asyncio import tqdm
 
 from feedback_forensics.annotation.cache import VoteCache, get_vote_hash
-from feedback_forensics.annotation.prompts import VOTING_PROMPT, parse_prompt
+from feedback_forensics.annotation.prompts import (
+    VOTING_PROMPT,
+    VOTING_PROMPT_SEPARATE_USER_PROMPT,
+    parse_prompt,
+)
 from feedback_forensics.annotation.usage import UsageTracker
 from feedback_forensics.models.openrouter import check_batch_model
 
@@ -121,6 +125,16 @@ class VotingConfig:
     batch: bool = False
     # Minutes to wait for batches, `BatchPendingError` is raised if still pending
     batch_max_wait: float = 24 * 60
+    # By default, the user prompt (column `prompt` of the data) is stated once in
+    # the request, before the two responses (`VOTING_PROMPT_SEPARATE_USER_PROMPT`):
+    # the data must have a prompt for every row, that is not already part of the
+    # texts (`PromptDataError` otherwise, see `check_prompts`).
+    # True: use the former prompt (`VOTING_PROMPT`, as ICAI and published data),
+    # which shows only the two texts: for data without prompts, or with the prompt
+    # contained in the texts (`annotate_dataset` then merges a `prompt` column
+    # into both texts, so it is sent twice). Votes of the two prompts are not
+    # comparable.
+    legacy_prompt: bool = False
 
     def __post_init__(self):
         # Fail early: e.g. 0 concurrent tasks would make every API call wait forever
@@ -157,6 +171,7 @@ class _VoteRequest:
     rejected: str
     flipped: bool  # True: rejected response shown as sample A
     hashes: dict[str, str]  # principle -> vote hash
+    prompt: str | None = None  # user prompt stated separately (None: legacy prompt)
 
     @property
     def principles(self) -> list[str]:
@@ -173,23 +188,94 @@ class _VoteRequest:
     def messages(self) -> list[dict]:
         """Messages of the LLM call (OpenAI format)."""
         return _get_messages(
-            self.preferred, self.rejected, self.principles, self.flipped
+            self.preferred, self.rejected, self.principles, self.flipped, self.prompt
         )
 
 
 def _get_messages(
-    preferred: str, rejected: str, principles: list[str], flipped: bool
+    preferred: str,
+    rejected: str,
+    principles: list[str],
+    flipped: bool,
+    prompt: str | None = None,
 ) -> list[dict]:
-    """Messages of the LLM call (OpenAI format) voting on a comparison."""
+    """Messages of the LLM call (OpenAI format) voting on a comparison.
+
+    Args:
+        prompt: User prompt both responses answer, stated once before them. None:
+            former prompt (`legacy_prompt`), showing only the two samples.
+    """
     sample_a, sample_b = (rejected, preferred) if flipped else (preferred, rejected)
-    return parse_prompt(
-        prompt_str=VOTING_PROMPT,
-        prompt_kwargs=dict(
-            sample_a=sample_a,
-            sample_b=sample_b,
-            summaries=dict(enumerate(principles)),
-        ),
+    prompt_kwargs = dict(
+        sample_a=sample_a,
+        sample_b=sample_b,
+        summaries=dict(enumerate(principles)),
     )
+    if prompt is None:
+        return parse_prompt(prompt_str=VOTING_PROMPT, prompt_kwargs=prompt_kwargs)
+    return parse_prompt(
+        prompt_str=VOTING_PROMPT_SEPARATE_USER_PROMPT,
+        prompt_kwargs=dict(prompt=prompt, **prompt_kwargs),
+    )
+
+
+class PromptDataError(ValueError):
+    """The data cannot be annotated with the user prompt stated separately."""
+
+
+# Number of rows checked for prompts that are already part of the texts
+NUM_ROWS_PROMPT_IN_TEXT_CHECK = 100
+
+
+def _is_empty_prompt(prompt) -> bool:
+    return (
+        prompt is None
+        or (isinstance(prompt, float) and pd.isna(prompt))
+        or not str(prompt).strip()
+    )
+
+
+def check_prompts(feedback_df: pd.DataFrame) -> None:
+    """Check that the data can be annotated with the user prompt stated once in
+    the request (the default, see `VotingConfig.legacy_prompt`).
+
+    The prompt is only ever taken from the `prompt` column: it is never
+    extracted from texts that contain it.
+
+    Raises:
+        PromptDataError: if the data has no `prompt` column, if any prompt is
+            empty, or if the prompts are already part of the texts (the prompt
+            would be sent twice).
+    """
+    legacy_hint = (
+        "To annotate with the former prompt instead, which shows only the two "
+        "texts, set legacy_prompt (ff-annotate: --legacy-prompt). Votes of the "
+        "two prompts are not comparable."
+    )
+    if "prompt" not in feedback_df.columns:
+        raise PromptDataError(
+            "The data has no `prompt` column. By default, the user prompt is stated "
+            "once in the annotation prompt, so it must be part of the data. "
+            + legacy_hint
+        )
+    empty = [idx for idx, p in feedback_df["prompt"].items() if _is_empty_prompt(p)]
+    if empty:
+        raise PromptDataError(
+            f"{len(empty)} of {len(feedback_df)} rows have an empty `prompt` "
+            f"(first rows: {empty[:5]}). Every row needs a prompt."
+        )
+    head = feedback_df.iloc[:NUM_ROWS_PROMPT_IN_TEXT_CHECK]
+    prompt_in_texts = head.apply(
+        lambda row: str(row["prompt"]) in str(row["text_a"])
+        and str(row["prompt"]) in str(row["text_b"]),
+        axis=1,
+    )
+    if len(head) > 0 and prompt_in_texts.all():
+        raise PromptDataError(
+            "The prompts are already contained in both texts (in all of the first "
+            f"{len(head)} rows): stated separately as well, each prompt would be "
+            "sent twice. Remove the prompts from the texts. " + legacy_hint
+        )
 
 
 def get_preferred_text(row) -> str:
@@ -328,13 +414,21 @@ async def _get_votes(
         f"Running up to {config.max_concurrent_tasks} API calls concurrently."
     )
 
+    if not config.legacy_prompt:
+        check_prompts(feedback_df)
     rows = [
-        (idx, get_preferred_text(row), get_rejected_text(row))
+        (
+            idx,
+            get_preferred_text(row),
+            get_rejected_text(row),
+            None if config.legacy_prompt else str(row["prompt"]),
+        )
         for idx, row in feedback_df.iterrows()
     ]
 
-    def vote_hash(preferred, rejected, principle, shown_first):
+    def vote_hash(preferred, rejected, principle, shown_first, prompt):
         return get_vote_hash(
+            prompt=prompt,
             preferred=preferred,
             rejected=rejected,
             principle=principle,
@@ -347,17 +441,21 @@ async def _get_votes(
     requests_per_pass = []
     for part in principle_parts:
         requests = []
-        for _, preferred, rejected in rows:
+        for _, preferred, rejected, prompt in rows:
             if config.position_debias:
                 orders = [(False, "preferred"), (True, "rejected")]
             else:
                 orders = [(rng.choice([True, False]), None)]
             for flipped, shown_first in orders:
                 hashes = {
-                    principle: vote_hash(preferred, rejected, principle, shown_first)
+                    principle: vote_hash(
+                        preferred, rejected, principle, shown_first, prompt
+                    )
                     for principle in part
                 }
-                requests.append(_VoteRequest(preferred, rejected, flipped, hashes))
+                requests.append(
+                    _VoteRequest(preferred, rejected, flipped, hashes, prompt)
+                )
         requests_per_pass.append(requests)
 
     # Ids of requests answered by the batch API without any valid vote
@@ -396,12 +494,12 @@ async def _get_votes(
     # Collect per-comparison votes
     votes_per_comparison = {}
     votes_per_order = {} if config.position_debias else None
-    for idx, preferred, rejected in rows:
+    for idx, preferred, rejected, prompt in rows:
         if config.position_debias:
             per_order = {
                 f"{shown_first}_first": {
                     key: hashed_votes[
-                        vote_hash(preferred, rejected, principle, shown_first)
+                        vote_hash(preferred, rejected, principle, shown_first, prompt)
                     ]
                     for key, principle in principles.items()
                 }
@@ -417,7 +515,9 @@ async def _get_votes(
             }
         else:
             votes_per_comparison[idx] = {
-                key: hashed_votes[vote_hash(preferred, rejected, principle, None)]
+                key: hashed_votes[
+                    vote_hash(preferred, rejected, principle, None, prompt)
+                ]
                 for key, principle in principles.items()
             }
 
@@ -491,6 +591,7 @@ async def _run_pass(
                     rejected=request.rejected,
                     principles=request.principles,
                     flipped=request.flipped,
+                    prompt=request.prompt,
                     model=model,
                     model_name=config.model,
                     usage_tracker=usage_tracker,
@@ -534,6 +635,7 @@ async def get_vote_for_single_comparison(
     model,
     model_name: str,
     usage_tracker: UsageTracker,
+    prompt: str | None = None,
 ) -> dict:
     """Get votes (relative to the preferred response) for a single comparison,
     with a (live) API call.
@@ -545,7 +647,7 @@ async def get_vote_for_single_comparison(
         AnnotatorAccountError: if the API rejected the call due to the API key
             or account (other failed calls result in invalid votes).
     """
-    messages = _get_messages(preferred, rejected, principles, flipped)
+    messages = _get_messages(preferred, rejected, principles, flipped, prompt)
 
     # Logged before the call: calls in flight when the run is interrupted (e.g.
     # with Ctrl-C) remain without result, but may still be billed

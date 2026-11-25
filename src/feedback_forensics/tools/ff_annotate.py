@@ -5,7 +5,11 @@ import json
 
 from loguru import logger
 
-from feedback_forensics.annotation import AnnotatorAccountError, annotate_dataset
+from feedback_forensics.annotation import (
+    AnnotatorAccountError,
+    PromptDataError,
+    annotate_dataset,
+)
 from feedback_forensics.annotation.batch import BatchError, BatchPendingError
 from feedback_forensics.annotation.pipeline import default_output_dir
 from feedback_forensics.annotation.principles import get_default_principles
@@ -146,6 +150,18 @@ def get_parser() -> argparse.ArgumentParser:
         help="Maximum number of concurrent API calls (default: 400)",
     )
     parser.add_argument(
+        "--legacy-prompt",
+        action="store_true",
+        help=(
+            "Annotate with the former annotation prompt, which shows only the two "
+            "texts (a prompt column is merged into both texts, i.e. sent twice per "
+            "API call). Needed for data without prompt column, or with the prompts "
+            "already contained in the texts. By default, the user prompt is stated "
+            "once before the two responses, and the data must have a prompt for "
+            "every row. Votes of the two prompts are not comparable."
+        ),
+    )
+    parser.add_argument(
         "--batch",
         action="store_true",
         help=(
@@ -204,8 +220,9 @@ def run(argv: list[str] | None = None) -> int:
             log_api_calls=args.log_api_calls,
             batch=args.batch,
             batch_max_wait=args.batch_max_wait,
+            legacy_prompt=args.legacy_prompt,
         )
-    except AnnotatorAccountError as e:
+    except (AnnotatorAccountError, PromptDataError) as e:
         # Message states the problem and how to continue: shown without traceback
         logger.error(str(e))
         return 1
