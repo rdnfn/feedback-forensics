@@ -279,7 +279,11 @@ def check_prompts(feedback_df: pd.DataFrame) -> None:
     if empty:
         raise PromptDataError(
             f"{len(empty)} of {len(feedback_df)} rows have an empty `prompt` "
-            f"(first rows: {empty[:5]}). Every row needs a prompt."
+            f"(first rows: {empty[:5]}). The user prompt is stated once in the "
+            "annotation prompt, so every row needs one: rows without prompt would "
+            "be annotated with a different prompt than the others, and their votes "
+            "would not be comparable. Add the missing prompts or remove these "
+            "rows. " + override_hint
         )
     head = feedback_df.iloc[:NUM_ROWS_PROMPT_IN_TEXT_CHECK]
     if len(head) > 0 and head.apply(_prompt_merged_into_texts, axis=1).all():

@@ -592,7 +592,7 @@ def test_check_prompts_edge_cases(tmp_path):
                 ]
             )
         )
-    # Data without any prompt points to the option, single missing prompts do not
+    # Both errors on missing prompts name the option
     with pytest.raises(PromptDataError, match="no prompts.*without_separate_prompt"):
         check_prompts(pd.DataFrame([dict(prompt=None, text_a="a", text_b="b")] * 2))
     with pytest.raises(PromptDataError, match="1 of 2 rows") as error:
@@ -604,7 +604,8 @@ def test_check_prompts_edge_cases(tmp_path):
                 ]
             )
         )
-    assert "without_separate_prompt" not in str(error.value)
+    assert "would not be comparable" in str(error.value)
+    assert "--without-separate-prompt" in str(error.value)
 
     # Prompts that pandas reads as missing values by default are prompts
     df = make_pairs_df(4, with_prompt=True, seed="na")
