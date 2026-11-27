@@ -180,6 +180,7 @@ exp/
 forensics-data/
 icai-tmp-data/
 secrets.toml
+.devcontainer/devcontainer.env
 
 data/input
 data/output
