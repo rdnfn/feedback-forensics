@@ -1,0 +1,1101 @@
+{
+  "version": "v2-draft",
+  "description": "Draft of the v2 personality traits after review. 'origin' is 'v1' for traits kept from v1 (instruction unchanged) and 'new' otherwise. 'relevant_if_either_response' completes the sentence 'The trait is relevant if either response …'. 'via' lists news coverage of the source it is attached to. 'review_note' is for review only and is not part of the annotation prompt.",
+  "traits": [
+    {
+      "name": "Verbosity",
+      "instruction": "Select the response that is more verbose",
+      "example": {
+        "trait": "The capital of France is Paris",
+        "not_trait": "Paris"
+      },
+      "relevant_if_either_response": "clearly uses more words than the other",
+      "sources": [
+        {
+          "authors": "Yann Dubois, Balázs Galambosi, Percy Liang, Tatsunori B. Hashimoto",
+          "title": "Length-Controlled AlpacaEval: A Simple Way to Debias Automatic Evaluators",
+          "type": "paper",
+          "url": "https://arxiv.org/abs/2404.04475",
+          "venue": "COLM 2024"
+        }
+      ],
+      "origin": "v1"
+    },
+    {
+      "name": "Numbered list",
+      "instruction": "Select the response that provides a numbered list format",
+      "example": {
+        "trait": "1. Mix\n2. Bake",
+        "not_trait": "Mix, then bake"
+      },
+      "relevant_if_either_response": "has a numbered list",
+      "sources": [
+        {
+          "authors": "Xuanchang Zhang, Wei Xiong, Lichang Chen, Tianyi Zhou, Heng Huang, Tong Zhang",
+          "title": "From lists to emojis: How format bias affects model alignment",
+          "type": "paper",
+          "url": "https://aclanthology.org/2025.acl-long.1308/",
+          "venue": "ACL 2025"
+        }
+      ],
+      "origin": "v1",
+      "review_note": "Sub-case of 'Structured formatting' (already so in v1)."
+    },
+    {
+      "name": "Structured formatting",
+      "instruction": "Select the response that has more formatting overall",
+      "example": {
+        "trait": "- Mix\n- Bake",
+        "not_trait": "Mix, then bake"
+      },
+      "relevant_if_either_response": "uses headings, lists, tables, code blocks or dividers. Judge overall formatting amount, not one element",
+      "sources": [
+        {
+          "authors": "Tianle Li, Anastasios Angelopoulos, Wei-Lin Chiang",
+          "title": "Does style matter? Disentangling style and substance in Chatbot Arena",
+          "type": "post",
+          "url": "https://lmsys.org/blog/2024-08-28-style-control",
+          "venue": "LMSYS Org blog, 2024"
+        }
+      ],
+      "origin": "v1",
+      "review_note": "Instruction changed from the v1 wording ('has more structured formatting') on 2026-11-27, so this trait no longer matches its v1 annotator."
+    },
+    {
+      "name": "Follow-up question",
+      "instruction": "Select the response that ends with a follow-up question",
+      "example": {
+        "trait": "Restart it. Which OS?",
+        "not_trait": "Restart it"
+      },
+      "relevant_if_either_response": "ends with a question to the user",
+      "sources": [
+        {
+          "authors": "Nathan Lambert",
+          "title": "Character training: Understanding and crafting a language model's personality",
+          "type": "post",
+          "url": "https://www.interconnects.ai/p/character-training",
+          "venue": "Interconnects, 2025"
+        }
+      ],
+      "origin": "v1",
+      "review_note": "Overlaps with new 'Offer ending' (\"Want me to…?\" is both)."
+    },
+    {
+      "name": "Friendly tone",
+      "instruction": "Select the response that has a friendlier tone",
+      "example": {
+        "trait": "Happy to help! Restart it",
+        "not_trait": "Restart it"
+      },
+      "relevant_if_either_response": "has warm wording (greeting, encouragement, kind remark)",
+      "sources": [
+        {
+          "authors": "Lujain Ibrahim, Franziska Sofia Hafner, Luc Rocher",
+          "title": "Training language models to be warm can reduce accuracy and increase sycophancy",
+          "type": "paper",
+          "url": "https://www.nature.com/articles/s41586-026-10410-0",
+          "venue": "Nature, 2026"
+        }
+      ],
+      "origin": "v1"
+    },
+    {
+      "name": "Formal language",
+      "instruction": "Select the response that uses more formal language",
+      "example": {
+        "trait": "I would recommend restarting",
+        "not_trait": "Just restart it"
+      },
+      "relevant_if_either_response": "clearly differs from the other in countable register markers: shortened forms, slang, interjections. One shortened form is not a difference. If a response has too little prose to judge, the trait is not relevant",
+      "sources": [
+        {
+          "authors": "Zhewei Sun, Qian Hu, Rahul Gupta, Richard Zemel, Yang Xu",
+          "title": "Toward Informal Language Processing: Knowledge of Slang in Large Language Models",
+          "type": "paper",
+          "url": "https://aclanthology.org/2024.naacl-long.94/",
+          "venue": "NAACL 2024"
+        }
+      ],
+      "origin": "v1"
+    },
+    {
+      "name": "References",
+      "instruction": "Select the response that includes more references to other sources",
+      "example": {
+        "trait": "Per WHO (2023), 8 hours",
+        "not_trait": "Experts say 8 hours"
+      },
+      "relevant_if_either_response": "references external source",
+      "sources": [
+        {
+          "authors": "Tianyu Gao, Howard Yen, Jiatong Yu, Danqi Chen",
+          "title": "Enabling Large Language Models to Generate Text with Citations",
+          "type": "paper",
+          "url": "https://aclanthology.org/2023.emnlp-main.398/",
+          "venue": "EMNLP 2023"
+        }
+      ],
+      "origin": "v1"
+    },
+    {
+      "name": "Bold and italics",
+      "instruction": "Select the response that uses more bold and italics text",
+      "example": {
+        "trait": "**Save** first",
+        "not_trait": "Save first"
+      },
+      "relevant_if_either_response": "uses bold or italics for emphasis. Stronger if used inside running text not just headings",
+      "sources": [
+        {
+          "authors": "Zhongpu Chen, Yinfeng Liu, Long Shi et al.",
+          "title": "MDEval: Evaluating and Enhancing Markdown Awareness in Large Language Models",
+          "type": "paper",
+          "url": "https://dl.acm.org/doi/10.1145/3696410.3714674",
+          "venue": "WWW 2025"
+        }
+      ],
+      "origin": "v1"
+    },
+    {
+      "name": "Examples",
+      "instruction": "Select the response that provides more examples",
+      "example": {
+        "trait": "Use a loop, e.g. `for x in xs`",
+        "not_trait": "Use a loop"
+      },
+      "relevant_if_either_response": "gives explicit examples (\"e.g.\", \"for example\", a worked case). Count distinct examples; similar counts are \"both\". Items the prompt asked for are not examples",
+      "sources": [
+        {
+          "authors": "Yann Dubois, Balázs Galambosi, Percy Liang, Tatsunori B. Hashimoto",
+          "title": "Length-Controlled AlpacaEval: A Simple Way to Debias Automatic Evaluators",
+          "type": "paper",
+          "url": "https://arxiv.org/abs/2404.04475",
+          "venue": "COLM 2024"
+        }
+      ],
+      "origin": "v1"
+    },
+    {
+      "name": "Humour",
+      "instruction": "Select the response that uses more humour",
+      "example": {
+        "trait": "Restart it. Works on routers and Mondays",
+        "not_trait": "Restart it"
+      },
+      "relevant_if_either_response": "has a joke, pun or playful remark",
+      "sources": [
+        {
+          "authors": "Drew Gorenz, Norbert Schwarz",
+          "title": "How funny is ChatGPT? A comparison of human- and A.I.-produced jokes",
+          "type": "paper",
+          "url": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0305364",
+          "venue": "PLOS ONE, 2024"
+        }
+      ],
+      "origin": "v1"
+    },
+    {
+      "name": "Ethical considerations",
+      "instruction": "Select the response that includes more ethical considerations",
+      "example": {
+        "trait": "Legal, but is it fair?",
+        "not_trait": "Legal"
+      },
+      "relevant_if_either_response": "mentions a moral, safety or fairness concern",
+      "sources": [
+        {
+          "authors": "Laura Weidinger, Maribeth Rauh, Nahema Marchal et al.",
+          "title": "Sociotechnical Safety Evaluation of Generative AI Systems",
+          "type": "paper",
+          "url": "https://arxiv.org/abs/2310.11986",
+          "venue": "arXiv, 2023"
+        }
+      ],
+      "origin": "v1"
+    },
+    {
+      "name": "Acknowledged uncertainty",
+      "instruction": "Select the response that acknowledges own limitations or uncertainty more",
+      "example": {
+        "trait": "Probably 1912, not sure",
+        "not_trait": "1912"
+      },
+      "relevant_if_either_response": "states own uncertainty, limits or inability",
+      "sources": [
+        {
+          "authors": "Stephanie Lin, Jacob Hilton, Owain Evans",
+          "title": "Teaching Models to Express Their Uncertainty in Words",
+          "type": "paper",
+          "url": "https://arxiv.org/abs/2205.14334",
+          "venue": "TMLR, 2022"
+        }
+      ],
+      "origin": "v1",
+      "review_note": "Overlaps with new 'Softened claims'."
+    },
+    {
+      "name": "Rhetorical questions",
+      "instruction": "Select the response that actively engages the reader with rhetorical questions",
+      "example": {
+        "trait": "Why care? It saves time",
+        "not_trait": "It saves time"
+      },
+      "relevant_if_either_response": "asks a question the user need not answer",
+      "sources": [
+        {
+          "authors": "Lisa Dunlap, Krishna Mandal, Trevor Darrell, Jacob Steinhardt, Joseph E Gonzalez",
+          "title": "VibeCheck: Discover and Quantify Qualitative Differences in Large Language Models",
+          "type": "paper",
+          "url": "https://arxiv.org/abs/2410.12851",
+          "venue": "ICLR 2025"
+        }
+      ],
+      "origin": "v1",
+      "review_note": "New 'Self-answered questions (hypophora)' is a sub-case of this."
+    },
+    {
+      "name": "Enthusiastic tone",
+      "instruction": "Select the response that uses a more enthusiastic tone",
+      "example": {
+        "trait": "What a fantastic project!",
+        "not_trait": "Feasible project"
+      },
+      "relevant_if_either_response": "has exclamation marks or excited wording",
+      "sources": [
+        {
+          "authors": "",
+          "title": "GPT-4o Glazing Users",
+          "type": "post",
+          "url": "https://knowyourmeme.com/memes/gpt-4o-glazing-users",
+          "venue": "Know Your Meme, 2025"
+        }
+      ],
+      "origin": "v1"
+    },
+    {
+      "name": "Mathematical notation",
+      "instruction": "Select the response that uses more mathematical symbols and notation",
+      "example": {
+        "trait": "$x^2=0$",
+        "not_trait": "x squared is zero"
+      },
+      "relevant_if_either_response": "has LaTeX or typeset formulas or equations. Code, numbers with units, comparison signs in prose, bracketed statistics and chemical formulas do not count",
+      "sources": [
+        {
+          "authors": "Lisa Dunlap, Krishna Mandal, Trevor Darrell, Jacob Steinhardt, Joseph E Gonzalez",
+          "title": "VibeCheck: Discover and Quantify Qualitative Differences in Large Language Models",
+          "type": "paper",
+          "url": "https://arxiv.org/abs/2410.12851",
+          "venue": "ICLR 2025"
+        }
+      ],
+      "origin": "v1"
+    },
+    {
+      "name": "Emojis",
+      "instruction": "Select the response that uses more emojis",
+      "example": {
+        "trait": "Done ✅",
+        "not_trait": "Done"
+      },
+      "relevant_if_either_response": "has an emoji",
+      "sources": [
+        {
+          "authors": "Kyle Wiggers",
+          "title": "Meta's benchmarks for its new AI models are a bit misleading",
+          "type": "news",
+          "url": "https://techcrunch.com/2025/04/06/metas-benchmarks-for-its-new-ai-models-are-a-bit-misleading/",
+          "venue": "TechCrunch, 2025"
+        }
+      ],
+      "origin": "v1",
+      "review_note": "New 'Emoji markers' is a sub-case of this."
+    },
+    {
+      "name": "Compliments",
+      "instruction": "Select the response that compliments the user's question or prompt",
+      "example": {
+        "trait": "Great question! 42",
+        "not_trait": "42"
+      },
+      "relevant_if_either_response": "praises the user's question, prompt or idea",
+      "sources": [
+        {
+          "authors": "OpenAI",
+          "title": "Expanding on what we missed with sycophancy",
+          "type": "lab post",
+          "url": "https://openai.com/index/expanding-on-sycophancy/",
+          "venue": "OpenAI blog, 2025"
+        }
+      ],
+      "origin": "v1"
+    },
+    {
+      "name": "Importance statement",
+      "instruction": "Select the response that more often says that something matters without saying why",
+      "example": {
+        "trait": "The cache is cold. This matters",
+        "not_trait": "The cache is cold, so loads are slow"
+      },
+      "relevant_if_either_response": "has a sentence whose only content is that something is important (\"This matters.\", \"This is the key part.\"). Sentences that state a fact using \"key\" or \"critical\" do not count",
+      "sources": [
+        {
+          "authors": "Graphite",
+          "title": "AI Tells: Opus 5.5 Update",
+          "type": "report",
+          "url": "https://graphite.io/five-percent/research/ai-tells-opus-5-5-update",
+          "venue": "Graphite research, 2026",
+          "via": [
+            {
+              "ref": "VentureBeat",
+              "url": "https://venturebeat.com/ai/claude-opus-5-5-uses-em-dashes-99-less-often-and-sounds-more-human-but-still-exhibits-2-548-ai-writing-tells"
+            }
+          ]
+        },
+        {
+          "authors": "Jim Bennett",
+          "title": "Anthropic says it fixed Claude's writing. I ran the evals to check.",
+          "type": "post",
+          "url": "https://arize.com/blog/anthropic-says-it-fixed-claudes-writing/",
+          "venue": "Arize blog, 2026"
+        },
+        {
+          "authors": "Chantal Shaib, Tuhin Chakrabarty, Diego Garcia-Olano, Byron C. Wallace",
+          "title": "Measuring AI \"Slop\" in Text",
+          "type": "paper, general",
+          "url": "https://arxiv.org/abs/2509.19163",
+          "venue": "arXiv, 2025"
+        }
+      ],
+      "origin": "new",
+      "review_note": "Close to 'Filler emphasis'; here the claim of importance stands alone, there it prefixes a statement."
+    },
+    {
+      "name": "Verdict label",
+      "instruction": "Select the response that announces its own verdict more explicitly",
+      "example": {
+        "trait": "Honest take: use Postgres",
+        "not_trait": "Use Postgres"
+      },
+      "relevant_if_either_response": "labels a statement as its verdict within a sentence or paragraph (\"Honest take: …\", \"My guess: …\", \"In short: …\"). Headings and standalone label lines do not count",
+      "sources": [
+        {
+          "authors": "Jim Bennett",
+          "title": "Anthropic says it fixed Claude's writing. I ran the evals to check.",
+          "type": "post",
+          "url": "https://arize.com/blog/anthropic-says-it-fixed-claudes-writing/",
+          "venue": "Arize blog, 2026"
+        },
+        {
+          "authors": "",
+          "title": "How to stop Claude from saying load-bearing",
+          "type": "post",
+          "url": "https://news.ycombinator.com/item?id=48905248",
+          "venue": "Hacker News thread"
+        },
+        {
+          "authors": "Kaitlyn Zhou, Jena D. Hwang, Xiang Ren, Maarten Sap",
+          "title": "Relying on the Unreliable: The Impact of Language Models' Reluctance to Express Uncertainty",
+          "type": "paper, related",
+          "url": "https://arxiv.org/abs/2401.06730",
+          "venue": "ACL 2024"
+        }
+      ],
+      "origin": "new"
+    },
+    {
+      "name": "Lead-in announcement",
+      "instruction": "Select the response that more often announces a point before stating it",
+      "example": {
+        "trait": "Here's what most miss: indexes",
+        "not_trait": "Most miss indexes"
+      },
+      "relevant_if_either_response": "has a phrase that announces a point and then states it in the same sentence or paragraph (\"Here's the thing: …\", \"What most people miss is that …\"). Introductions ahead of a line-break do not count",
+      "sources": [
+        {
+          "authors": "Jim Bennett",
+          "title": "Anthropic says it fixed Claude's writing. I ran the evals to check.",
+          "type": "post",
+          "url": "https://arize.com/blog/anthropic-says-it-fixed-claudes-writing/",
+          "venue": "Arize blog, 2026"
+        },
+        {
+          "authors": "Samuel Paech, Allen Roush, Judah Goldfeder, Ravid Shwartz-Ziv",
+          "title": "Antislop: A Comprehensive Framework for Identifying and Eliminating Repetitive Patterns in Language Models",
+          "type": "paper, general",
+          "url": "https://arxiv.org/abs/2510.15061",
+          "venue": "ICLR 2026"
+        }
+      ],
+      "origin": "new"
+    },
+    {
+      "name": "Gotcha framing",
+      "instruction": "Select the response that frames more points as hidden traps or pitfalls",
+      "example": {
+        "trait": "The trap: floats round silently",
+        "not_trait": "Floats round silently"
+      },
+      "relevant_if_either_response": "calls something a trap, pitfall, catch or gotcha",
+      "sources": [
+        {
+          "authors": "Jim Bennett",
+          "title": "Anthropic says it fixed Claude's writing. I ran the evals to check.",
+          "type": "post",
+          "url": "https://arize.com/blog/anthropic-says-it-fixed-claudes-writing/",
+          "venue": "Arize blog, 2026"
+        },
+        {
+          "authors": "Chantal Shaib, Tuhin Chakrabarty, Diego Garcia-Olano, Byron C. Wallace",
+          "title": "Measuring AI \"Slop\" in Text",
+          "type": "paper, general",
+          "url": "https://arxiv.org/abs/2509.19163",
+          "venue": "arXiv, 2025"
+        }
+      ],
+      "origin": "new"
+    },
+    {
+      "name": "\"Not X, but Y\" framing",
+      "instruction": "Select the response that uses more \"not X, but Y\" constructions",
+      "example": {
+        "trait": "It's not a bug, it's a design choice",
+        "not_trait": "It's a design choice"
+      },
+      "relevant_if_either_response": "denies one framing to assert another. Plain factual negation (\"it is not installed\") does not count",
+      "sources": [
+        {
+          "authors": "Samuel Paech, Allen Roush, Judah Goldfeder, Ravid Shwartz-Ziv",
+          "title": "Antislop: A Comprehensive Framework for Identifying and Eliminating Repetitive Patterns in Language Models",
+          "type": "paper",
+          "url": "https://arxiv.org/abs/2510.15061",
+          "venue": "ICLR 2026"
+        },
+        {
+          "authors": "Wikipedia contributors",
+          "title": "Signs of AI writing",
+          "type": "post",
+          "url": "https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing",
+          "venue": "Wikipedia",
+          "via": [
+            {
+              "ref": "Beutler Ink",
+              "url": "https://www.beutlerink.com/blog/how-to-spot-ai-writing"
+            }
+          ]
+        },
+        {
+          "authors": "OpenAI",
+          "title": "Using GPT-6 Astra",
+          "type": "vendor doc",
+          "url": "https://developers.openai.com/api/docs/guides/latest-model/gpt-6-astra",
+          "venue": "OpenAI API docs"
+        }
+      ],
+      "origin": "new",
+      "review_note": "Fourth suggested source (Graphite study, via Inc.) dropped to keep to 3."
+    },
+    {
+      "name": "Consecutive negations",
+      "instruction": "Select the response that uses more \"No X. No Y. Just Z.\" constructions",
+      "example": {
+        "trait": "No setup. No config. Just run it",
+        "not_trait": "Runs without setup or config"
+      },
+      "relevant_if_either_response": "has two or more consecutive short negated fragments",
+      "sources": [
+        {
+          "authors": "",
+          "title": "Signs of AI Writing: A Combined Reference",
+          "type": "post",
+          "url": "https://jetwong.neocities.org/ai/signs-of-ai-writing",
+          "venue": "jetwong.neocities.org"
+        },
+        {
+          "authors": "",
+          "title": "aismells: a catalog of recognizable AI writing patterns",
+          "type": "post",
+          "url": "https://aismells.pages.dev/llms.txt",
+          "venue": "aismells.pages.dev"
+        },
+        {
+          "authors": "Chantal Shaib, Yanai Elazar, Junyi Jessy Li, Byron C. Wallace",
+          "title": "Detection and Measurement of Syntactic Templates in Generated Text",
+          "type": "paper, general",
+          "url": "https://arxiv.org/abs/2407.00211",
+          "venue": "EMNLP 2024"
+        }
+      ],
+      "origin": "new"
+    },
+    {
+      "name": "Rule of three",
+      "instruction": "Select the response that groups items in threes more",
+      "example": {
+        "trait": "Fast, simple and reliable",
+        "not_trait": "Fast and reliable"
+      },
+      "relevant_if_either_response": "lists exactly three parallel words, phrases or sentences. Lists whose length the prompt fixes do not count",
+      "sources": [
+        {
+          "authors": "Wikipedia contributors",
+          "title": "Signs of AI writing",
+          "type": "post",
+          "url": "https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing",
+          "venue": "Wikipedia",
+          "via": [
+            {
+              "ref": "Beutler Ink",
+              "url": "https://www.beutlerink.com/blog/how-to-spot-ai-writing"
+            }
+          ]
+        },
+        {
+          "authors": "Andrew Havard",
+          "title": "Unmasking Techno-Sophists",
+          "type": "report",
+          "url": "https://www.nccgroup.com/media/l5cjcey2/unmasking_techno_sophists.pdf",
+          "venue": "NCC Group report, 2025"
+        },
+        {
+          "authors": "Chantal Shaib, Yanai Elazar, Junyi Jessy Li, Byron C. Wallace",
+          "title": "Detection and Measurement of Syntactic Templates in Generated Text",
+          "type": "paper, general",
+          "url": "https://arxiv.org/abs/2407.00211",
+          "venue": "EMNLP 2024"
+        }
+      ],
+      "origin": "new"
+    },
+    {
+      "name": "Avoiding taking sides",
+      "instruction": "Select the response that more presents both sides without taking a position",
+      "example": {
+        "trait": "Both have merits; it depends",
+        "not_trait": "Both have merits, but use spaces"
+      },
+      "relevant_if_either_response": "argues more than one side and the prompt asks for an opinion, choice or recommendation",
+      "sources": [
+        {
+          "authors": "Aman Gupta, Denny O'Shea, Fazl Barez",
+          "title": "VAL-Bench: Belief Consistency as a measure for Value Alignment in Language Models",
+          "type": "paper",
+          "url": "https://arxiv.org/abs/2510.05465",
+          "venue": "arXiv, 2025"
+        },
+        {
+          "authors": "Bhaktipriya Radharapu, Manon Revel, Megan Ung, Sebastian Ruder, Adina Williams",
+          "title": "Arbiters of Ambivalence: Challenges of Using LLMs in No-Consensus Tasks",
+          "type": "paper",
+          "url": "https://arxiv.org/abs/2505.23820",
+          "venue": "ACL 2025"
+        }
+      ],
+      "origin": "new",
+      "review_note": "Third suggested source (vasudev.bearblog.dev) returns 404, dropped."
+    },
+    {
+      "name": "Wise ending",
+      "instruction": "Select the response that ends with an aphoristic closing line",
+      "example": {
+        "trait": "…Good code is kind code",
+        "not_trait": "…That fixes the leak"
+      },
+      "relevant_if_either_response": "ends with a general, quotable saying, not prompt-specific content",
+      "sources": [
+        {
+          "authors": "C.B. Daniels",
+          "title": "The 2026 AI Writing Tells (Em-Dash Meme Is Half-Right)",
+          "type": "post",
+          "url": "https://artificial-ideas.pages.dev/learn/ai-writing-tells/",
+          "venue": "Artificial Ideas, 2026"
+        },
+        {
+          "authors": "Lisa Dunlap, Krishna Mandal, Trevor Darrell, Jacob Steinhardt, Joseph E Gonzalez",
+          "title": "VibeCheck: Discover and Quantify Qualitative Differences in Large Language Models",
+          "type": "paper, related",
+          "url": "https://arxiv.org/abs/2410.12851",
+          "venue": "ICLR 2025"
+        }
+      ],
+      "origin": "new"
+    },
+    {
+      "name": "Labelled conclusion",
+      "instruction": "Select the response that ends with a labelled summary",
+      "example": {
+        "trait": "…Bottom line: use Postgres",
+        "not_trait": "…So use Postgres"
+      },
+      "relevant_if_either_response": "ends with summary section under own heading or label line (\"## Summary\", \"**Bottom line:**\"), or has inline opener (\"In summary, …\")",
+      "sources": [
+        {
+          "authors": "OpenAI",
+          "title": "Using GPT-6 Astra",
+          "type": "vendor doc",
+          "url": "https://developers.openai.com/api/docs/guides/latest-model/gpt-6-astra",
+          "venue": "OpenAI API docs"
+        },
+        {
+          "authors": "Lisa Dunlap, Krishna Mandal, Trevor Darrell, Jacob Steinhardt, Joseph E Gonzalez",
+          "title": "VibeCheck: Discover and Quantify Qualitative Differences in Large Language Models",
+          "type": "paper, related",
+          "url": "https://arxiv.org/abs/2410.12851",
+          "venue": "ICLR 2025"
+        }
+      ],
+      "origin": "new"
+    },
+    {
+      "name": "Stock engineering metaphors",
+      "instruction": "Select the response that uses more stock engineering metaphors",
+      "example": {
+        "trait": "This sentence is load-bearing",
+        "not_trait": "This sentence is essential"
+      },
+      "relevant_if_either_response": "uses an engineering or construction term figuratively, not literally",
+      "sources": [
+        {
+          "authors": "Robert Matsuoka",
+          "title": "The Word Problem: Why Developers Can't Stand Talking to Opus 5",
+          "type": "post",
+          "url": "https://hyperdev.matsuoka.com/p/the-word-problem-why-developers-cant",
+          "venue": "HyperDev (Substack), 2026"
+        },
+        {
+          "authors": "",
+          "title": "How to stop Claude from saying load-bearing",
+          "type": "post",
+          "url": "https://news.ycombinator.com/item?id=48905248",
+          "venue": "Hacker News thread"
+        },
+        {
+          "authors": "Jim Bennett",
+          "title": "Anthropic says it fixed Claude's writing. I ran the evals to check.",
+          "type": "post",
+          "url": "https://arize.com/blog/anthropic-says-it-fixed-claudes-writing/",
+          "venue": "Arize blog, 2026"
+        }
+      ],
+      "origin": "new",
+      "review_note": "Fourth suggested source (Antislop, general) dropped to keep to 3."
+    },
+    {
+      "name": "Undefined jargon",
+      "instruction": "Select the response that uses more undefined jargon or coined shorthand",
+      "example": {
+        "trait": "Patch the hot-path seam per the P1 note",
+        "not_trait": "Fix the slow function first"
+      },
+      "relevant_if_either_response": "uses abbreviations it never expands, or specialist terms clearly above the level of the prompt. Standard terms of prompt's own field do not count",
+      "sources": [
+        {
+          "authors": "Thomas Hikaru Clark, Matias B. Martin, Kyle Mahowald",
+          "title": "Why is AI-generated language so hard to understand?",
+          "type": "paper",
+          "url": "https://arxiv.org/abs/2610.29162",
+          "venue": "arXiv, 2026"
+        },
+        {
+          "authors": "Alex Reinhart, Ben Markey, Michael Laudenbach et al.",
+          "title": "Do LLMs write like humans? Variation in grammatical and rhetorical styles",
+          "type": "paper",
+          "url": "https://arxiv.org/abs/2410.16107",
+          "venue": "PNAS, 2025"
+        },
+        {
+          "authors": "Jackson Kernion",
+          "title": "X thread on why Claude's writing got worse",
+          "type": "post",
+          "url": "https://x.com/JacksonKernion/status/2102437423670325581",
+          "venue": "X, 2026",
+          "via": [
+            {
+              "ref": "The Decoder",
+              "url": "https://the-decoder.com/anthropic-engineer-explains-why-claudes-writing-got-worse-although-the-model-got-smarter/"
+            }
+          ]
+        }
+      ],
+      "origin": "new",
+      "review_note": "Reworded: 'that needs re-reading' is a judgement, replaced by 'undefined'."
+    },
+    {
+      "name": "Certainty intensifiers",
+      "instruction": "Select the response that uses more certainty intensifiers",
+      "example": {
+        "trait": "This is genuinely the root cause",
+        "not_trait": "This is the cause"
+      },
+      "relevant_if_either_response": "uses a word from this list to make a claim sound more certain or sincere: genuinely, truly, honestly, certainly, definitely, absolutely, undoubtedly, clearly. Degree, time and manner adverbs (very, significantly, immediately, technically) do not count",
+      "sources": [
+        {
+          "authors": "Kaitlyn Zhou, Jena D. Hwang, Xiang Ren, Maarten Sap",
+          "title": "Relying on the Unreliable: The Impact of Language Models' Reluctance to Express Uncertainty",
+          "type": "paper",
+          "url": "https://arxiv.org/abs/2401.06730",
+          "venue": "ACL 2024"
+        },
+        {
+          "authors": "OpenAI",
+          "title": "Using GPT-6 Astra",
+          "type": "vendor doc",
+          "url": "https://developers.openai.com/api/docs/guides/latest-model/gpt-6-astra",
+          "venue": "OpenAI API docs"
+        },
+        {
+          "authors": "",
+          "title": "How to stop Claude from saying load-bearing",
+          "type": "post",
+          "url": "https://news.ycombinator.com/item?id=48905248",
+          "venue": "Hacker News thread"
+        }
+      ],
+      "origin": "new",
+      "review_note": "Removed \"crucially\" from the examples: it signals importance, which is 'Filler emphasis'."
+    },
+    {
+      "name": "Superlatives",
+      "instruction": "Select the response that uses more superlatives",
+      "example": {
+        "trait": "The best, fastest option",
+        "not_trait": "A good, fast option"
+      },
+      "relevant_if_either_response": "has an evaluative superlative (\"the best approach\", \"most powerful\"). Quantifier phrases (\"at most\", \"at least\") and fixed technical terms (\"worst case\", \"least significant digit\") do not count",
+      "sources": [
+        {
+          "authors": "Graphite",
+          "title": "AI Tells: Opus 5.5 Update",
+          "type": "report",
+          "url": "https://graphite.io/five-percent/research/ai-tells-opus-5-5-update",
+          "venue": "Graphite research, 2026",
+          "via": [
+            {
+              "ref": "Inc.",
+              "url": "https://www.inc.com/chris-morris/wondering-if-ai-wrote-that-document-these-are-the-surprising-new-clues/91413963"
+            }
+          ]
+        },
+        {
+          "authors": "Tom S. Juzek, Zina B. Ward",
+          "title": "Why Does ChatGPT \"Delve\" So Much? Exploring the Sources of Lexical Overrepresentation in Large Language Models",
+          "type": "paper, related",
+          "url": "https://arxiv.org/abs/2412.11385",
+          "venue": "COLING 2025"
+        },
+        {
+          "authors": "Wikipedia contributors",
+          "title": "Signs of AI writing",
+          "type": "post",
+          "url": "https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing",
+          "venue": "Wikipedia",
+          "via": [
+            {
+              "ref": "TechCrunch",
+              "url": "https://techcrunch.com/2025/11/20/the-best-guide-to-spotting-ai-writing-comes-from-wikipedia/"
+            }
+          ]
+        }
+      ],
+      "origin": "new"
+    },
+    {
+      "name": "Ornate vocabulary",
+      "instruction": "Select the response that uses more ornate vocabulary",
+      "example": {
+        "trait": "Delve into the rich tapestry of options",
+        "not_trait": "Look at the options"
+      },
+      "relevant_if_either_response": "uses an ornate word where a plain one means the same",
+      "sources": [
+        {
+          "authors": "Dmitry Kobak, Rita González-Márquez, Emőke-Ágnes Horvát, Jan Lause",
+          "title": "Delving into LLM-assisted writing in biomedical publications through excess vocabulary",
+          "type": "paper",
+          "url": "https://arxiv.org/abs/2406.07016",
+          "venue": "Science Advances, 2025"
+        },
+        {
+          "authors": "Tom S. Juzek, Zina B. Ward",
+          "title": "Why Does ChatGPT \"Delve\" So Much? Exploring the Sources of Lexical Overrepresentation in Large Language Models",
+          "type": "paper",
+          "url": "https://arxiv.org/abs/2412.11385",
+          "venue": "COLING 2025"
+        },
+        {
+          "authors": "Jenna Russell, Marzena Karpinska, Mohit Iyyer",
+          "title": "People who frequently use ChatGPT for writing tasks are accurate and robust detectors of AI-generated text",
+          "type": "paper",
+          "url": "https://arxiv.org/abs/2501.15654",
+          "venue": "ACL 2025"
+        }
+      ],
+      "origin": "new"
+    },
+    {
+      "name": "Softened claims",
+      "instruction": "Select the response that hedges more with modal verbs",
+      "example": {
+        "trait": "This may reduce load",
+        "not_trait": "This reduces load"
+      },
+      "relevant_if_either_response": "softens/hedges claims with may, might or could more than once. \"Can\" does not count",
+      "sources": [
+        {
+          "authors": "Kaitlyn Zhou, Jena D. Hwang, Xiang Ren, Maarten Sap",
+          "title": "Relying on the Unreliable: The Impact of Language Models' Reluctance to Express Uncertainty",
+          "type": "paper",
+          "url": "https://arxiv.org/abs/2401.06730",
+          "venue": "ACL 2024"
+        },
+        {
+          "authors": "Jiayu Liu, Qing Zong, Weiqi Wang, Yangqiu Song",
+          "title": "Revisiting Epistemic Markers in Confidence Estimation: Can Markers Accurately Reflect Large Language Models' Uncertainty?",
+          "type": "paper",
+          "url": "https://arxiv.org/abs/2505.24778",
+          "venue": "ACL 2025"
+        },
+        {
+          "authors": "Graphite",
+          "title": "AI Tells: Opus 5.5 Update",
+          "type": "report",
+          "url": "https://graphite.io/five-percent/research/ai-tells-opus-5-5-update",
+          "venue": "Graphite research, 2026",
+          "via": [
+            {
+              "ref": "AIChief",
+              "url": "https://aichief.com/news/opus-55-loves-to-tell-you-this-matters-and-other-ai-writing-tells/"
+            }
+          ]
+        }
+      ],
+      "origin": "new",
+      "review_note": "Overlaps with old 'Acknowledged uncertainty'."
+    },
+    {
+      "name": "Creature metaphors",
+      "instruction": "Select the response that uses more creature metaphors",
+      "example": {
+        "trait": "A config gremlin breaks it",
+        "not_trait": "A config error breaks it"
+      },
+      "relevant_if_either_response": "mentions a creature figuratively, not literally",
+      "sources": [
+        {
+          "authors": "OpenAI",
+          "title": "Where the goblins came from",
+          "type": "vendor post",
+          "url": "https://openai.com/index/where-the-goblins-came-from/",
+          "venue": "OpenAI blog, 2026",
+          "via": [
+            {
+              "ref": "Decrypt",
+              "url": "https://decrypt.co/366197/openai-explains-chatgpt-mention-goblins"
+            }
+          ]
+        }
+      ],
+      "origin": "new"
+    },
+    {
+      "name": "Bold lead-in bullets",
+      "instruction": "Select the response that uses more bullets that start with a bold label",
+      "example": {
+        "trait": "- **Speed:** fast",
+        "not_trait": "- It is fast"
+      },
+      "relevant_if_either_response": "has list items starting with a bold label",
+      "sources": [
+        {
+          "authors": "Mingjie Sun, Yida Yin, Zhiqiu Xu, J. Zico Kolter, Zhuang Liu",
+          "title": "Idiosyncrasies in Large Language Models",
+          "type": "paper",
+          "url": "https://arxiv.org/abs/2502.12150",
+          "venue": "ICML 2025"
+        },
+        {
+          "authors": "E. M. Freeburg",
+          "title": "The Last Fingerprint: How Markdown Training Shapes LLM Prose",
+          "type": "paper",
+          "url": "https://arxiv.org/abs/2603.27006",
+          "venue": "arXiv, 2026"
+        },
+        {
+          "authors": "Jim Bennett",
+          "title": "Anthropic says it fixed Claude's writing. I ran the evals to check.",
+          "type": "post",
+          "url": "https://arize.com/blog/anthropic-says-it-fixed-claudes-writing/",
+          "venue": "Arize blog, 2026"
+        }
+      ],
+      "origin": "new",
+      "review_note": "Sub-case of old 'Bold and italics' and 'Structured formatting'."
+    },
+    {
+      "name": "Em dashes",
+      "instruction": "Select the response that uses more em dashes",
+      "example": {
+        "trait": "It works — mostly",
+        "not_trait": "It works, mostly"
+      },
+      "relevant_if_either_response": "has \"—\", or \"--\" or \"---\" joining two parts of a sentence. Single hyphens, list bullets and \"---\" divider lines do not count",
+      "sources": [
+        {
+          "authors": "E. M. Freeburg",
+          "title": "The Last Fingerprint: How Markdown Training Shapes LLM Prose",
+          "type": "paper",
+          "url": "https://arxiv.org/abs/2603.27006",
+          "venue": "arXiv, 2026"
+        },
+        {
+          "authors": "Przemysław Czuma",
+          "title": "Em-ergence of the em-dash: a population-level rise in em-dash frequency in medRxiv preprints at the dawn of the large-language-model era",
+          "type": "paper",
+          "url": "https://arxiv.org/abs/2606.29540",
+          "venue": "arXiv, 2026"
+        },
+        {
+          "authors": "Wikipedia contributors",
+          "title": "Signs of AI writing",
+          "type": "post",
+          "url": "https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing",
+          "venue": "Wikipedia",
+          "via": [
+            {
+              "ref": "FlowingData",
+              "url": "https://flowingdata.com/2025/10/20/signs-of-ai-writing-on-wikipedia/"
+            }
+          ]
+        }
+      ],
+      "origin": "new"
+    },
+    {
+      "name": "Affirmation opening",
+      "instruction": "Select the response that opens with a one-line affirmation",
+      "example": {
+        "trait": "Certainly! Here's the script",
+        "not_trait": "Here's the script"
+      },
+      "relevant_if_either_response": "opens with a line that only affirms the request. Praise of the question and \"you're right\" do not count",
+      "sources": [
+        {
+          "authors": "Wikipedia contributors",
+          "title": "Signs of AI writing",
+          "type": "post",
+          "url": "https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing",
+          "venue": "Wikipedia",
+          "via": [
+            {
+              "ref": "Literary Hub",
+              "url": "https://lithub.com/heres-a-handy-guide-to-help-you-spot-ai-writing/"
+            }
+          ]
+        }
+      ],
+      "origin": "new",
+      "review_note": "Second suggested source (howmanywords.app) dropped: it reads as an SEO page."
+    },
+    {
+      "name": "Offer ending",
+      "instruction": "Select the response that ends with an offer to do more work",
+      "example": {
+        "trait": "…Want me to add tests?",
+        "not_trait": "…The tests pass"
+      },
+      "relevant_if_either_response": "ends with a sentence offering further work by the assistant",
+      "sources": [
+        {
+          "authors": "Jing Yang Lee, Seokhwan Kim, Kartik Mehta, Jiun-Yu Kao, Yu-Hsiang Lin, Arpit Gupta",
+          "title": "Redefining Proactivity for Information Seeking Dialogue",
+          "type": "paper",
+          "url": "https://arxiv.org/abs/2410.15297",
+          "venue": "SICon workshop (EMNLP 2024)"
+        },
+        {
+          "authors": "Ben Patterson",
+          "title": "I got ChatGPT to stop its annoying follow-up questions with one prompt",
+          "type": "news",
+          "url": "https://www.pcworld.com/article/3221302/i-got-chatgpt-to-stop-its-annoying-follow-up-questions-with-one-prompt.html",
+          "venue": "PCWorld, 2026"
+        },
+        {
+          "authors": "Graham Barlow",
+          "title": "I finally got ChatGPT to stop asking 'Want me to…' at the end of every response – here's how to do it",
+          "type": "news",
+          "url": "https://www.techradar.com/ai-platforms-assistants/chatgpt/i-finally-got-chatgpt-to-stop-asking-want-me-to-at-the-end-of-every-response-heres-how-to-do-it",
+          "venue": "TechRadar, 2025"
+        }
+      ],
+      "origin": "new",
+      "review_note": "Overlaps with old 'Follow-up question'. PCWorld and TechRadar are first-person pieces, so they are the original sources."
+    },
+    {
+      "name": "Unprompted reassurance",
+      "instruction": "Select the response that reassures the user about their mental state without being asked",
+      "example": {
+        "trait": "You're not broken. Many forget names",
+        "not_trait": "Many forget names"
+      },
+      "relevant_if_either_response": "comments on the user's feelings, worth or sanity unasked",
+      "sources": [
+        {
+          "authors": "Myra Cheng, Sunny Yu, Cinoo Lee, Pranav Khadpe, Lujain Ibrahim, Dan Jurafsky",
+          "title": "ELEPHANT: Measuring and understanding social sycophancy in LLMs",
+          "type": "paper",
+          "url": "https://arxiv.org/abs/2505.13995",
+          "venue": "ICLR 2026"
+        },
+        {
+          "authors": "OpenAI",
+          "title": "X post announcing GPT-5.3 Instant",
+          "type": "vendor post",
+          "url": "https://x.com/OpenAI/status/2028893702865989707",
+          "venue": "X, 2026",
+          "via": [
+            {
+              "ref": "TechCrunch",
+              "url": "https://techcrunch.com/2026/03/03/chatgpts-new-gpt-5-3-instant-model-will-stop-telling-you-to-calm-down/"
+            }
+          ]
+        }
+      ],
+      "origin": "new"
+    },
+    {
+      "name": "Tone mirroring",
+      "instruction": "Select the response that mirrors the user's tone and register more",
+      "example": {
+        "trait": "User: \"yo quick q\" → \"yep, easy fix\"",
+        "not_trait": "User: \"yo quick q\" → \"Certainly. The solution is\""
+      },
+      "relevant_if_either_response": "matches the user's marked style (slang, formality, emojis, terseness) more than the other",
+      "sources": [
+        {
+          "authors": "Terra Blevins, Susanne Schmalwieser, Benjamin Roth",
+          "title": "Do language models accommodate their users? A study of linguistic convergence",
+          "type": "paper",
+          "url": "https://arxiv.org/abs/2508.03276",
+          "venue": "EACL 2026"
+        },
+        {
+          "authors": "Noé Durandard, Saurabh Dhawan, Thierry Poibeau",
+          "title": "Language Style Matching in Large Language Models",
+          "type": "paper",
+          "url": "https://aclanthology.org/2025.sigdial-1.50.pdf",
+          "venue": "SIGDIAL 2025"
+        },
+        {
+          "authors": "Eric Hal Schwartz",
+          "title": "ChatGPT users are still fuming about GPT-5's downgrades – here are the 4 biggest complaints",
+          "type": "news",
+          "url": "https://www.techradar.com/ai-platforms-assistants/chatgpt/chatgpt-users-are-still-fuming-about-gpt-5s-downgrades-here-are-the-4-biggest-complaints",
+          "venue": "TechRadar, 2025"
+        }
+      ],
+      "origin": "new",
+      "review_note": "Flipped from 'Low tone mirroring' to the 'more' form. Needs the user's message to be visible to the annotator. TechRadar collects several Reddit threads, so it has no single original source."
+    }
+  ]
+}

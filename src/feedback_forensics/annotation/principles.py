@@ -21,6 +21,8 @@ space for newer traits. A trait was removed if it met one or more of these crite
   judgement of quality instead of a personality trait.
 
 "v2" is not yet used by default, and will change until the new traits are added.
+The draft of the full new set (40 traits, each with a relevance rule and an example
+pair) is in `traits_v2_draft.json` next to this module. No code loads it yet.
 """
 
 DEFAULT_PRINCIPLES: dict[str, list[str]] = {
